@@ -13,13 +13,13 @@ name:                dimes
 version:             0.1.0.0
 
 -- A short (one-line) description of the package.
-synopsis:            Bindings to libmpdec - correctly-rounded arbitrary precision decimal floating point arithmetic
+synopsis:            Decimal floating point arithmetic
 
 -- A longer description of the package.
 -- description:         
 
 -- URL for the project homepage or repository.
-homepage:            http://www.github.com/massysett/hlibmpdec
+homepage:            http://www.github.com/massysett/dimes
 
 -- The license under which the package is released.
 license:             BSD3
@@ -50,8 +50,10 @@ cabal-version:       >=1.10
 
 
 library
+  hs-source-dirs: lib
   -- Modules exported by the library.
-  -- exposed-modules:     
+  exposed-modules:     
+      Data.Dimes.Context
   
   -- Modules included in this library but not exported.
   -- other-modules:       
@@ -60,7 +62,12 @@ library
   -- other-extensions:    
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 && <4.7
+  build-depends:
+      base >=4.6 && <4.7
+    , bindings-mpdecimal
+    , bytestring ==0.10.*
+
+  ghc-options: -Wall
   
   -- Directories containing source files.
   -- hs-source-dirs:      
