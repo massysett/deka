@@ -98,6 +98,7 @@ module Data.Dimes.Context
 
   -- * Assignment, conversions, I/O
   , setString
+  , setIntegral
 
   ) where
 
@@ -430,6 +431,9 @@ setString bs = do
   join $ liftIO $ BS.useAsCString bs f
   return m
 
+-- | Sets the value of an MPD by converting an Integral to a string
+-- first, then using setString.  Probably will not win any speed
+-- awards.
 setIntegral :: Integral a => a -> Context Mpd
 setIntegral = setString . BS8.pack . show . f . fromIntegral
   where
