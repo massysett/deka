@@ -9,14 +9,28 @@
 --
 -- <http://speleotrove.com/decimal/decifaq.html>
 --
--- There is a specification for decimal arithmetic available at
+-- This module will suffice for simple needs.  Deka is /not/ an
+-- instance of many typeclasses, such as 'Fractional'.  That is
+-- because there is no straightforward way to implement those
+-- operations without rounding and a destruction of precision.  If
+-- you need division with correct rounding, ideal would be a Haskell
+-- library that implements the specification for decimal arithmetic
+-- available at
 --
 -- <http://speleotrove.com/decimal/>
 --
--- However, this library makes no attempt to implement this
--- specification.  I'm not aware of any Haskell library which
--- implements this standard.  This module provides a few operations
--- which should suffice for many common needs.
+-- However, I am not aware of any Haskell library that implements
+-- this specification.
+--
+-- Another way to perform division is to use 'toRational' on your
+-- operands.  You can then divide those operands, or convert them to
+-- floats first and divide those.
+--
+-- Another library implementing decimal arithmetic is Decimal,
+-- available on Hackage.  That library differs from this one in a
+-- few ways; for example, it allows only for negative exponents, and
+-- the exponent is always a Word8.  It also allows the significand
+-- to be any Integral.
 --
 -- Tests are available with the deka package; I encourage you to run
 -- them by unpacking the tarball and running
@@ -31,13 +45,19 @@ module Data.Deka
   , compareValues
   , equivalent
   , (==~)
+  , dekaToFloat
+  , floatToDeka
   ) where
 
 import Control.Arrow
+import Data.Ratio
 
 -- | A single decimal number.  Each Deka consists of a Integer
 -- coefficient and an Integer exponent.  For a coefficient @c@ and
 -- an exponent @e@, the value of any given Deka is @c * 10 ^ e@.
+--
+-- For the Num instance, all operations preserve full precision by
+-- increasing the number of significant digits as needed.
 --
 -- /WARNING/ - before performing any tests for equality or ordering
 --
@@ -80,7 +100,8 @@ equivalent x y
   . second coef
   $ equalizeExponents x y
 
--- | Same as 'equivalent'
+-- | Same as 'equivalent'.  Has same fixity and precedence as '==',
+-- which is infix 4.
 (==~) :: Deka -> Deka -> Bool
 (==~) = equivalent
 infix 4 ==~
@@ -102,3 +123,28 @@ instance Num Deka where
   abs d = d { coef = abs (coef d) }
   signum d = Deka (signum . coef $ d) 0
   fromInteger i = Deka i 0
+
+instance Real Deka where
+  toRational (Deka c e)
+    | e < 0 = c % (10 ^ abs e)
+    | otherwise = (c * 10 ^ e) % 1
+
+-- | Converts a Deka to a floating point type.  Fails if the
+-- exponent of the Deka is out of the range of Int.  Uses
+-- 'encodeFloat' so note the caveats stated there.
+dekaToFloat :: RealFloat a => Deka -> Maybe a
+dekaToFloat (Deka c e)
+  | e' < (minBound :: Int) || e' > (maxBound :: Int) = Nothing
+  | otherwise = Just $ encodeFloat c e'
+  where
+    e' = fromIntegral e
+
+-- | Converts a floating-point type to a Deka.  Fails if the
+-- floating-point type is NaN or infinite.
+floatToDeka :: RealFloat a => a -> Maybe Deka
+floatToDeka a
+  | isNaN a = Nothing
+  | isInfinite a = Nothing
+  | otherwise = let (m, e) = decodeFloat a
+                in Just $ Deka m (fromIntegral e)
+

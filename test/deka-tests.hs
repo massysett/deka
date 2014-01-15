@@ -166,4 +166,23 @@ tests =
     , testProperty "x * 0 ==~ 0" $
       \(DekaA x) (ZeroA z) -> x * z ==~ z
     ]
+
+  , testGroup "negate"
+    [ testProperty "negate (negate x) == x" $
+      \(DekaA x) -> negate (negate x) == x
+    ]
+
+  , testGroup "abs"
+    [ testProperty "abs x * signum x == x" $
+      \(DekaA x) -> abs x * signum x == x
+    ]
+
+  , testGroup "fromInteger"
+    [ testProperty "expt is 0" $
+      \i -> expt (fromInteger i) == 0
+
+    , testProperty "coef is integer" $
+      \i -> coef (fromInteger i) == i
+
+    ]
   ]
