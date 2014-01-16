@@ -120,6 +120,16 @@ module Data.Dimes.Safe
   , setString
   , setIntegral
 
+  -- ** Set special values
+  , Sign
+  , positive
+  , negative
+  , NonFinite
+  , infinite
+  , nan
+  , sNan
+  , setSpecial
+
   ) where
 
 import Control.Applicative
@@ -544,3 +554,32 @@ setIntegral :: Integral a => a -> Env Mpd
 setIntegral = setString . BS8.pack . show . f . fromIntegral
   where
     f = id :: Integer -> Integer
+
+-- ## Setting the sign
+newtype Sign = Sign { _unSign :: C'uint8_t }
+  deriving (Eq, Show, Ord)
+
+positive :: Sign
+positive = Sign c'MPD_POS
+
+negative :: Sign
+negative = Sign c'MPD_NEG
+
+newtype NonFinite = NonFinite { _unNonFinite :: C'uint8_t }
+  deriving (Eq, Show, Ord)
+
+infinite :: NonFinite
+infinite = NonFinite c'MPD_INF
+
+nan :: NonFinite
+nan = NonFinite c'MPD_NAN
+
+sNan :: NonFinite
+sNan = NonFinite c'MPD_SNAN
+
+setSpecial :: Sign -> NonFinite -> Env Mpd
+setSpecial (Sign s) (NonFinite nf) = do
+  m <- newMpd
+  let f p = c'mpd_setspecial p s nf
+  withMpdPtr m f
+  return m
