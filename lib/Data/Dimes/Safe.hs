@@ -1,11 +1,21 @@
 {-# LANGUAGE Safe #-}
 module Data.Dimes.Safe
-  ( -- * Context
-    -- ** Initializing a context
-    Initializer
+  (
+    -- * Env monad
+    Env
+  , runEnv
+  
+   -- * Context
+  , Context(..)
+  , getContext
+  , setContext
+
+    -- ** Initializing an Env
+  , Initializer
   , maxContext
   , basicContext
   , defaultContext
+  , initFromContext
   
   -- *** IEEE interchange formats
   , Interchange
@@ -18,10 +28,6 @@ module Data.Dimes.Safe
   , interchange64
   , interchange128
 
-  -- ** Env monad
-  , Env
-  , runEnv
-  
   -- ** Precision
   , Precision
   , precision
@@ -40,7 +46,7 @@ module Data.Dimes.Safe
   , setNegExpMin
 
   -- ** Traps and signals
-  -- *** Signals
+  -- *** Individual signals
   , Signal
   , ieeeInvalidOperation
   , clamped
@@ -53,13 +59,27 @@ module Data.Dimes.Safe
   , subnormal
   , underflow
 
-  -- *** Traps
-  , Traps
-  , setTraps
-  , getTraps
-  , trapNone
+  -- *** Groups of signals
+  , Signals
+  , emptySignals
   , addSignal
-  , trapSignals
+  , concatSignals
+  , isSet
+
+  -- *** Traps
+  , Traps(..)
+  , getTraps
+  , setTraps
+
+  -- *** Status flags
+  , Status(..)
+  , getStatus
+  , setStatus
+
+  -- *** Newtrap
+  , NewTrap(..)
+  , getNewTrap
+  , setNewTrap
 
   -- ** Rounding
   , Round
@@ -112,7 +132,47 @@ import Foreign.Safe
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 
--- # Initializing a context
+-- # Context
+
+data Context = Context
+  { ctxPrecision :: Precision
+  , ctxPosExpMax :: PosExpMax
+  , ctxNegExpMin :: NegExpMin
+  , ctxTraps :: Traps
+  , ctxStatus :: Status
+  , ctxNewTrap :: NewTrap
+  , ctxRound :: Round
+  , ctxClamp :: Clamp
+  , ctxRoundAll :: RoundAll
+  }
+
+getContext :: Env Context
+getContext
+  = Context
+  <$> getPrecision
+  <*> getPosExpMax
+  <*> getNegExpMin
+  <*> getTraps
+  <*> getStatus
+  <*> getNewTrap
+  <*> getRound
+  <*> getClamp
+  <*> getRoundAll
+
+setContext :: Context -> Env ()
+setContext c = do
+  setPrecision . ctxPrecision $ c
+  setPosExpMax . ctxPosExpMax $ c
+  setNegExpMin . ctxNegExpMin $ c
+  setTraps . ctxTraps $ c
+  setStatus . ctxStatus $ c
+  setNewTrap . ctxNewTrap $ c
+  setRound . ctxRound $ c
+  setClamp . ctxClamp $ c
+  setRoundAll . ctxRoundAll $ c
+
+
+-- ## Initializing a context
 
 newtype Initializer = Initializer
   { unInitializer :: Ptr C'mpd_context_t -> IO () }
@@ -125,6 +185,9 @@ basicContext = Initializer c'mpd_basiccontext
 
 defaultContext :: Initializer
 defaultContext = Initializer c'mpd_defaultcontext
+
+initFromContext :: Context -> Initializer
+initFromContext = Initializer . unEnv . setContext
 
 -- * IEEE interchange formats
 
@@ -174,6 +237,11 @@ instance Functor Env where
 instance Applicative Env where
   pure = return
   (<*>) = ap
+
+-- In Control.Monad.Trans.State:
+-- run returns (a, s)
+-- eval returns a
+-- exec returns s
 
 -- | Runs a Env computation.
 runEnv :: Initializer -> Env a -> IO a
@@ -270,25 +338,7 @@ getNegExpMin = getter NegExpMin c'mpd_getemin
 setNegExpMin :: NegExpMin -> Env ()
 setNegExpMin = setter "NegExpMin" unNegExpMin c'mpd_qsetemin
 
--- # Traps
-
-newtype Traps = Traps { unTraps :: C'uint32_t }
-  deriving (Eq, Show, Ord)
-
-setTraps :: Traps -> Env ()
-setTraps = setter "Traps" unTraps c'mpd_qsettraps
-
-getTraps :: Env Traps
-getTraps = fmap Traps (withEnvPtr c'mpd_gettraps)
-
-trapNone :: Traps
-trapNone = Traps 0
-
-addSignal :: Traps -> Signal -> Traps
-addSignal (Traps t) (Signal s) = Traps $ t .|. s
-
-trapSignals :: [Signal] -> Traps
-trapSignals = foldl addSignal trapNone
+-- ### Individual Signals
 
 newtype Signal = Signal C'uint32_t
   deriving (Eq, Show, Ord)
@@ -322,6 +372,62 @@ subnormal = Signal c'MPD_Subnormal
 
 underflow :: Signal
 underflow = Signal c'MPD_Underflow
+
+-- ### Groups of signals
+
+newtype Signals = Signals { unSignals :: C'uint32_t }
+  deriving (Eq, Show, Ord)
+
+emptySignals :: Signals
+emptySignals = Signals 0
+
+addSignal :: Signals -> Signal -> Signals
+addSignal (Signals ss) (Signal s) = Signals $ ss .|. s
+
+concatSignals :: [Signal] -> Signals
+concatSignals = foldl addSignal emptySignals
+
+isSet :: Signals -> Signal -> Bool
+isSet (Signals ss) (Signal s) = ss .&. s /= 0
+
+-- ### Traps
+
+newtype Traps = Traps { unTraps :: Signals }
+  deriving (Eq, Ord, Show)
+
+getTraps :: Env Traps
+getTraps = getter (Traps . Signals) c'mpd_gettraps
+
+setTraps :: Traps -> Env ()
+setTraps = setter "Traps" (unSignals . unTraps) c'mpd_qsettraps
+
+-- ### Status
+
+newtype Status = Status { unStatus :: Signals }
+  deriving (Eq, Ord, Show)
+
+getStatus :: Env Status
+getStatus = getter (Status . Signals) c'mpd_getstatus
+
+setStatus :: Status -> Env ()
+setStatus = setter "Status" (unSignals . unStatus) c'mpd_qsetstatus
+
+-- ### NewTrap
+
+newtype NewTrap = NewTrap { unNewTrap :: Signals }
+  deriving (Eq, Ord, Show)
+
+getNewTrap :: Env NewTrap
+getNewTrap = getter (NewTrap . Signals) f
+  where
+    f = peek . p'mpd_context_t'newtrap
+
+setNewTrap :: NewTrap -> Env ()
+setNewTrap = setter "NewTrap" (unSignals . unNewTrap) f
+  where
+    f ptr val =
+      let destPtr = p'mpd_context_t'newtrap ptr
+      in poke destPtr val >> return 0
 
 -- # Rounding
 
