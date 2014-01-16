@@ -1,5 +1,5 @@
 {-# LANGUAGE Safe #-}
-module Data.Dimes.Context
+module Data.Dimes.Safe
   ( -- * Context
     -- ** Initializing a context
     Initializer
@@ -18,9 +18,9 @@ module Data.Dimes.Context
   , interchange64
   , interchange128
 
-  -- ** Context monad
-  , Context
-  , runContext
+  -- ** Env monad
+  , Env
+  , runEnv
   
   -- ** Precision
   , Precision
@@ -153,55 +153,55 @@ interchangeInitializer :: Interchange -> Initializer
 interchangeInitializer i = Initializer $ \p -> do
   e <- c'mpd_ieee_context p (unInterchange i)
   if e /= 0 then error "interchangeInitializer failed" else return ()
--- # Context monad
+-- # Env monad
 
-newtype Context a = Context
-  { unContext :: Ptr C'mpd_context_t -> IO a }
+newtype Env a = Env
+  { unEnv :: Ptr C'mpd_context_t -> IO a }
 
-instance Monad Context where
-  return a = Context $ \_ -> return a
-  a >>= f = Context $ \p -> do
-    r1 <- unContext a p
-    let b = unContext $ f r1
+instance Monad Env where
+  return a = Env $ \_ -> return a
+  a >>= f = Env $ \p -> do
+    r1 <- unEnv a p
+    let b = unEnv $ f r1
     b p
 
-liftIO :: IO a -> Context a
-liftIO i = Context $ \_ -> i
+liftIO :: IO a -> Env a
+liftIO i = Env $ \_ -> i
 
-instance Functor Context where
+instance Functor Env where
   fmap = liftM
 
-instance Applicative Context where
+instance Applicative Env where
   pure = return
   (<*>) = ap
 
--- | Runs a Context computation.
-runContext :: Initializer -> Context a -> IO a
-runContext i f =
+-- | Runs a Env computation.
+runEnv :: Initializer -> Env a -> IO a
+runEnv i f =
   bracket get release $ \hdlr -> do
     poke p'mpd_traphandler hdlr
     p <- mallocForeignPtr
     withForeignPtr p $ \ptr -> do
       unInitializer i ptr
-      unContext f ptr
+      unEnv f ptr
   where
     get = mk'funptr_mpd_traphandler (const $ return ())
     release = freeHaskellFunPtr
 
-getContextPtr :: Context (Ptr C'mpd_context_t)
-getContextPtr = Context $ \p -> return p
+getEnvPtr :: Env (Ptr C'mpd_context_t)
+getEnvPtr = Env $ \p -> return p
 
-withContextPtr :: (Ptr C'mpd_context_t -> IO a) -> Context a
-withContextPtr f = do
-  p <- getContextPtr
+withEnvPtr :: (Ptr C'mpd_context_t -> IO a) -> Env a
+withEnvPtr f = do
+  p <- getEnvPtr
   liftIO $ f p
 
--- # Context helpers
+-- # Env helpers
 getter
   :: (a -> b)
   -> (Ptr C'mpd_context_t -> IO a)
-  -> Context b
-getter f g = fmap f $ withContextPtr g
+  -> Env b
+getter f g = fmap f $ withEnvPtr g
 
 setter
   :: String
@@ -209,9 +209,9 @@ setter
   -> (a -> b)
   -> (Ptr C'mpd_context_t -> b -> IO CInt)
   -> a
-  -> Context ()
+  -> Env ()
 setter s f g a = do
-  e <- withContextPtr (\c -> g c (f a))
+  e <- withEnvPtr (\c -> g c (f a))
   if e /= 0 then error (s ++ " setter failed") else return ()
 
 
@@ -229,10 +229,10 @@ precision i
   | i > c'MPD_MAX_PREC = Nothing
   | otherwise = Just . Precision . fromIntegral $ i
 
-getPrecision :: Context Precision
+getPrecision :: Env Precision
 getPrecision = getter Precision c'mpd_getprec
 
-setPrecision :: Precision -> Context ()
+setPrecision :: Precision -> Env ()
 setPrecision = setter "Precision" unPrecision c'mpd_qsetprec
 
 newtype PosExpMax = PosExpMax
@@ -247,10 +247,10 @@ posExpMax i
   | i > c'MPD_MAX_EMAX = Nothing
   | otherwise = Just . PosExpMax . fromIntegral $ i
 
-getPosExpMax :: Context PosExpMax
+getPosExpMax :: Env PosExpMax
 getPosExpMax = getter PosExpMax c'mpd_getemax
 
-setPosExpMax :: PosExpMax -> Context ()
+setPosExpMax :: PosExpMax -> Env ()
 setPosExpMax = setter "PosExpMax" unPosExpMax c'mpd_qsetemax
 
 newtype NegExpMin = NegExpMin { unNegExpMin :: C'mpd_ssize_t }
@@ -264,10 +264,10 @@ negExpMin i
   | i < c'MPD_MIN_EMIN = Nothing
   | otherwise = Just . NegExpMin . fromIntegral $ i
 
-getNegExpMin :: Context NegExpMin
+getNegExpMin :: Env NegExpMin
 getNegExpMin = getter NegExpMin c'mpd_getemin
 
-setNegExpMin :: NegExpMin -> Context ()
+setNegExpMin :: NegExpMin -> Env ()
 setNegExpMin = setter "NegExpMin" unNegExpMin c'mpd_qsetemin
 
 -- # Traps
@@ -275,11 +275,11 @@ setNegExpMin = setter "NegExpMin" unNegExpMin c'mpd_qsetemin
 newtype Traps = Traps { unTraps :: C'uint32_t }
   deriving (Eq, Show, Ord)
 
-setTraps :: Traps -> Context ()
+setTraps :: Traps -> Env ()
 setTraps = setter "Traps" unTraps c'mpd_qsettraps
 
-getTraps :: Context Traps
-getTraps = fmap Traps (withContextPtr c'mpd_gettraps)
+getTraps :: Env Traps
+getTraps = fmap Traps (withEnvPtr c'mpd_gettraps)
 
 trapNone :: Traps
 trapNone = Traps 0
@@ -343,10 +343,10 @@ roundHalfEven = Round c'MPD_ROUND_HALF_EVEN
 round05up = Round c'MPD_ROUND_05UP
 roundTrunc = Round c'MPD_ROUND_TRUNC
 
-getRound :: Context Round
+getRound :: Env Round
 getRound = getter Round c'mpd_getround
 
-setRound :: Round -> Context ()
+setRound :: Round -> Env ()
 setRound = setter "Round" unRound c'mpd_qsetround
 
 -- * Clamp
@@ -359,10 +359,10 @@ clampOn = Clamp 1
 clampOff :: Clamp
 clampOff = Clamp 0
 
-getClamp :: Context Clamp
+getClamp :: Env Clamp
 getClamp = getter Clamp c'mpd_getclamp
 
-setClamp :: Clamp -> Context ()
+setClamp :: Clamp -> Env ()
 setClamp = setter "Clamp" unClamp c'mpd_qsetclamp
 
 -- * Round all functions correctly
@@ -376,22 +376,22 @@ roundAllOn = RoundAll 1
 roundAllOff :: RoundAll
 roundAllOff = RoundAll 0
 
-getRoundAll :: Context RoundAll
+getRoundAll :: Env RoundAll
 getRoundAll = getter RoundAll c'mpd_getcr
 
-setRoundAll :: RoundAll -> Context ()
+setRoundAll :: RoundAll -> Env ()
 setRoundAll = setter "RoundAll" unRoundAll c'mpd_qsetcr
 
 -- * Exponent limits
 
 -- | The lowest possible exponent of a subnormal number
-getExpTiny :: Context C'mpd_ssize_t
+getExpTiny :: Env C'mpd_ssize_t
 getExpTiny = getter id c'mpd_etiny
 
 -- | The highest possible exponent of a normal number.  Only
 -- relevant if Clamp is clampOn.
-getExpTop :: Context C'mpd_ssize_t
-getExpTop = withContextPtr (\c -> c'mpd_etop c)
+getExpTop :: Env C'mpd_ssize_t
+getExpTop = withEnvPtr (\c -> c'mpd_etop c)
 
 -----------------------------------------------------------
 -- # Mpd
@@ -401,32 +401,32 @@ newtype Mpd = Mpd { unMpd :: ForeignPtr C'mpd_t }
 
 -- | Create new decimal.  Uninitialized.  TODO is this the right way
 -- to check for null pointer?
-newMpd :: Context Mpd
-newMpd = Context $ \_ -> do
+newMpd :: Env Mpd
+newMpd = Env $ \_ -> do
   p <- c'mpd_qnew
   when (p == nullPtr) $ error "newMpd: out of memory"
   fp <- newForeignPtr p'mpd_del p
   return $ Mpd fp
 
-withMpdPtr :: Mpd -> (Ptr C'mpd_t -> IO a) -> Context a
-withMpdPtr m f = Context $ \_ ->
+withMpdPtr :: Mpd -> (Ptr C'mpd_t -> IO a) -> Env a
+withMpdPtr m f = Env $ \_ ->
   withForeignPtr (unMpd m) f
 
-withMpdAndContext
+withMpdAndEnv
   :: Mpd
   -> (Ptr C'mpd_t -> Ptr C'mpd_context_t -> IO a)
-  -> Context a
-withMpdAndContext m f = do
-  ctx <- getContextPtr
+  -> Env a
+withMpdAndEnv m f = do
+  ctx <- getEnvPtr
   withMpdPtr m (\mptr -> f mptr ctx)
 
 -- | Sets the value of an MPD from a string.
 setString
   :: BS.ByteString
-  -> Context Mpd
+  -> Env Mpd
 setString bs = do
   m <- newMpd
-  let f cstr = return $ withMpdAndContext m
+  let f cstr = return $ withMpdAndEnv m
         (\pm pc -> c'mpd_set_string pm cstr pc)
   join $ liftIO $ BS.useAsCString bs f
   return m
@@ -434,7 +434,7 @@ setString bs = do
 -- | Sets the value of an MPD by converting an Integral to a string
 -- first, then using setString.  Probably will not win any speed
 -- awards.
-setIntegral :: Integral a => a -> Context Mpd
+setIntegral :: Integral a => a -> Env Mpd
 setIntegral = setString . BS8.pack . show . f . fromIntegral
   where
     f = id :: Integer -> Integer

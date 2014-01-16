@@ -53,7 +53,7 @@ library
   hs-source-dirs: lib
   -- Modules exported by the library.
   exposed-modules:     
-      Data.Dimes.Context
+      Data.Dimes.Safe
   
   -- Modules included in this library but not exported.
   -- other-modules:       
