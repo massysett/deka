@@ -130,17 +130,104 @@ module Data.Dimes.Safe
   , sNan
   , setSpecial
 
+  -- ** Convert Decimal
+  , expLower
+  , expUpper
+  , mpdToSci
+  , mpdToEng
+  , mpdFormat
+
+  -- * Attributes of a Decimal
+  , adjExp
+  , isFinite
+  , isInfinite
+  , isNan
+  , isNegative
+  , isPositive
+  , isQnan
+  , isSigned
+  , isSnan
+  , isSpecial
+  , isZero
+  , isNormal
+  , isSubnormal
+  , isInteger
+  , isOddEven
+  , sign
+  , trailZeros
+  , isZeroCoeff
+  , isOddCoeff
+
+  -- * Arithmetic
+  , add
+  , sub
+  , mul
+  , div
+  , fma
+  , divInt
+  , rem
+  , remNear
+  , divMod
+  , exp
+  , ln
+  , log10
+  , pow
+  , sqrt
+  , invroot
+  , minus
+  , plus
+  , abs
+  , cmp
+  , cmpTotal
+  , cmpTotalMagnitude
+  , max
+  , maxMag
+  , min
+  , minMag
+  , nextMinus
+  , nextPlus
+  , nextToward
+  , quantize
+  , rescale
+  , sameQuantum
+  , reduce
+  , roundToIntegralExact
+  , roundToIntegralValue
+  , floor
+  , ceiling
+  , truncate
+  , logb
+  , scaleb
+  , powmod
+
+  -- * Shifting and rounding
+  , shift
+  , shiftn
+  , shiftl
+  , shiftr
+  , rotate
+
+  -- * Logical
+  , and
+  , or
+  , xor
+  , invert
+
   ) where
 
 import Control.Applicative
 import Control.Monad
 import Control.Exception
 import Bindings.Mpdecimal
-import Data.Bits
 import Foreign.C.Types
-import Foreign.Safe
+import Foreign.Safe hiding
+  (isSigned, shift, rotate, xor)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
+import Prelude hiding
+  (isInfinite, div, rem, divMod, exp, sqrt, abs, min, max,
+   floor, ceiling, truncate, and, or)
+import qualified Prelude as P
 
 -- # Context
 
@@ -209,7 +296,7 @@ newtype Interchange = Interchange { unInterchange :: CInt }
 interchange :: Integral a => a -> Maybe Interchange
 interchange a
   | a <= 0 = Nothing
-  | a `rem` 32 /= 0 = Nothing
+  | a `P.rem` 32 /= 0 = Nothing
   | a >= c'MPD_IEEE_CONTEXT_MAX_BITS = Nothing
   | otherwise = Just . Interchange . fromIntegral $ a
 
@@ -226,6 +313,8 @@ interchangeInitializer :: Interchange -> Initializer
 interchangeInitializer i = Initializer $ \p -> do
   e <- c'mpd_ieee_context p (unInterchange i)
   if e /= 0 then error "interchangeInitializer failed" else return ()
+
+
 -- # Env monad
 
 newtype Env a = Env
@@ -515,14 +604,18 @@ getExpTop = withEnvPtr (\c -> c'mpd_etop c)
 
 newtype Mpd = Mpd { unMpd :: ForeignPtr C'mpd_t }
 
+
+mkMpd :: IO Mpd
+mkMpd = do
+  p <- c'mpd_qnew
+  when (p == nullPtr) $ error "mkMpd: out of memory"
+  fp <- newForeignPtr p'mpd_del p
+  return $ Mpd fp
+
 -- | Create new decimal.  Uninitialized.  TODO is this the right way
 -- to check for null pointer?
 newMpd :: Env Mpd
-newMpd = Env $ \_ -> do
-  p <- c'mpd_qnew
-  when (p == nullPtr) $ error "newMpd: out of memory"
-  fp <- newForeignPtr p'mpd_del p
-  return $ Mpd fp
+newMpd = Env $ \_ -> mkMpd
 
 withMpdPtr :: Mpd -> (Ptr C'mpd_t -> IO a) -> Env a
 withMpdPtr m f = Env $ \_ ->
@@ -583,3 +676,407 @@ setSpecial (Sign s) (NonFinite nf) = do
   let f p = c'mpd_setspecial p s nf
   withMpdPtr m f
   return m
+
+-- ## Convert Decimal
+
+data ExpCase = ExpCase { unExpCase :: CInt }
+  deriving (Eq, Show)
+
+expLower :: ExpCase
+expLower = ExpCase 0
+
+expUpper :: ExpCase
+expUpper = ExpCase 1
+
+mpdToSci :: ExpCase -> Mpd -> Env BS.ByteString
+mpdToSci c m = withMpdPtr m $ \mPtr -> do
+  str <- c'mpd_to_sci mPtr (unExpCase c)
+  bs <- BS.packCString str
+  free str
+  return bs
+
+
+mpdToEng :: ExpCase -> Mpd -> Env BS.ByteString
+mpdToEng c m = withMpdPtr m $ \mPtr -> do
+  str <- c'mpd_to_eng mPtr (unExpCase c)
+  bs <- BS.packCString str
+  free str
+  return bs
+
+
+mpdFormat
+  :: BS.ByteString
+  -- ^ Format. The syntax is the same as in Python PEP 3101.
+
+  -> Mpd
+  -> Env BS.ByteString
+
+mpdFormat bs m = withMpdAndEnv m $ \mPtr cPtr -> do
+  r <- BS.useAsCString bs $ \strPtr ->
+    c'mpd_format mPtr strPtr cPtr
+  r' <- BS.packCString r
+  free r
+  return r'
+
+adjExp :: Mpd -> Env Integer
+adjExp m = withMpdPtr m $ \mPtr -> do
+  r <- c'mpd_adjexp mPtr
+  return . fromIntegral $ r
+
+getAttr :: (Ptr C'mpd_t -> IO CInt) -> Mpd -> Env Bool
+getAttr f m = withMpdPtr m $ \mPtr -> do
+  r <- f mPtr
+  return $ r /= 0
+
+isFinite, isInfinite, isNan, isNegative, isPositive,
+  isQnan, isSigned, isSnan, isSpecial, isZero :: Mpd -> Env Bool
+
+isFinite = getAttr c'mpd_isfinite
+isInfinite = getAttr c'mpd_isinfinite
+isNan = getAttr c'mpd_isnan
+isNegative = getAttr c'mpd_isnegative
+isPositive = getAttr c'mpd_ispositive
+isQnan = getAttr c'mpd_isqnan
+isSigned = getAttr c'mpd_issigned
+isSnan = getAttr c'mpd_issnan
+isSpecial = getAttr c'mpd_isspecial
+isZero = getAttr c'mpd_iszero
+
+getCtxAttr
+  :: (Ptr C'mpd_t -> Ptr C'mpd_context_t -> IO CInt)
+  -> Mpd
+  -> Env Bool
+getCtxAttr f m = withMpdAndEnv m $ \pM pC -> do
+  r <- f pM pC
+  return $ r /= 0
+
+isNormal, isSubnormal :: Mpd -> Env Bool
+isNormal = getCtxAttr c'mpd_isnormal
+isSubnormal = getCtxAttr c'mpd_issubnormal
+
+data OddEven = IsOdd | IsEven
+
+-- | Nothing for non-integral values.
+isOddEven :: Mpd -> Env (Maybe OddEven)
+isOddEven m = do
+  b <- isInteger m
+  if b
+    then do
+      o <- getAttr c'mpd_isodd m
+      return . Just $ if o then IsOdd else IsEven
+    else return Nothing
+
+isInteger :: Mpd -> Env Bool
+isInteger = getAttr c'mpd_isinteger 
+
+sign :: Mpd -> Env Sign
+sign m = withMpdPtr m $ \pM -> do
+  r <- c'mpd_sign pM
+  return $ Sign r
+
+trailZeros :: Mpd -> Env Integer
+trailZeros m = withMpdPtr m $ \pM -> fmap fromIntegral
+  $ c'mpd_trail_zeros pM
+
+getNonSpecialAttr :: (Ptr C'mpd_t -> IO CInt) -> Mpd -> Env (Maybe Bool)
+getNonSpecialAttr f m = do
+  s <- isSpecial m
+  if s then return Nothing else do
+    z <- getAttr f m
+    return . Just $ z
+
+-- | Nothing for special numbers
+isZeroCoeff :: Mpd -> Env (Maybe Bool)
+isZeroCoeff = getNonSpecialAttr c'mpd_iszerocoeff
+
+isOddCoeff :: Mpd -> Env (Maybe Bool)
+isOddCoeff = getNonSpecialAttr c'mpd_isoddcoeff
+
+-- # Arithmetic
+
+type Unary
+  = Ptr C'mpd_t
+  -> Ptr C'mpd_t
+  -> Ptr C'mpd_context_t
+  -> IO ()
+
+type Binary
+  = Ptr C'mpd_t
+  -> Ptr C'mpd_t
+  -> Ptr C'mpd_t
+  -> Ptr C'mpd_context_t
+  -> IO ()
+
+type Ternary
+  = Ptr C'mpd_t
+  -> Ptr C'mpd_t
+  -> Ptr C'mpd_t
+  -> Ptr C'mpd_t
+  -> Ptr C'mpd_context_t
+  -> IO ()
+
+unary
+  :: Unary
+  -> Mpd
+  -> Env Mpd
+unary f x = Env $ \pCtx -> do
+  r <- unEnv newMpd pCtx
+  withForeignPtr (unMpd r) $ \rPtr ->
+          withForeignPtr (unMpd x) $ \xPtr ->
+          f rPtr xPtr pCtx
+  return r
+
+
+binary
+  :: Binary
+  -> Mpd
+  -> Mpd
+  -> Env Mpd
+binary f x y = Env $ \pCtx -> do
+  r <- unEnv newMpd pCtx
+  withForeignPtr (unMpd r) $ \rPtr ->
+          withForeignPtr (unMpd x) $ \xPtr ->
+          withForeignPtr (unMpd y) $ \yPtr ->
+          f rPtr xPtr yPtr pCtx
+  return r
+
+ternary
+  :: Ternary
+  -> Mpd
+  -> Mpd
+  -> Mpd
+  -> Env Mpd
+ternary f x y z = Env $ \pCtx -> do
+  r <- unEnv newMpd pCtx
+  withForeignPtr (unMpd r) $ \rPtr ->
+    withForeignPtr (unMpd x) $ \xPtr ->
+    withForeignPtr (unMpd y) $ \yPtr ->
+    withForeignPtr (unMpd z) $ \zPtr ->
+    f rPtr xPtr yPtr zPtr pCtx
+  return r
+
+add :: Mpd -> Mpd -> Env Mpd
+add = binary c'mpd_add
+
+sub :: Mpd -> Mpd -> Env Mpd
+sub = binary c'mpd_sub
+
+mul :: Mpd -> Mpd -> Env Mpd
+mul = binary c'mpd_mul
+
+div :: Mpd -> Mpd -> Env Mpd
+div = binary c'mpd_div
+
+fma :: Mpd -> Mpd -> Mpd -> Env Mpd
+fma = ternary c'mpd_fma
+
+divInt :: Mpd -> Mpd -> Env Mpd
+divInt = binary c'mpd_divint
+
+rem :: Mpd -> Mpd -> Env Mpd
+rem = binary c'mpd_rem
+
+remNear :: Mpd -> Mpd -> Env Mpd
+remNear = binary c'mpd_rem_near
+
+divMod :: Mpd -> Mpd -> Env (Mpd, Mpd)
+divMod x y = Env $ \cPtr -> do
+  q <- unEnv newMpd cPtr
+  r <- unEnv newMpd cPtr
+  withForeignPtr (unMpd q) $ \qPtr ->
+    withForeignPtr (unMpd r) $ \rPtr ->
+    withForeignPtr (unMpd x) $ \xPtr ->
+    withForeignPtr (unMpd y) $ \yPtr ->
+    c'mpd_divmod qPtr rPtr xPtr yPtr cPtr
+  return (q, r)
+
+exp :: Mpd -> Env Mpd
+exp = unary c'mpd_exp
+
+ln :: Mpd -> Env Mpd
+ln = unary c'mpd_ln
+
+log10 :: Mpd -> Env Mpd
+log10 = unary c'mpd_log10
+
+pow :: Mpd -> Mpd -> Env Mpd
+pow = binary c'mpd_pow
+
+sqrt :: Mpd -> Env Mpd
+sqrt = unary c'mpd_sqrt
+
+invroot :: Mpd -> Env Mpd
+invroot = unary c'mpd_invroot
+
+minus :: Mpd -> Env Mpd
+minus = unary c'mpd_minus
+
+plus :: Mpd -> Env Mpd
+plus = unary c'mpd_plus
+
+abs :: Mpd -> Env Mpd
+abs = unary c'mpd_abs
+
+type Comparer
+  = Ptr C'mpd_t
+  -> Ptr C'mpd_t
+  -> Ptr C'mpd_context_t
+  -> IO CInt
+
+noContextComparer
+  :: (Ptr C'mpd_t -> Ptr C'mpd_t -> IO CInt)
+  -> Comparer
+noContextComparer f = \x y _ -> f x y
+
+cmpCore 
+  :: Comparer
+  -> Mpd
+  -> Mpd
+  -> Env Ordering
+cmpCore f x y = Env $ \cPtr -> do
+  r <- withForeignPtr (unMpd x) $ \xPtr ->
+    withForeignPtr (unMpd y) $ \yPtr ->
+    f xPtr yPtr cPtr
+  let g i | i == (-1) = LT
+          | i == 0 = EQ
+          | i == 1 = GT
+          | otherwise = error "cmpCore: should never happen"
+  return $ g r
+
+cmp :: Mpd -> Mpd -> Env Ordering
+cmp = cmpCore c'mpd_cmp
+
+cmpTotal :: Mpd -> Mpd -> Env Ordering
+cmpTotal = cmpCore (noContextComparer c'mpd_cmp_total)
+
+cmpTotalMagnitude :: Mpd -> Mpd -> Env Ordering
+cmpTotalMagnitude = cmpCore (noContextComparer c'mpd_cmp_total_mag)
+
+max :: Mpd -> Mpd -> Env Mpd
+max = binary c'mpd_max
+
+maxMag :: Mpd -> Mpd -> Env Mpd
+maxMag = binary c'mpd_max_mag
+
+min :: Mpd -> Mpd -> Env Mpd
+min = binary c'mpd_min
+
+minMag :: Mpd -> Mpd -> Env Mpd
+minMag = binary c'mpd_min_mag
+
+nextMinus :: Mpd -> Env Mpd
+nextMinus = unary c'mpd_next_minus
+
+nextPlus :: Mpd -> Env Mpd
+nextPlus = unary c'mpd_next_plus
+
+nextToward :: Mpd -> Mpd -> Env Mpd
+nextToward = binary c'mpd_next_toward
+
+quantize :: Mpd -> Mpd -> Env Mpd
+quantize = binary c'mpd_quantize
+
+rescale :: C'mpd_ssize_t -> Mpd -> Env Mpd
+rescale s m = Env $ \cPtr -> do
+  r <- unEnv newMpd cPtr
+  withForeignPtr (unMpd m) $ \aPtr ->
+    withForeignPtr (unMpd r) $ \rPtr ->
+    c'mpd_rescale rPtr aPtr s cPtr
+  return r
+
+sameQuantum :: Mpd -> Mpd -> Env Bool
+sameQuantum x y = Env $ \_ ->
+  withForeignPtr (unMpd x) $ \xPtr ->
+  withForeignPtr (unMpd y) $ \yPtr -> do
+    r <- c'mpd_same_quantum xPtr yPtr
+    case () of
+      _ | r == 1 -> return True
+        | r == 0 -> return False
+        | otherwise -> error "sameQuantum: should never happen"
+
+reduce :: Mpd -> Env Mpd
+reduce = unary c'mpd_reduce
+
+roundToIntegralExact :: Mpd -> Env Mpd
+roundToIntegralExact = unary c'mpd_round_to_intx
+
+roundToIntegralValue :: Mpd -> Env Mpd
+roundToIntegralValue = unary c'mpd_round_to_int
+
+floor :: Mpd -> Env Mpd
+floor = unary c'mpd_floor
+
+ceiling :: Mpd -> Env Mpd
+ceiling = unary c'mpd_ceil
+
+truncate :: Mpd -> Env Mpd
+truncate = unary c'mpd_trunc
+
+logb :: Mpd -> Env Mpd
+logb = unary c'mpd_logb
+
+scaleb :: Mpd -> Mpd -> Env Mpd
+scaleb = binary c'mpd_scaleb
+
+powmod
+  :: Mpd
+  -- ^ Base
+  -> Mpd
+  -- ^ Exponent
+  -> Mpd
+  -- ^ Mod
+  -> Env Mpd
+powmod (Mpd b) (Mpd e) (Mpd m) = Env $ \pC ->
+  withForeignPtr b $ \pB ->
+  withForeignPtr e $ \pE ->
+  withForeignPtr m $ \pM ->
+  mkMpd >>= \r ->
+  withForeignPtr (unMpd r) $ \pR ->
+  c'mpd_powmod pR pB pE pM pC >>
+  return r
+
+shift :: Mpd -> Mpd -> Env Mpd
+shift = binary c'mpd_shift
+
+type SsizeArg a
+  = Ptr C'mpd_t
+  -> Ptr C'mpd_t
+  -> C'mpd_ssize_t
+  -> Ptr C'mpd_context_t
+  -> IO a
+
+ssizeArg
+  :: SsizeArg a
+  -> Mpd
+  -> C'mpd_ssize_t
+  -> Env (a, Mpd)
+ssizeArg f m s = Env $ \cPtr ->
+  withForeignPtr (unMpd m) $ \mPtr ->
+  mkMpd >>= \r ->
+  withForeignPtr (unMpd r) $ \rPtr ->
+  f rPtr mPtr s cPtr >>= \fRes ->
+  return (fRes, r)
+
+shiftn :: C'mpd_ssize_t -> Mpd -> Env Mpd
+shiftn s m = fmap snd $ ssizeArg c'mpd_shiftn m s
+
+shiftl :: C'mpd_ssize_t -> Mpd -> Env Mpd
+shiftl s m = fmap snd $ ssizeArg c'mpd_shiftl m s
+
+shiftr :: C'mpd_ssize_t -> Mpd -> Env (C'mpd_uint_t, Mpd)
+shiftr s m = ssizeArg c'mpd_shiftr m s
+
+rotate :: Mpd -> Mpd -> Env Mpd
+rotate = binary c'mpd_rotate
+
+and :: Mpd -> Mpd -> Env Mpd
+and = binary c'mpd_and
+
+or :: Mpd -> Mpd -> Env Mpd
+or = binary c'mpd_or
+
+xor :: Mpd -> Mpd -> Env Mpd
+xor = binary c'mpd_xor
+
+invert :: Mpd -> Env Mpd
+invert = unary c'mpd_invert
