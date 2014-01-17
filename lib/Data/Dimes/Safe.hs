@@ -4,6 +4,7 @@ module Data.Dimes.Safe
     -- * Env monad
     Env
   , runEnv
+  , evalEnv
   
    -- * Context
   , Context(..)
@@ -131,6 +132,7 @@ module Data.Dimes.Safe
   , setSpecial
 
   -- ** Convert Decimal
+  , ExpCase
   , expLower
   , expUpper
   , mpdToSci
@@ -152,6 +154,7 @@ module Data.Dimes.Safe
   , isNormal
   , isSubnormal
   , isInteger
+  , OddEven(..)
   , isOddEven
   , sign
   , trailZeros
@@ -343,8 +346,21 @@ instance Applicative Env where
 -- exec returns s
 
 -- | Runs a Env computation.
-runEnv :: Initializer -> Env a -> IO a
+runEnv :: Initializer -> Env a -> IO (a, Context)
 runEnv i f =
+  bracket get release $ \hdlr -> do
+    poke p'mpd_traphandler hdlr
+    p <- mallocForeignPtr
+    withForeignPtr p $ \ptr -> do
+      unInitializer i ptr
+      unEnv f' ptr
+  where
+    get = mk'funptr_mpd_traphandler (const $ return ())
+    release = freeHaskellFunPtr
+    f' = (,) <$> f <*> getContext
+
+evalEnv :: Initializer -> Env a -> IO a
+evalEnv i f =
   bracket get release $ \hdlr -> do
     poke p'mpd_traphandler hdlr
     p <- mallocForeignPtr
@@ -354,6 +370,7 @@ runEnv i f =
   where
     get = mk'funptr_mpd_traphandler (const $ return ())
     release = freeHaskellFunPtr
+
 
 getEnvPtr :: Env (Ptr C'mpd_context_t)
 getEnvPtr = Env $ \p -> return p
