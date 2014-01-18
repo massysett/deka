@@ -1,4 +1,7 @@
 {-# LANGUAGE Safe #-}
+
+-- | No errors are trapped in this module.
+
 module Data.Dimes.Safe
   (
     -- * Env monad
@@ -66,11 +69,6 @@ module Data.Dimes.Safe
   , addSignal
   , concatSignals
   , isSet
-
-  -- *** Traps
-  , Traps(..)
-  , getTraps
-  , setTraps
 
   -- *** Status flags
   , Status(..)
@@ -238,7 +236,6 @@ data Context = Context
   { ctxPrecision :: Precision
   , ctxPosExpMax :: PosExpMax
   , ctxNegExpMin :: NegExpMin
-  , ctxTraps :: Traps
   , ctxStatus :: Status
   , ctxNewTrap :: NewTrap
   , ctxRound :: Round
@@ -252,7 +249,6 @@ getContext
   <$> getPrecision
   <*> getPosExpMax
   <*> getNegExpMin
-  <*> getTraps
   <*> getStatus
   <*> getNewTrap
   <*> getRound
@@ -264,7 +260,6 @@ setContext c = do
   setPrecision . ctxPrecision $ c
   setPosExpMax . ctxPosExpMax $ c
   setNegExpMin . ctxNegExpMin $ c
-  setTraps . ctxTraps $ c
   setStatus . ctxStatus $ c
   setNewTrap . ctxNewTrap $ c
   setRound . ctxRound $ c
@@ -287,7 +282,9 @@ defaultContext :: Initializer
 defaultContext = Initializer c'mpd_defaultcontext
 
 initFromContext :: Context -> Initializer
-initFromContext = Initializer . unEnv . setContext
+initFromContext c = Initializer $ \pCtx -> do
+  ($ pCtx) . unEnv . setContext $ c
+  ($ pCtx) . unEnv . setTraps . Traps $ emptySignals
 
 -- * IEEE interchange formats
 
@@ -510,9 +507,6 @@ isSet (Signals ss) (Signal s) = ss .&. s /= 0
 
 newtype Traps = Traps { unTraps :: Signals }
   deriving (Eq, Ord, Show)
-
-getTraps :: Env Traps
-getTraps = getter (Traps . Signals) c'mpd_gettraps
 
 setTraps :: Traps -> Env ()
 setTraps = setter "Traps" (unSignals . unTraps) c'mpd_qsettraps
