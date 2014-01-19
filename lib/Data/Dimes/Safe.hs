@@ -6,6 +6,7 @@ module Data.Dimes.Safe
   (
     -- * Env monad
     Env
+  , unEnv
   , runEnv
   , evalEnv
   
@@ -68,6 +69,7 @@ module Data.Dimes.Safe
   , emptySignals
   , addSignal
   , concatSignals
+  , hasSignal
   , isSet
 
   -- *** Status flags
@@ -326,6 +328,7 @@ instance Monad Env where
     r1 <- unEnv a p
     let b = unEnv $ f r1
     b p
+  fail s = Env $ \_ -> fail s
 
 liftIO :: IO a -> Env a
 liftIO i = Env $ \_ -> i
@@ -502,6 +505,9 @@ concatSignals = foldl addSignal emptySignals
 
 isSet :: Signals -> Signal -> Bool
 isSet (Signals ss) (Signal s) = ss .&. s /= 0
+
+hasSignal :: Signals -> Signals -> Bool
+hasSignal (Signals x) (Signals y) = x .&. y /= 0
 
 -- ### Traps
 
