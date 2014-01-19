@@ -27,6 +27,8 @@ data Error
     -- ^ Setting new context triggered failure
   | EGetPrecision
   | ESetPrecision S.Precision
+  | EGetPosExpMax
+  | ESetPosExpMax
 
 type TrapFn a
   = Ptr C'mpd_context_t
@@ -89,3 +91,8 @@ getPrecision = liftToTrap EGetPrecision S.getPrecision
 
 setPrecision :: S.Precision -> Trap ()
 setPrecision p = liftToTrap (ESetPrecision p) (S.setPrecision p)
+
+getPosExpMax :: Trap S.PosExpMax
+getPosExpMax = liftToTrap EGetPosExpMax S.getPosExpMax
+
+setPosExpMax :: S.PosExpMax 
