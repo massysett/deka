@@ -239,7 +239,6 @@ data Context = Context
   , ctxPosExpMax :: PosExpMax
   , ctxNegExpMin :: NegExpMin
   , ctxStatus :: Status
-  , ctxNewTrap :: NewTrap
   , ctxRound :: Round
   , ctxClamp :: Clamp
   , ctxRoundAll :: RoundAll
@@ -252,7 +251,6 @@ getContext
   <*> getPosExpMax
   <*> getNegExpMin
   <*> getStatus
-  <*> getNewTrap
   <*> getRound
   <*> getClamp
   <*> getRoundAll
@@ -263,7 +261,6 @@ setContext c = do
   setPosExpMax . ctxPosExpMax $ c
   setNegExpMin . ctxNegExpMin $ c
   setStatus . ctxStatus $ c
-  setNewTrap . ctxNewTrap $ c
   setRound . ctxRound $ c
   setClamp . ctxClamp $ c
   setRoundAll . ctxRoundAll $ c
