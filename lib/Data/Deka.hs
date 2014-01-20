@@ -3,10 +3,7 @@
 module Data.Deka
   ( Deka(..)
   , DekaT(..)
-  , strToDeka
-  , strToDekaT
-  , integralToDeka
-  , integralToDekaT
+  , Dekas(..)
   , crashy
   ) where
 
@@ -33,6 +30,10 @@ checkSignals = eitherT (return . Just) (const (return Nothing)) $ do
   f "rounded" rounded
   f "subnormal" subnormal
   f "underflow" underflow
+
+class Dekas a where
+  fromString :: String -> Either String a
+  fromIntegral :: Integral b => b -> Either String a
 
 
 eqMpd :: Mpd -> Mpd -> Bool
@@ -72,6 +73,10 @@ subtMpd x y = eval $ S.sub x y
 multMpd :: Mpd -> Mpd -> Mpd
 multMpd x y = eval $ S.mul x y
 
+instance Dekas Deka where
+  fromString = strToDeka
+  fromIntegral = integralToDeka
+
 instance Num Deka where
   Deka x + Deka y = Deka $ addMpd x y
   Deka x - Deka y = Deka $ subtMpd x y
@@ -96,6 +101,10 @@ eval e = evalEnvPure maxContext $ do
 
 -- | Multiprecision decimals with a total ordering.
 newtype DekaT = DekaT { unDekaT :: Mpd }
+
+instance Dekas DekaT where
+  fromString = strToDekaT
+  fromIntegral = integralToDekaT
 
 -- | Eq compares by a total ordering.
 instance Eq DekaT where
