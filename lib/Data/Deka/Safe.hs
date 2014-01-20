@@ -1,6 +1,62 @@
 {-# LANGUAGE Safe #-}
 
--- | No errors are trapped in this module.
+-- | Decimal floating point arithmetic.
+--
+-- This module is named 'Safe' because that is true in the Safe
+-- Haskell sense: because Deka is based on libmpdec, all the math is
+-- handled via calls to C functions through the FFI.  This means
+-- that all the math necessarily is done in the IO monad.  None of
+-- the calls in this module have any observable side effects, and so
+-- the 'Data.Deka.Pure' module allows you to work outside of the IO
+-- moand.  But, if you don't trust me to say that none of the
+-- functions in here have no observable side effects outside of
+-- those captured in the Env monad, you can disregard
+-- 'Data.Deka.Pure' and just use this module :-)
+--
+-- Most functions in this module return values in the 'Env' monad,
+-- which wraps the IO monad.  The 'Env' monad also holds the context
+-- within which all computations take place.  The context affects
+-- rounding and precision, among other things.
+--
+-- The data value for a decimal, 'Mpd', is immutable.  Operators
+-- such as 'add' take two Mpd and return a new Mpd inside of the Env
+-- monad.
+--
+-- Some words on error handling
+--
+-- The General Decimal Arithmetic specification states that
+-- implementations should provide for a /trap handler/.  libmpdec
+-- does indeed allow the user to select a trap handler.  However,
+-- the trap handler that libmpdec provides is of limited utility
+-- here.  The specification says that the trap handler should
+-- receive information about which function invoked it, as well as
+-- the result that would be used if there were no error.  For
+-- example, if the user trapped the /Inexact/ signal, then the trap
+-- handler would have access to the exact result that would be
+-- correct if there were no Inexact condition.
+--
+-- However, the libmpdec trap handler does not provide this sort of
+-- information.  Instead, it only provides access to the context.
+-- This is sufficient if the trap handler's only job is to raise a
+-- SIGFPE.  However, the specification states that perhaps the trap
+-- handler could be used to appropriately recover from an error--for
+-- example, it might resolve an Inexact signal by increasing the
+-- precision and returning an exact result.  Taking this sort of
+-- action is impossible with the libmpdec traphandler, as it simply
+-- does not get enough information to resolve most errors.
+--
+-- Since it is not possible to provide useful trapped errors with
+-- libmpdec, I saw no reason to provide any trapped errors at all.
+-- Trapping adds very little that the user of Deka cannot add
+-- herself by using 'getStatus', 'setStatus', and perhaps a monad
+-- transformer like EitherT.  Therefore, Deka does not provide
+-- access to the trap handler related aspects of the context, and it
+-- always sets the trap handler to a function that does nothing.
+--
+-- If I am wrong or you have any suggestions on how to better handle
+-- errors (the best solution would be to implement the whole library
+-- in pure Haskell, which is currently beyond my expertise) feel
+-- free to contact me on Github.
 
 module Data.Deka.Safe
   (
@@ -115,6 +171,8 @@ module Data.Deka.Safe
 
   -- * Mpd
   , Mpd
+  , exponent
+  , digits
 
   -- * Assignment, conversions, I/O
   , setString
@@ -228,7 +286,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Prelude hiding
   (isInfinite, div, rem, divMod, exp, sqrt, abs, min, max,
-   floor, ceiling, truncate, and, or)
+   floor, ceiling, truncate, and, or, exponent)
 import qualified Prelude as P
 
 -- # Context
@@ -625,10 +683,17 @@ mkMpd = do
   fp <- newForeignPtr p'mpd_del p
   return $ Mpd fp
 
--- | Create new decimal.  Uninitialized.  TODO is this the right way
--- to check for null pointer?
 newMpd :: Env Mpd
 newMpd = Env $ \_ -> mkMpd
+
+-- | Get the exponent of an Mpd.
+exponent :: Mpd -> Env C'mpd_ssize_t
+exponent m = withMpdPtr m $ peek . p'mpd_t'exp
+
+-- | Get the number of digits of an Mpd.
+digits :: Mpd -> Env C'mpd_ssize_t
+digits m = withMpdPtr m $
+  peek . p'mpd_t'digits
 
 withMpdPtr :: Mpd -> (Ptr C'mpd_t -> IO a) -> Env a
 withMpdPtr m f = Env $ \_ ->

@@ -53,7 +53,8 @@ library
   hs-source-dirs: lib
   -- Modules exported by the library.
   exposed-modules:     
-      Data.Deka.Safe
+      Data.Deka
+    , Data.Deka.Safe
     , Data.Deka.Pure
   
   -- Modules included in this library but not exported.
@@ -67,6 +68,8 @@ library
       base >=4.6 && <4.7
     , bindings-mpdecimal
     , bytestring ==0.10.*
+    , transformers ==0.3.*
+    , either ==3.4.*
 
   ghc-options: -Wall
   
