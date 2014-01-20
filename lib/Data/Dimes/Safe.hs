@@ -6,7 +6,6 @@ module Data.Dimes.Safe
   (
     -- * Env monad
     Env
-  , unEnv
   , runEnv
   , evalEnv
   
