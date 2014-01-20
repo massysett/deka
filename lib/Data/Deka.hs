@@ -5,6 +5,8 @@ module Data.Deka
   , DekaT(..)
   , strToDeka
   , strToDekaT
+  , integralToDeka
+  , integralToDekaT
   , crashy
   ) where
 
@@ -137,3 +139,18 @@ strToDekaT = fmap (fmap DekaT) fromStr
 
 crashy :: Either String a -> a
 crashy = either (error . ("Deka: error: " ++)) id
+
+fromInt :: Integral a => a -> Either String Mpd
+fromInt i = evalEnvPure maxContext $ do
+  r <- setIntegral i
+  c <- checkSignals
+  case c of
+    Nothing -> return (Right r)
+    Just err -> return (Left err)
+
+integralToDeka :: Integral a => a -> Either String Deka
+integralToDeka = fmap (fmap Deka) fromInt
+
+integralToDekaT :: Integral a => a -> Either String DekaT
+integralToDekaT = fmap (fmap DekaT) fromInt
+

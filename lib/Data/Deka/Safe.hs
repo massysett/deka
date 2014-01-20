@@ -177,6 +177,7 @@ module Data.Deka.Safe
   -- * Assignment, conversions, I/O
   , setString
   , setIntegral
+  , setRealFloat
 
   -- ** Set special values
   , Sign
@@ -725,6 +726,20 @@ setIntegral :: Integral a => a -> Env Mpd
 setIntegral = setString . BS8.pack . show . f . fromIntegral
   where
     f = id :: Integer -> Integer
+
+-- | Sets the value of an MPD from a RealFloat.  Conversions are
+-- exact.  Properly handles NaN and infinity values.
+setRealFloat :: RealFloat a => a -> Env Mpd
+setRealFloat a = setString . BS8.pack $ str
+  where
+    str = sgn ++ signif ++ epnt
+    sgn = case signum a of
+      (-1) -> "-"
+      _ -> ""
+    (signif, epnt)
+      | isNaN a = ("NaN", "")
+      | P.isInfinite a = ("Infinity", "")
+      | otherwise = let (s, e) = decodeFloat a in (show $ P.abs s, "E" ++ show e)
 
 -- ## Setting the sign
 newtype Sign = Sign { _unSign :: C'uint8_t }
