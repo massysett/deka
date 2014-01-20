@@ -60,10 +60,10 @@ library
   
   build-depends:
       base >=4.6 && <4.7
+    , bindings-mpdecimal
     , bytestring ==0.10.*
     , transformers ==0.3.*
     , either ==3.4.*
-    , bindings-DSL ==1.0.*
 
   ghc-options: -Wall
   default-language:    Haskell2010

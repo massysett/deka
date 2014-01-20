@@ -3,8 +3,10 @@
 module Data.Deka
   ( Deka(..)
   , DekaT(..)
-  , Dekas(..)
   , crashy
+  , integralToDeka
+  , strToDeka
+  , checked
   ) where
 
 import Control.Monad.Trans.Class
@@ -30,11 +32,6 @@ checkSignals = eitherT (return . Just) (const (return Nothing)) $ do
   f "rounded" rounded
   f "subnormal" subnormal
   f "underflow" underflow
-
-class Dekas a where
-  fromString :: String -> Either String a
-  fromIntegral :: Integral b => b -> Either String a
-
 
 eqMpd :: Mpd -> Mpd -> Bool
 eqMpd x y = 
@@ -73,10 +70,6 @@ subtMpd x y = eval $ S.sub x y
 multMpd :: Mpd -> Mpd -> Mpd
 multMpd x y = eval $ S.mul x y
 
-instance Dekas Deka where
-  fromString = strToDeka
-  fromIntegral = integralToDeka
-
 instance Num Deka where
   Deka x + Deka y = Deka $ addMpd x y
   Deka x - Deka y = Deka $ subtMpd x y
@@ -91,20 +84,20 @@ instance Num Deka where
       f g = eval . g $ x
   fromInteger = Deka . eval . setIntegral
 
-eval :: Env c -> c
-eval e = evalEnvPure maxContext $ do
-  r <- e
+checked :: Env a -> Either String a
+checked a = evalEnvPure maxContext $ do
+  r <- a
   ck <- checkSignals
-  case ck of
-    Nothing -> return r
-    Just err -> error $ "Deka: error: " ++ err
+  return $ case ck of
+    Nothing -> Right r
+    Just err -> Left err
+
+eval :: Env c -> c
+eval = either (error . ("Deka: error: " ++)) id . checked
 
 -- | Multiprecision decimals with a total ordering.
-newtype DekaT = DekaT { unDekaT :: Mpd }
-
-instance Dekas DekaT where
-  fromString = strToDekaT
-  fromIntegral = integralToDekaT
+newtype DekaT = DekaT { unDekaT :: Deka }
+  deriving Show
 
 -- | Eq compares by a total ordering.
 instance Eq DekaT where
@@ -112,54 +105,26 @@ instance Eq DekaT where
 
 -- | Ord compares by a total ordering.
 instance Ord DekaT where
-  compare (DekaT x) (DekaT y) = eval $ cmpTotal x y
+  compare (DekaT (Deka x)) (DekaT (Deka y)) = eval $ cmpTotal x y
 
-instance Show DekaT where
-  show = showMpd . unDekaT
+fromStr :: BS8.ByteString -> Either String Mpd
+fromStr = checked . setString 
 
-instance Num DekaT where
-  DekaT x + DekaT y = DekaT $ addMpd x y
-  DekaT x - DekaT y = DekaT $ subtMpd x y
-  DekaT x * DekaT y = DekaT $ multMpd x y
-  negate = DekaT . eval . S.minus . unDekaT
-  abs = DekaT . eval . S.abs . unDekaT
-  signum (DekaT x)
-    | f isZero = fromInteger 0
-    | f isNegative = fromInteger (-1)
-    | otherwise = fromInteger 1
-    where
-      f g = evalEnvPure maxContext . g $ x
-  fromInteger = DekaT . eval . setIntegral
-
-
-fromStr :: String -> Either String Mpd
-fromStr s = evalEnvPure maxContext $ do
-  r <- setString (BS8.pack s)
-  c <- checkSignals
-  case c of
-    Nothing -> return . Right $ r
-    Just g -> return . Left $ g
-
-strToDeka :: String -> Either String Deka
+strToDeka :: BS8.ByteString -> Either String Deka
 strToDeka = fmap (fmap Deka) fromStr
-
-strToDekaT :: String -> Either String DekaT
-strToDekaT = fmap (fmap DekaT) fromStr
 
 crashy :: Either String a -> a
 crashy = either (error . ("Deka: error: " ++)) id
 
 fromInt :: Integral a => a -> Either String Mpd
-fromInt i = evalEnvPure maxContext $ do
-  r <- setIntegral i
-  c <- checkSignals
-  case c of
-    Nothing -> return (Right r)
-    Just err -> return (Left err)
+fromInt = checked . setIntegral
 
 integralToDeka :: Integral a => a -> Either String Deka
 integralToDeka = fmap (fmap Deka) fromInt
 
-integralToDekaT :: Integral a => a -> Either String DekaT
-integralToDekaT = fmap (fmap DekaT) fromInt
-
+format
+  :: BS8.ByteString
+  -- ^ Formatting string.  This should be ASCII, or expect trouble.
+  -> Deka
+  -> Either String BS8.ByteString
+format fmt = checked . mpdFormat fmt . unDeka
