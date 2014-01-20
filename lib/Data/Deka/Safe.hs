@@ -279,7 +279,7 @@ module Data.Deka.Safe
 import Control.Applicative
 import Control.Monad
 import Control.Exception
-import Bindings.Mpdecimal
+import Data.Deka.Mpdecimal
 import Foreign.C.Types
 import Foreign.Safe hiding
   (isSigned, shift, rotate, xor)
