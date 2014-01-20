@@ -2,7 +2,7 @@
 
 -- | No errors are trapped in this module.
 
-module Data.Dimes.Safe
+module Data.Deka.Safe
   (
     -- * Env monad
     Env

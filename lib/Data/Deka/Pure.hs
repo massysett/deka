@@ -1,8 +1,8 @@
 {-# LANGUAGE Trustworthy #-}
 
-module Data.Dimes.Pure where
+module Data.Deka.Pure where
 
-import Data.Dimes.Safe
+import Data.Deka.Safe
 import System.IO.Unsafe
 
 runEnvPure :: Initializer -> Env a -> (a, Context)

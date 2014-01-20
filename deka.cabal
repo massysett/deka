@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 -- The name of the package.
-name:                dimes
+name:                deka
 
 -- The package version.  See the Haskell package versioning policy (PVP) 
 -- for standards guiding when and how versions should be incremented.
@@ -19,7 +19,7 @@ synopsis:            Decimal floating point arithmetic
 -- description:         
 
 -- URL for the project homepage or repository.
-homepage:            http://www.github.com/massysett/dimes
+homepage:            http://www.github.com/massysett/deka
 
 -- The license under which the package is released.
 license:             BSD3
@@ -53,8 +53,8 @@ library
   hs-source-dirs: lib
   -- Modules exported by the library.
   exposed-modules:     
-      Data.Dimes.Safe
-    , Data.Dimes.Pure
+      Data.Deka.Safe
+    , Data.Deka.Pure
   
   -- Modules included in this library but not exported.
   -- other-modules:       
