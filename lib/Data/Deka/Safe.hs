@@ -808,7 +808,7 @@ mpdFormat bs m = withMpdAndEnv m $ \mPtr cPtr -> do
   r <- BS.useAsCString bs $ \strPtr ->
     c'mpd_format mPtr strPtr cPtr
   r' <- BS.packCString r
-  free r
+  --free r
   return r'
 
 adjExp :: Mpd -> Env Integer
