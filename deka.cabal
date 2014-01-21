@@ -48,15 +48,26 @@ build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
+extra-source-files:
+    c/decContext.c
+  , c/decContext.h
+  , c/decQuad.c
+  , c/decQuad.h
+
 
 library
   hs-source-dirs: lib
+  include-dirs: .
+  
+  c-sources:
+      c/decContext.c
+    , c/decQuad.c
 
   exposed-modules:     
       Data.Deka
     , Data.Deka.Safe
     , Data.Deka.Pure
-    , Data.Deka.Mpdecimal
+    , Data.Deka.Decnumber
   
   build-depends:
       base >=4.6 && <4.7
@@ -64,6 +75,7 @@ library
     , bytestring ==0.10.*
     , transformers ==0.3.*
     , either ==3.4.*
+    , bindings-DSL ==1.0.*
 
   ghc-options: -Wall
   default-language:    Haskell2010
