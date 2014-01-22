@@ -126,3 +126,71 @@ module Data.Deka.Decnumber where
 #ccall decQuadGetExponent , Ptr <decQuad> -> IO <int32_t>
 #ccall decQuadSetCoefficient , Ptr <decQuad> -> Ptr <uint8_t> -> <int32_t> -> IO (Ptr <decQuad>)
 #ccall decQuadSetExponent , Ptr <decQuad> -> Ptr <decContext> -> <int32_t> -> IO (Ptr <decQuad>)
+#ccall decQuadShow , Ptr <decQuad> -> CString -> IO ()
+#ccall decQuadToEngString , Ptr <decQuad> -> CString -> IO CString
+#ccall decQuadToString , Ptr <decQuad> -> CString -> IO CString
+#ccall decQuadToUInt32 , Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO <uint32_t>
+#ccall decQuadToUInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO <uint32_t>
+#ccall decQuadZero , Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall decQuadAbs , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadAdd , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadAnd , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadDivide , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadDivideInteger , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadFMA , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadInvert , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadLogB , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadMax , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadMaxMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadMin , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadMinMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadMinus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadMultiply , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadNextMinus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadNextPlus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadNextToward , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadOr , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadPlus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadQuantize , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadReduce , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadRemainder , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadRemainderNear , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadRotate , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadScaleB , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadShift , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadSubtract , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadToIntegralValue , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadToIntegralExact , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadXor , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+
+-- Comparisons
+
+#ccall decQuadCompare , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadCompareSignal , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadCompareTotal , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadCompareTotalMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+
+-- Copies
+#ccall decQuadCanonical , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+
+-- Non-computational
+
+#ccall decQuadClass , Ptr <decQuad> -> CInt
+#ccall decQuadClassString , Ptr <decQuad> -> CString
+#ccall decQuadDigits , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsCanonical , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsFinite , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsInteger , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsLogical , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsInfinite , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsNaN , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsNegative , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsNormal , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsPositive , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsSignaling , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsSigned , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsSubnormal , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadIsZero , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadRadix , Ptr <decQuad> -> <uint32_t>
+#ccall decQuadSameQuantum , Ptr <decQuad> -> Ptr <decQuad> -> <uint32_t>
+#ccall decQuadVersion , IO CString
