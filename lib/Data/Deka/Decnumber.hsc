@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE Safe #-}
 -- Bindings-dsl sometimes shadows in do notation
 -- Bindings-dsl imports unused things
 
@@ -39,6 +40,10 @@ module Data.Deka.Decnumber where
 #field clamp , <uint8_t>
 #stoptype
 
+-- decContext
+#num DEC_INIT_DECQUAD
+#ccall decContextDefault , Ptr <decContext> -> <int32_t> -> IO (Ptr <decContext>)
+
 #num DEC_CLASS_SNAN
 #num DEC_CLASS_QNAN
 #num DEC_CLASS_NEG_INF
@@ -72,21 +77,21 @@ module Data.Deka.Decnumber where
 #num DEC_Errors
 #num DEC_NaNs
 
-#globalarray DEC_Condition_CS , CChar
-#globalarray DEC_Condition_DZ , CChar
-#globalarray DEC_Condition_DI , CChar
-#globalarray DEC_Condition_DU , CChar
-#globalarray DEC_Condition_IE , CChar
-#globalarray DEC_Condition_IS , CChar
-#globalarray DEC_Condition_IC , CChar
-#globalarray DEC_Condition_IO , CChar
-#globalarray DEC_Condition_OV , CChar
-#globalarray DEC_Condition_PA , CChar
-#globalarray DEC_Condition_RO , CChar
-#globalarray DEC_Condition_SU , CChar
-#globalarray DEC_Condition_UN , CChar
-#globalarray DEC_Condition_ZE , CChar
-#globalarray DEC_Condition_MU , CChar
+#globalvar DEC_Condition_CS , Ptr CChar
+#globalvar DEC_Condition_DZ , Ptr CChar
+#globalvar DEC_Condition_DI , Ptr CChar
+#globalvar DEC_Condition_DU , Ptr CChar
+#globalvar DEC_Condition_IE , Ptr CChar
+#globalvar DEC_Condition_IS , Ptr CChar
+#globalvar DEC_Condition_IC , Ptr CChar
+#globalvar DEC_Condition_IO , Ptr CChar
+#globalvar DEC_Condition_OV , Ptr CChar
+#globalvar DEC_Condition_PA , Ptr CChar
+#globalvar DEC_Condition_RO , Ptr CChar
+#globalvar DEC_Condition_SU , Ptr CChar
+#globalvar DEC_Condition_UN , Ptr CChar
+#globalvar DEC_Condition_ZE , Ptr CChar
+#globalvar DEC_Condition_MU , Ptr CChar
 
 #num DEC_Condition_Length
 
@@ -175,22 +180,22 @@ module Data.Deka.Decnumber where
 
 -- Non-computational
 
-#ccall decQuadClass , Ptr <decQuad> -> CInt
-#ccall decQuadClassString , Ptr <decQuad> -> CString
-#ccall decQuadDigits , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsCanonical , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsFinite , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsInteger , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsLogical , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsInfinite , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsNaN , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsNegative , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsNormal , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsPositive , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsSignaling , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsSigned , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsSubnormal , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadIsZero , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadRadix , Ptr <decQuad> -> <uint32_t>
-#ccall decQuadSameQuantum , Ptr <decQuad> -> Ptr <decQuad> -> <uint32_t>
+#ccall decQuadClass , Ptr <decQuad> -> IO CInt
+#ccall decQuadClassString , Ptr <decQuad> -> IO CString
+#ccall decQuadDigits , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsCanonical , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsFinite , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsInteger , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsLogical , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsInfinite , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsNaN , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsNegative , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsNormal , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsPositive , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsSignaling , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsSigned , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsSubnormal , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadIsZero , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadRadix , Ptr <decQuad> -> IO <uint32_t>
+#ccall decQuadSameQuantum , Ptr <decQuad> -> Ptr <decQuad> -> IO <uint32_t>
 #ccall decQuadVersion , IO CString

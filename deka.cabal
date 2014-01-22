@@ -67,6 +67,7 @@ library
       Data.Deka
     , Data.Deka.Safe
     , Data.Deka.Pure
+    , Data.Deka.Env
     , Data.Deka.Decnumber
   
   build-depends:
