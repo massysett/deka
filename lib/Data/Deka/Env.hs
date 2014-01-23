@@ -166,7 +166,8 @@ setRound r = Env $ \cPtr -> do
   poke pR . unRound $ r
 
 -- | By default, rounding is half even.  No status flags are set
--- initially.
+-- initially.  Returns the final status flags along with the result
+-- of the computation.
 runEnv :: Env a -> IO (a, Flags)
 runEnv (Env k) = do
   fp <- mallocForeignPtr
