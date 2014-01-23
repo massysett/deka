@@ -126,6 +126,14 @@ module Data.Deka.Decnumber where
 #num DECFLOAT_Inf
 #num DECFLOAT_MinSp
 
+
+-- Utilities
+
+#ccall decQuadToInt32 , Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO <int32_t>
+#ccall decQuadToInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO <int32_t>
+
+#ccall decQuadFromInt32 , Ptr <decQuad> -> <int32_t> -> IO (Ptr <decQuad>)
+#ccall decQuadFromUInt32 , Ptr <decQuad> -> <uint32_t> -> IO (Ptr <decQuad>)
 #ccall decQuadFromString , Ptr <decQuad> -> CString -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadGetCoefficient , Ptr <decQuad> -> Ptr <uint8_t> -> IO <int32_t>
 #ccall decQuadGetExponent , Ptr <decQuad> -> IO <int32_t>
@@ -164,7 +172,7 @@ module Data.Deka.Decnumber where
 #ccall decQuadScaleB , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadShift , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadSubtract , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadToIntegralValue , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadToIntegralValue , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO (Ptr <decQuad>)
 #ccall decQuadToIntegralExact , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadXor , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 
@@ -172,11 +180,14 @@ module Data.Deka.Decnumber where
 
 #ccall decQuadCompare , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadCompareSignal , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadCompareTotal , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadCompareTotalMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadCompareTotal , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall decQuadCompareTotalMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
 
 -- Copies
 #ccall decQuadCanonical , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall decQuadCopyAbs , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall decQuadCopyNegate , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall decQuadCopySign , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
 
 -- Non-computational
 
