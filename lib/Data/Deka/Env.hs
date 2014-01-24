@@ -60,10 +60,12 @@ module Data.Deka.Env
   , and
   , canonical
   , decClass
+  -- skipped: classString - not needed
   , compare
   , compareSignal
   , compareTotal
   , compareTotalMag
+  -- skipped: copy - not needed
   , copyAbs
   , copyNegate
   , copySign
@@ -71,9 +73,16 @@ module Data.Deka.Env
   , divide
   , divideInteger
   , fma
+  -- skipped: fromBCD - use encode function instead
   , fromInt32
+  -- skipped: fromNumber - not needed
+  -- skipped: fromPacked - use encode function instead
+  -- skipped: fromPackedChecked - use encode function instead
   , fromString
   , fromUInt32
+  -- skipped: fromWider - not needed
+  -- skipped: getCoefficient - use decode function instead
+  -- to be removed: getExponent - use decode function instead
   , getExponent
   , invert
   , isCanonical
@@ -102,25 +111,42 @@ module Data.Deka.Env
   , or
   , plus
   , quantize
+  -- skipped: radix - not needed
   , reduce
   , remainder
   , remainderNear
   , rotate
   , sameQuantum
   , scaleB
+  -- skipped: setCoefficient - use encode function instead
+  -- skipped: setExponent - use encode function instead
   , shift
   , subtract
+  -- skipped: toBCD - use decode function instead
   , toEngString
   , toInt32
   , toInt32Exact
   , toIntegralExact
   , toIntegralValue
+  -- skipped: toNumber - not needed
+  -- skipped: toPacked - use decode function instead
   , toString
   , toUInt32
   , toUInt32Exact
+  -- skipped: toWider - not needed
   , version
   , xor
   , zero
+
+  -- * Conversions
+  , Sign(..)
+  , Significand
+  , unSignificand
+  , significand
+  , Exponent
+  , unExponent
+  , exponent
+  , Decoded(..)
 
   ) where
 
@@ -145,6 +171,8 @@ import Prelude hiding
   , min
   , or
   , subtract
+  , significand
+  , exponent
   )
 import qualified Data.ByteString.Char8 as BS8
 
@@ -711,3 +739,43 @@ zero = Env $ \_ ->
   withForeignPtr (unDec d) $ \pD ->
   void (c'decQuadZero pD)
   >> return d
+
+-- # Conversions
+
+data Sign
+  = Positive
+  -- ^ The number is positive or is zero
+  | Negative
+  -- ^ The number is negative or the negative zero
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+-- | This is always zero or positive.
+data Significand = Significand { unSignificand :: Integer }
+  deriving (Eq, Ord, Show)
+
+significand :: Integer -> Maybe Significand
+significand i
+  | i < 0 = Nothing
+  | otherwise = Just . Significand $ i
+
+-- | This is restricted to the same size as a C uint32_t.  This does
+-- not check to make sure the exponent is within Emax or Emin
+-- because those limits are for adjusted exponents.  However, encode
+-- does ensure that its results are canonical, which adjusts the
+-- exponent; therefore, if Exponent is out of range, an Underflow or
+-- Overflow will result.
+data Exponent = Exponent { unExponent :: C'uint32_t }
+  deriving (Eq, Ord, Show)
+
+exponent :: Integer -> Maybe Exponent
+exponent i
+  | i < (fromIntegral (minBound :: C'uint32_t)) = Nothing
+  | i > (fromIntegral (maxBound :: C'uint32_t)) = Nothing
+  | otherwise = Just . Exponent $ fromIntegral i
+
+data Decoded
+  = Finite Sign Significand Exponent
+  | Infinite Sign
+  | NonSignaling
+  | Signaling
+  deriving (Eq, Ord, Show)
