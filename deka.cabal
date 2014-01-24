@@ -48,21 +48,11 @@ build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
-extra-source-files:
-    c/decContext.c
-  , c/decContext.h
-  , c/decQuad.c
-  , c/decQuad.h
-
-
 library
   hs-source-dirs: lib
   include-dirs: .
+  extra-libraries: decnumber
   
-  c-sources:
-      c/decContext.c
-    , c/decQuad.c
-
   exposed-modules:     
       Data.Deka
     , Data.Deka.Safe

@@ -6,8 +6,8 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-unused-imports #-}
 
 #include <bindings.dsl.h>
-#include <c/decContext.h>
-#include <c/decQuad.h>
+#include <decContext.h>
+#include <decQuad.h>
 
 module Data.Deka.Decnumber where
 
