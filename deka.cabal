@@ -50,19 +50,16 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs: lib
-  include-dirs: .
   extra-libraries: decnumber
   
   exposed-modules:     
       Data.Deka
-    , Data.Deka.Safe
-    , Data.Deka.Pure
-    , Data.Deka.Env
     , Data.Deka.Decnumber
+    , Data.Deka.Env
+    , Data.Deka.Pure
   
   build-depends:
       base >=4.6 && <4.7
-    , bindings-mpdecimal
     , bytestring ==0.10.*
     , transformers ==0.3.*
     , either ==3.4.*
