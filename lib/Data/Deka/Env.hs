@@ -139,14 +139,22 @@ module Data.Deka.Env
   , zero
 
   -- * Conversions
-  , Sign(..)
   , Significand
   , unSignificand
   , significand
+  , Payload
+  , unPayload
+  , payload
+  , zeroPayload
   , Exponent
   , unExponent
   , exponent
+  , Sign(..)
+  , NaN(..)
+  , Value(..)
   , Decoded(..)
+  , decode
+  , encode
 
   ) where
 
@@ -175,6 +183,7 @@ import Prelude hiding
   , exponent
   )
 import qualified Data.ByteString.Char8 as BS8
+import Data.List (foldl', unfoldr)
 
 -- # Rounding
 
@@ -749,14 +758,36 @@ data Sign
   -- ^ The number is negative or the negative zero
   deriving (Eq, Ord, Show, Enum, Bounded)
 
--- | This is always zero or positive.
+data NaN
+  = Quiet
+  | Signaling
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+-- | This is always zero or positive.  The number of digits is
+-- always less than or equal to Pmax (34 digits).
 data Significand = Significand { unSignificand :: Integer }
   deriving (Eq, Ord, Show)
 
 significand :: Integer -> Maybe Significand
 significand i
   | i < 0 = Nothing
+  | length (show i) > c'DECQUAD_Pmax = Nothing
   | otherwise = Just . Significand $ i
+
+-- | A Payload is associated with an NaN.  It is always zero or
+-- positive.  The number of digits is always less than or equal to
+-- Pmax - 1 (33 digits).
+data Payload = Payload { unPayload :: Integer }
+  deriving (Eq, Ord, Show)
+
+payload :: Integer -> Maybe Payload
+payload i
+  | i < 0 = Nothing
+  | length (show i) > c'DECQUAD_Pmax - 1 = Nothing
+  | otherwise = Just . Payload $ i
+
+zeroPayload :: Payload
+zeroPayload = Payload 0
 
 -- | This is restricted to the same size as a C uint32_t.  This does
 -- not check to make sure the exponent is within Emax or Emin
@@ -764,18 +795,115 @@ significand i
 -- does ensure that its results are canonical, which adjusts the
 -- exponent; therefore, if Exponent is out of range, an Underflow or
 -- Overflow will result.
-data Exponent = Exponent { unExponent :: C'uint32_t }
+data Exponent = Exponent { unExponent :: C'int32_t }
   deriving (Eq, Ord, Show)
 
 exponent :: Integer -> Maybe Exponent
 exponent i
-  | i < (fromIntegral (minBound :: C'uint32_t)) = Nothing
-  | i > (fromIntegral (maxBound :: C'uint32_t)) = Nothing
+  | i < (fromIntegral (minBound :: C'int32_t)) = Nothing
+  | i > (fromIntegral (maxBound :: C'int32_t)) = Nothing
+  | i >= c'DECFLOAT_MinSp = Nothing
   | otherwise = Just . Exponent $ fromIntegral i
 
-data Decoded
-  = Finite Sign Significand Exponent
-  | Infinite Sign
-  | NonSignaling
-  | Signaling
+data Value
+  = Finite Significand Exponent
+  | Infinite
+  | NaN NaN Payload
   deriving (Eq, Ord, Show)
+
+data Decoded = Decoded
+  { dSign :: Sign
+  , dValue :: Value
+  } deriving (Eq, Ord, Show)
+
+
+decode :: Dec -> Env Decoded
+decode d = Env $ \_ ->
+  withForeignPtr (unDec d) $ \pD ->
+  allocaBytes c'DECQUAD_Pmax $ \pArr ->
+  alloca $ \pExp ->
+  c'decQuadToBCD pD pExp pArr >>= \sgn ->
+  peek pExp >>= \ex ->
+  peekArray c'DECQUAD_Pmax pArr >>= \coef ->
+  return (getDecoded sgn ex coef)
+
+encode :: Decoded -> Env (Maybe Dec)
+encode dcd = Env $ \_ ->
+  newDec >>= \d ->
+  withForeignPtr (unDec d) $ \pD ->
+  let (ex, arr) = packDecoded dcd in
+  withArray arr $ \pArr ->
+  c'decQuadFromPackedChecked pD ex pArr >>= \r ->
+  return $ if ptrToIntPtr r == 0 then Nothing else Just d
+
+-- Converts a BCD to an Integer.
+fromBCD
+  :: Int
+  -- ^ List length
+  -> [C'uint8_t]
+  -> Integer
+fromBCD len = snd . foldl' f (len, 0)
+  where
+    f (c, t) i =
+      let c' = c - 1
+          t' = t + fromIntegral i * 10 ^ e
+          e = fromIntegral c'
+          _types = e :: Int
+      in c' `seq` t' `seq` (c', t')
+
+toBCD
+  :: Int
+  -- ^ BCD will be this long
+  -> Integer
+  -> [C'uint8_t]
+toBCD len start = unfoldr f (len, start)
+  where
+    f (c, r) =
+      let c' = c - 1
+          (q, r') = r `quotRem` (10 ^ c')
+          g | c == 0 = Nothing
+            | q > 9 = error "toBCD: number out of range"
+            | otherwise = Just (fromIntegral q, (c', r'))
+      in g
+
+-- | Transform a BCD to the packed format.
+packBCD :: Sign -> [C'uint8_t] -> [C'uint8_t]
+packBCD s ls = case ls of
+  x:y:xs -> shiftL x 4 + y : packBCD s xs
+  [] -> case s of
+    Positive -> [c'DECPPLUS]
+    Negative -> [c'DECPMINUS]
+  _ -> error "packBCD: odd-length list"
+
+
+packDecoded :: Decoded -> (C'int32_t, [C'uint8_t])
+packDecoded (Decoded s v) = case v of
+  NaN n p ->
+    let pld = packBCD s (0 : toBCD (c'DECQUAD_Pmax - 1) (unPayload p))
+        e = case n of
+          Quiet -> c'DECFLOAT_qNaN
+          Signaling -> c'DECFLOAT_sNaN
+    in (e, pld)
+  Infinite -> (c'DECFLOAT_Inf, packBCD s (toBCD c'DECQUAD_Pmax 0))
+  Finite (Significand sig) (Exponent ex) ->
+    (ex, packBCD s (toBCD c'DECQUAD_Pmax sig))
+
+getDecoded
+  :: C'int32_t
+  -- ^ Sign. Zero if sign is zero; non-zero if sign is not zero
+  -- (that is, is negavite.)
+  -> C'int32_t
+  -- ^ Exponent
+  -> [C'uint8_t]
+  -- ^ Coefficient
+  -> Decoded
+getDecoded sgn ex coef = Decoded s v
+  where
+    s = if sgn == 0 then Positive else Negative
+    v | ex == c'DECFLOAT_qNaN = NaN Quiet pld
+      | ex == c'DECFLOAT_sNaN = NaN Signaling pld
+      | ex == c'DECFLOAT_Inf = Infinite
+      | otherwise = Finite sig (Exponent ex)
+      where
+        pld = Payload $ fromBCD (c'DECQUAD_Pmax - 1) (tail coef)
+        sig = Significand $ fromBCD c'DECQUAD_Pmax coef

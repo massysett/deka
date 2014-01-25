@@ -77,22 +77,6 @@ module Data.Deka.Decnumber where
 #num DEC_Errors
 #num DEC_NaNs
 
-#globalvar DEC_Condition_CS , Ptr CChar
-#globalvar DEC_Condition_DZ , Ptr CChar
-#globalvar DEC_Condition_DI , Ptr CChar
-#globalvar DEC_Condition_DU , Ptr CChar
-#globalvar DEC_Condition_IE , Ptr CChar
-#globalvar DEC_Condition_IS , Ptr CChar
-#globalvar DEC_Condition_IC , Ptr CChar
-#globalvar DEC_Condition_IO , Ptr CChar
-#globalvar DEC_Condition_OV , Ptr CChar
-#globalvar DEC_Condition_PA , Ptr CChar
-#globalvar DEC_Condition_RO , Ptr CChar
-#globalvar DEC_Condition_SU , Ptr CChar
-#globalvar DEC_Condition_UN , Ptr CChar
-#globalvar DEC_Condition_ZE , Ptr CChar
-#globalvar DEC_Condition_MU , Ptr CChar
-
 #num DEC_Condition_Length
 
 #num DEC_INIT_BASE
@@ -126,6 +110,12 @@ module Data.Deka.Decnumber where
 #num DECFLOAT_Inf
 #num DECFLOAT_MinSp
 
+#num DECPPLUSALT
+#num DECPMINUSALT
+#num DECPPLUS
+#num DECPMINUS
+#num DECPPLUSALT2
+#num DECPUNSIGNED
 
 -- Utilities
 
@@ -133,6 +123,7 @@ module Data.Deka.Decnumber where
 #ccall decQuadToInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO <int32_t>
 
 #ccall decQuadFromInt32 , Ptr <decQuad> -> <int32_t> -> IO (Ptr <decQuad>)
+#ccall decQuadFromPackedChecked , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> IO (Ptr <decQuad>)
 #ccall decQuadFromUInt32 , Ptr <decQuad> -> <uint32_t> -> IO (Ptr <decQuad>)
 #ccall decQuadFromString , Ptr <decQuad> -> CString -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadGetCoefficient , Ptr <decQuad> -> Ptr <uint8_t> -> IO <int32_t>
@@ -172,6 +163,7 @@ module Data.Deka.Decnumber where
 #ccall decQuadScaleB , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadShift , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadSubtract , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decQuadToBCD , Ptr <decQuad> -> Ptr <int32_t> -> Ptr <uint8_t> -> IO <int32_t>
 #ccall decQuadToIntegralValue , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO (Ptr <decQuad>)
 #ccall decQuadToIntegralExact , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadXor , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
