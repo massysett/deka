@@ -29,6 +29,7 @@ module Data.Deka.Env
   , clearFlag
   , checkFlag
   , emptyFlags
+  , displayFlags
 
   -- * Env monad
   , Env
@@ -148,6 +149,7 @@ module Data.Deka.Env
   , zeroPayload
   , Exponent
   , unExponent
+  , zeroExponent
   , exponent
   , Sign(..)
   , NaN(..)
@@ -183,7 +185,8 @@ import Prelude hiding
   , exponent
   )
 import qualified Data.ByteString.Char8 as BS8
-import Data.List (foldl', unfoldr)
+import Data.List (foldl', unfoldr, intersperse)
+import Control.Monad.Trans.Writer
 
 -- # Rounding
 
@@ -266,6 +269,30 @@ checkFlag (Flag f1) (Flags fA) = (f1 .&. fA) /= 0
 
 emptyFlags :: Flags
 emptyFlags = Flags 0
+
+-- | Gives a string showing which flags are set. Returns Nothing if
+-- no flags are set.
+displayFlags :: Flags -> Maybe String
+displayFlags fl = case execWriter wtr of
+  [] -> Nothing
+  xs -> Just
+    . ("flags set: " ++)
+    . concat
+    . intersperse " " $ xs
+  where
+  f s g = if checkFlag g fl
+    then tell [s] else return ()
+  wtr = do
+    f "divisionUndefined" divisionUndefined
+    f "divisionByZero" divisionByZero
+    f "divisionImpossible" divisionImpossible
+    f "invalidOperation" invalidOperation
+    f "inexact" inexact
+    f "invalidContext" invalidContext
+    f "underflow" underflow
+    f "overflow" overflow
+    f "conversionSyntax" conversionSyntax
+
 
 newtype Env a = Env { unEnv :: Ptr C'decContext -> IO a }
 
@@ -532,6 +559,7 @@ canonical = unaryCtxFree c'decQuadCanonical
 decClass :: Dec -> Env DecClass
 decClass = fmap DecClass . unaryGet c'decQuadClass
 
+-- | Does not return an Ordering because the result might be an NaN.
 compare :: Dec -> Dec -> Env Dec
 compare = binary c'decQuadCompare
 
@@ -797,6 +825,9 @@ zeroPayload = Payload 0
 -- Overflow will result.
 data Exponent = Exponent { unExponent :: C'int32_t }
   deriving (Eq, Ord, Show)
+
+zeroExponent :: Exponent
+zeroExponent = Exponent 0
 
 exponent :: Integer -> Maybe Exponent
 exponent i

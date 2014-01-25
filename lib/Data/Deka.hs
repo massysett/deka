@@ -9,91 +9,106 @@ module Data.Deka
   , checked
   ) where
 
+import Control.Arrow hiding (left)
 import Control.Monad.Trans.Class
-import Data.Deka.Safe
-import qualified Data.Deka.Safe as S
 import Data.Deka.Pure
+import qualified Data.Deka.Pure as P
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad.Trans.Either
 
-checkSignals :: Env (Maybe String)
-checkSignals = eitherT (return . Just) (const (return Nothing)) $ do
-  st <- lift getStatus
-  let f s g = if isSet (unStatus st) g
-        then left s
-        else return ()
-  f "ieeeInvalidOperation" ieeeInvalidOperation
-  f "clamped" clamped
-  f "divisionByZero" divisionByZero
-  f "fpuError" fpuError
-  f "inexact" inexact
-  f "notImplemented" notImplemented
-  f "overflow" overflow
-  f "rounded" rounded
-  f "subnormal" subnormal
-  f "underflow" underflow
+checked :: Env a -> Either String a
+checked a =
+  let (r, fl) = runEnvPure a
+  in maybe (Right r) Left $ displayFlags fl
 
-eqMpd :: Mpd -> Mpd -> Bool
-eqMpd x y = 
-  case eval $ cmp x y of
-    EQ -> True
-    _ -> False
+eval :: Env c -> c
+eval = either (error . ("Deka: error: " ++)) id . checked
 
-cmpMpd :: Mpd -> Mpd -> Ordering
-cmpMpd x y = eval $ cmp x y
+evalEither :: EitherT String Env a -> a
+evalEither
+  = either checkOuterE id
+  . checked
+  . fmap (either checkE id)
+  . runEitherT
+  where
+    checkE = error . ("Deka: Deka error: " ++)
+    checkOuterE = error . ("Deka: decQuad error: " ++)
 
-showMpd :: Mpd -> String
-showMpd
-  = BS8.unpack . eval . mpdToSci expLower
+eqDec :: Dec -> Dec -> EitherT String Env Bool
+eqDec x y = fmap (== EQ) $ cmpDec x y
 
-newtype Deka = Deka { unDeka :: Mpd }
+cmpDec :: Dec -> Dec -> EitherT String Env Ordering
+cmpDec x y = do
+  r <- lift $ P.compare x y
+  decToOrd r
+
+cmpDecTotal :: Dec -> Dec -> EitherT String Env Ordering
+cmpDecTotal x y = do
+  r <- lift $ P.compareTotal x y
+  decToOrd r
+
+eqDecTotal :: Dec -> Dec -> EitherT String Env Bool
+eqDecTotal x y = fmap (== EQ) $ cmpDecTotal x y
+
+-- | Runs monadic actions.  When the first action returns True,
+-- return the corresponding result.  If no action returns True,
+-- return the default result.
+successfulPair :: Monad m => m r -> [(m Bool, r)] -> m r
+successfulPair d ls = case ls of
+  [] -> d
+  x:xs -> do
+    r <- fst x
+    if r then return (snd x) else successfulPair d xs
+
+-- | Runs an action. If it is true, run the next set of actions,
+-- otherwise return the given result.
+runIf :: Monad m => m r -> m Bool -> m r -> m r
+runIf dflt a rs = do
+  r <- a
+  if r then rs else dflt
+
+decToOrd :: Dec -> EitherT String Env Ordering
+decToOrd d
+  = runIf (left "decToOrd: non-finite operand") (lift (isFinite d))
+  .  successfulPair (left "decToOrd: nonsense result")
+  . map (first lift)
+  $ [ (isPositive d, GT)
+    , (isZero d, EQ)
+    , (isNegative d, LT)
+    ]
+
+showDec :: Dec -> String
+showDec = BS8.unpack . eval . toString
+
+newtype Deka = Deka { unDeka :: Dec }
 
 -- | Eq compares by value.  For instance, @3.5 == 3.500@.
 instance Eq Deka where
-  Deka x == Deka y = eqMpd x y
+  Deka x == Deka y = evalEither $ eqDec x y
 
 -- | Ord compares by value.  For instance, @compare 3.5 3.500 ==
 -- EQ@.
 instance Ord Deka where
-  compare (Deka x) (Deka y) = cmpMpd x y
+  compare (Deka x) (Deka y) = evalEither $ cmpDec x y
 
 -- | Show always converts to scientific notation.
 instance Show Deka where
-  show = showMpd . unDeka
-
-addMpd :: Mpd -> Mpd -> Mpd
-addMpd x y = eval $ S.add x y
-
-subtMpd :: Mpd -> Mpd -> Mpd
-subtMpd x y = eval $ S.sub x y
-
-multMpd :: Mpd -> Mpd -> Mpd
-multMpd x y = eval $ S.mul x y
+  show = showDec . unDeka
 
 instance Num Deka where
-  Deka x + Deka y = Deka $ addMpd x y
-  Deka x - Deka y = Deka $ subtMpd x y
-  Deka x * Deka y = Deka $ multMpd x y
-  negate = Deka . eval . S.minus . unDeka
-  abs = Deka . eval . S.abs . unDeka
+  Deka x + Deka y = Deka . eval $ P.add x y
+  Deka x - Deka y = Deka . eval $ P.subtract x y
+  Deka x * Deka y = Deka . eval $ P.multiply x y
+  negate = Deka . eval . P.minus . unDeka
+  abs = Deka . eval . P.abs . unDeka
   signum (Deka x)
     | f isZero = fromInteger 0
     | f isNegative = fromInteger (-1)
     | otherwise = fromInteger 1
     where
       f g = eval . g $ x
-  fromInteger = Deka . eval . setIntegral
-
-checked :: Env a -> Either String a
-checked a = evalEnvPure maxContext $ do
-  r <- a
-  ck <- checkSignals
-  return $ case ck of
-    Nothing -> Right r
-    Just err -> Left err
-
-eval :: Env c -> c
-eval = either (error . ("Deka: error: " ++)) id . checked
+  fromInteger = either (error . ("Deka: fromInteger: error: " ++))
+    id . integralToDeka
 
 -- | Multiprecision decimals with a total ordering.
 newtype DekaT = DekaT { unDekaT :: Deka }
@@ -101,30 +116,37 @@ newtype DekaT = DekaT { unDekaT :: Deka }
 
 -- | Eq compares by a total ordering.
 instance Eq DekaT where
-  x == y = compare x y == EQ
+  DekaT (Deka x) == DekaT (Deka y) = evalEither $ eqDecTotal x y
 
 -- | Ord compares by a total ordering.
 instance Ord DekaT where
-  compare (DekaT (Deka x)) (DekaT (Deka y)) = eval $ cmpTotal x y
-
-fromStr :: BS8.ByteString -> Either String Mpd
-fromStr = checked . setString 
-
-strToDeka :: BS8.ByteString -> Either String Deka
-strToDeka = fmap (fmap Deka) fromStr
+  compare (DekaT (Deka x)) (DekaT (Deka y)) = evalEither $ cmpDecTotal x y
 
 crashy :: Either String a -> a
 crashy = either (error . ("Deka: error: " ++)) id
 
-fromInt :: Integral a => a -> Either String Mpd
-fromInt = checked . setIntegral
 
 integralToDeka :: Integral a => a -> Either String Deka
-integralToDeka = fmap (fmap Deka) fromInt
+integralToDeka i = do
+  let e2 = "Deka: error: fromIntegral integer "
+            ++ "out of range"
+  sig <- maybe (Left e2) Right . P.significand . fromIntegral $ i
+  let d = Decoded sgn v
+      sgn = if i < 0 then Negative else Positive
+      v = Finite sig zeroExponent
+  mayDk <- checked $ encode d
+  maybe (Left $ "integralToDeka: error with integral")
+    (return . Deka) mayDk
 
-format
-  :: BS8.ByteString
-  -- ^ Formatting string.  This should be ASCII, or expect trouble.
-  -> Deka
-  -> Either String BS8.ByteString
-format fmt = checked . mpdFormat fmt . unDeka
+strToDeka :: String -> Either String Deka
+strToDeka s =
+  fmap Deka . fst . runEnvPure $ do
+    d <- fromString (BS8.pack s)
+    fl <- getStatus
+    case displayFlags fl of
+      Nothing -> do
+        fin <- isFinite d
+        return $ if not fin then (Left "result not finite")
+          else Right d
+      Just err -> return $ Left err
+
