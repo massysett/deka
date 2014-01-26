@@ -1,12 +1,12 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module DataDir.DekaDir.EnvTest where
+module DataDir.DekaDir.IOTest where
 
 import Control.Monad
 import Test.Tasty
 import Data.Maybe
-import qualified Data.Deka.Env as E
-import Data.Deka.Pure (runEnvPure, evalEnvPure)
+import qualified Data.Deka.IO as E
+import Data.Deka.Pure (runEnv, evalEnv)
 import Data.Deka.Decnumber
 import Test.Tasty.QuickCheck
 import Test.QuickCheck.Gen
@@ -70,7 +70,7 @@ genDecoded = liftM2 E.Decoded genSign genValue
 genFromDecoded :: Gen E.Dec
 genFromDecoded = do
   d <- genDecoded
-  return . fst . runEnvPure . E.encode $ d
+  return . fst . runEnv . E.encode $ d
 
 
 tests = testGroup "Env"
@@ -137,7 +137,7 @@ tests = testGroup "Env"
       , testGroup "decode and encode"
         [ testProperty "round trip from Dec" $
           forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
-          evalEnvPure $ do
+          evalEnv $ do
             dcd <- E.decode d
             ecd <- E.encode dcd
             r <- E.compareTotal ecd d
@@ -145,7 +145,7 @@ tests = testGroup "Env"
 
         , testProperty "round trip from Decoded" $
           forAll genDecoded $ \d ->
-          evalEnvPure $ do
+          evalEnv $ do
             ecd <- E.encode d
             dcd <- E.decode ecd
             return $ dcd == d

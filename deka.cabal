@@ -55,7 +55,7 @@ library
   exposed-modules:     
       Data.Deka
     , Data.Deka.Decnumber
-    , Data.Deka.Env
+    , Data.Deka.IO
     , Data.Deka.Pure
   
   build-depends:

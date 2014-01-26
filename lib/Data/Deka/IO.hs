@@ -1,5 +1,5 @@
 {-# LANGUAGE Safe #-}
-module Data.Deka.Env
+module Data.Deka.IO
   ( -- * Rounding
     Round
   , roundCeiling
@@ -37,7 +37,7 @@ module Data.Deka.Env
   , setStatus
   , getRound
   , setRound
-  , runEnv
+  , runEnvIO
 
   -- * Class
   , DecClass
@@ -334,8 +334,8 @@ setRound r = Env $ \cPtr -> do
 -- | By default, rounding is half even.  No status flags are set
 -- initially.  Returns the final status flags along with the result
 -- of the computation.
-runEnv :: Env a -> IO (a, Flags)
-runEnv (Env k) = do
+runEnvIO :: Env a -> IO (a, Flags)
+runEnvIO (Env k) = do
   fp <- mallocForeignPtr
   withForeignPtr fp $ \pCtx -> do
     _ <- c'decContextDefault pCtx c'DEC_INIT_DECQUAD

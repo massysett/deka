@@ -18,7 +18,7 @@ import Control.Monad.Trans.Either
 
 checked :: Env a -> Either String a
 checked a =
-  let (r, fl) = runEnvPure a
+  let (r, fl) = runEnv a
   in maybe (Right r) Left $ displayFlags fl
 
 eval :: Env c -> c
@@ -138,7 +138,7 @@ integralToDeka i = do
 
 strToDeka :: String -> Either String Deka
 strToDeka s =
-  fmap Deka . fst . runEnvPure $ do
+  fmap Deka . fst . runEnv $ do
     d <- fromString (BS8.pack s)
     fl <- getStatus
     case displayFlags fl of
