@@ -52,8 +52,7 @@ genPayload = do
 
 genExponent :: Gen E.Exponent
 genExponent = do
-  i <- fmap fromIntegral $
-    choose (minBound :: C'int32_t, c'DECFLOAT_MinSp - 1)
+  i <- choose (c'DECQUAD_Emin, c'DECQUAD_Emax)
   case E.exponent i of
     Nothing -> error "genExponent failed"
     Just r -> return r
@@ -70,12 +69,8 @@ genDecoded = liftM2 E.Decoded genSign genValue
 
 genFromDecoded :: Gen E.Dec
 genFromDecoded = do
-  r <- g `suchThat` isJust
-  return . fromJust $ r
-  where
-    g = do
-      d <- genDecoded
-      return . fst . runEnvPure . E.encode $ d
+  d <- genDecoded
+  return . fst . runEnvPure . E.encode $ d
 
 
 tests = testGroup "Env"
@@ -101,7 +96,7 @@ tests = testGroup "Env"
         , testProperty "subtracting one decreases number of digits" $
           forAll (choose (1, 500)) $ \i ->
           let r = smallestDigs i
-          in numDigits r - 1 == numDigits (r - 1)
+          in r > 1 ==> numDigits r - 1 == numDigits (r - 1)
         ]
     ]
   
@@ -127,20 +122,26 @@ tests = testGroup "Env"
 
       , testGroup "Exponent"
         [ testGroup "exponent"
-          [ testProperty "fails when exponent >= c'DECFLOAT_MinSp" $
-            isNothing . E.exponent $ c'DECFLOAT_MinSp
+          [ testProperty "fails when exponent < c'DECFLOAT_Emin" $
+            isNothing . E.exponent $ c'DECQUAD_Emin - 1
+
+          , testProperty "fails when exponent > c'DECFLOAT_Emax" $
+            isNothing . E.exponent $ c'DECQUAD_Emax + 1
+
+          , testProperty "succeeds when exponent between min and max" $
+            forAll (choose (c'DECQUAD_Emin, c'DECQUAD_Emax)) $ \i ->
+            isJust . E.exponent $ i
           ]
         ]
 
       , testGroup "decode and encode"
         [ testProperty "round trip" $
           forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
-          let dcd = evalEnvPure . E.decode $ d
-          in case evalEnvPure . E.encode $ dcd of
-              Nothing -> False
-              Just dcd' -> evalEnvPure $ do
-                r <- E.compare d dcd'
-                E.isZero r
+          evalEnvPure $ do
+            dcd <- E.decode d
+            ecd <- E.encode dcd
+            r <- E.compareTotal ecd d
+            E.isZero r
         ]
       ]
     ]

@@ -817,24 +817,18 @@ payload i
 zeroPayload :: Payload
 zeroPayload = Payload 0
 
--- | This is restricted to the same size as a C uint32_t.  This does
--- not check to make sure the exponent is within Emax or Emin
--- because those limits are for adjusted exponents.  However, encode
--- does ensure that its results are canonical, which adjusts the
--- exponent; therefore, if Exponent is out of range, an Underflow or
--- Overflow will result.
+-- | This is restricted to the same size as a C uint32_t.
 data Exponent = Exponent { unExponent :: C'int32_t }
   deriving (Eq, Ord, Show)
 
 zeroExponent :: Exponent
 zeroExponent = Exponent 0
 
-exponent :: Integer -> Maybe Exponent
+exponent :: Int -> Maybe Exponent
 exponent i
-  | i < (fromIntegral (minBound :: C'int32_t)) = Nothing
-  | i > (fromIntegral (maxBound :: C'int32_t)) = Nothing
-  | i >= c'DECFLOAT_MinSp = Nothing
-  | otherwise = Just . Exponent $ fromIntegral i
+  | i < c'DECQUAD_Emin = Nothing
+  | i > c'DECQUAD_Emax = Nothing
+  | otherwise = Just . Exponent . fromIntegral $ i
 
 data Value
   = Finite Significand Exponent
@@ -858,14 +852,16 @@ decode d = Env $ \_ ->
   peekArray c'DECQUAD_Pmax pArr >>= \coef ->
   return (getDecoded sgn ex coef)
 
-encode :: Decoded -> Env (Maybe Dec)
+encode :: Decoded -> Env Dec
 encode dcd = Env $ \_ ->
   newDec >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
   let (ex, arr) = packDecoded dcd in
   withArray arr $ \pArr ->
   c'decQuadFromPackedChecked pD ex pArr >>= \r ->
-  return $ if ptrToIntPtr r == 0 then Nothing else Just d
+  if ptrToIntPtr r == 0
+    then fail "encode failed"
+    else return d
 
 -- Converts a BCD to an Integer.
 fromBCD

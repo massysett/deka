@@ -134,9 +134,7 @@ integralToDeka i = do
   let d = Decoded sgn v
       sgn = if i < 0 then Negative else Positive
       v = Finite sig zeroExponent
-  mayDk <- checked $ encode d
-  maybe (Left $ "integralToDeka: error with integral")
-    (return . Deka) mayDk
+  fmap Deka . checked $ encode d
 
 strToDeka :: String -> Either String Deka
 strToDeka s =
