@@ -1,7 +1,10 @@
 {-# LANGUAGE Safe #-}
 module Data.Deka.IO
-  ( -- * Rounding
-    Round
+  (
+    -- * Dec
+    Dec
+    -- * Rounding
+  , Round
   , roundCeiling
   , roundUp
   , roundHalfUp
@@ -52,9 +55,6 @@ module Data.Deka.IO
   , posNormal
   , posInf
   , decClass
-
-  -- * Dec
-  , Dec
 
   -- * Conversions
   -- ** Complete encoding and decoding
@@ -199,7 +199,7 @@ import Prelude hiding
   , exponent
   )
 import qualified Data.ByteString.Char8 as BS8
-import Data.List (foldl', unfoldr, intersperse, genericLength)
+import Data.List (foldl', unfoldr, genericLength)
 import Control.Monad.Trans.Writer
 
 -- # Rounding
@@ -284,28 +284,21 @@ checkFlag (Flag f1) (Flags fA) = (f1 .&. fA) /= 0
 emptyFlags :: Flags
 emptyFlags = Flags 0
 
--- | Gives a string showing which flags are set. Returns Nothing if
--- no flags are set.
-displayFlags :: Flags -> Maybe String
-displayFlags fl = case execWriter wtr of
-  [] -> Nothing
-  xs -> Just
-    . ("flags set: " ++)
-    . concat
-    . intersperse " " $ xs
-  where
-  f s g = if checkFlag g fl
-    then tell [s] else return ()
-  wtr = do
-    f "divisionUndefined" divisionUndefined
-    f "divisionByZero" divisionByZero
-    f "divisionImpossible" divisionImpossible
-    f "invalidOperation" invalidOperation
-    f "inexact" inexact
-    f "invalidContext" invalidContext
-    f "underflow" underflow
-    f "overflow" overflow
-    f "conversionSyntax" conversionSyntax
+-- | Gives a list of strings, one for each flag that is set.
+displayFlags :: Flags -> [String]
+displayFlags fl = execWriter $ do
+  let f s g
+        | checkFlag g fl = tell [s]
+        | otherwise = return ()
+  f "divisionUndefined" divisionUndefined
+  f "divisionByZero" divisionByZero
+  f "divisionImpossible" divisionImpossible
+  f "invalidOperation" invalidOperation
+  f "inexact" inexact
+  f "invalidContext" invalidContext
+  f "underflow" underflow
+  f "overflow" overflow
+  f "conversionSyntax" conversionSyntax
 
 
 newtype Env a = Env { unEnv :: Ptr C'decContext -> IO a }

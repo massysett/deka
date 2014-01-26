@@ -12,14 +12,21 @@ module Data.Deka
 import Control.Arrow hiding (left)
 import Control.Monad.Trans.Class
 import Data.Deka.Pure
+import Data.List (intersperse)
 import qualified Data.Deka.Pure as P
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad.Trans.Either
 
+flagsErrorMessage :: Flags -> Either String ()
+flagsErrorMessage fl = case displayFlags fl of
+  [] -> Right ()
+  xs -> Left ("flags set: " ++
+                (concat . intersperse ", " $ xs))
+
 checked :: Env a -> Either String a
 checked a =
   let (r, fl) = runEnv a
-  in maybe (Right r) Left $ displayFlags fl
+  in flagsErrorMessage fl >> return r
 
 eval :: Env c -> c
 eval = either (error . ("Deka: error: " ++)) id . checked
@@ -139,10 +146,9 @@ strToDeka s =
   fmap Deka . fst . runEnv $ do
     d <- fromString (BS8.pack s)
     fl <- getStatus
-    case displayFlags fl of
-      Nothing -> do
+    case flagsErrorMessage fl of
+      Left e -> return $ Left e
+      Right _ -> do
         fin <- isFinite d
         return $ if not fin then (Left "result not finite")
           else Right d
-      Just err -> return $ Left err
-
