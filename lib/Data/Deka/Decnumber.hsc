@@ -142,6 +142,7 @@ module Data.Deka.Decnumber where
 #ccall decQuadDivide , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadDivideInteger , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadFMA , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall decDoubleFromBCD , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> <int32_t> -> IO (Ptr <decQuad>)
 #ccall decQuadInvert , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadLogB , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadMax , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
