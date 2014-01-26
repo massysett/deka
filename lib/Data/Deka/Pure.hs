@@ -1,12 +1,16 @@
 {-# LANGUAGE Trustworthy #-}
 
-module Data.Deka.Pure where
+module Data.Deka.Pure
+  ( runEnv
+  , evalEnv
+  , module Data.Deka.IO
+  ) where
 
-import Data.Deka.Safe
+import Data.Deka.IO
 import System.IO.Unsafe
 
-runEnvPure :: Initializer -> Env a -> (a, Context)
-runEnvPure i e = unsafePerformIO $ runEnv i e
+runEnv :: Env a -> (a, Flags)
+runEnv e = unsafePerformIO $ runEnvIO e
 
-evalEnvPure :: Initializer -> Env a -> a
-evalEnvPure i e = unsafePerformIO $ evalEnv i e
+evalEnv :: Env a -> a
+evalEnv = fst . runEnv
