@@ -11,6 +11,20 @@ import Data.Deka.Decnumber
 import Test.Tasty.QuickCheck
 import Test.QuickCheck.Gen
 
+isLeft :: Either a b -> Bool
+isLeft e = case e of { Left _ -> True; _ -> False }
+
+isRight :: Either a b -> Bool
+isRight e = case e of { Right _ -> True; _ -> False }
+
+-- | Maximum Integer for testing purposes.
+maxInteger :: Integer
+maxInteger = 10 ^ (100 :: Int)
+
+-- | Minimum Integer for testing purposes.
+minInteger :: Integer
+minInteger = negate (10 ^ (100 :: Int))
+
 -- | The largest number with the given number of digits.
 biggestDigs :: Int -> Integer
 biggestDigs i = 10 ^ i - 1
@@ -22,13 +36,8 @@ smallestDigs i = 10 ^ (i - 1)
 maxSize :: Int -> Gen a -> Gen a
 maxSize s g = sized $ \o -> resize (min o s) g
 
-numDigits :: Integer -> Int
-numDigits i = if i == 0 then 1 else go (abs i, 0)
-  where
-    go (left, tot) =
-      if left == 0
-      then tot
-      else go (left `div` 10, tot + 1)
+numDigits :: (Num a, Show a) => a -> Int
+numDigits = length . show . abs
 
 genSign :: Gen E.Sign
 genSign = elements [ E.Positive, E.Negative ]
@@ -36,12 +45,26 @@ genSign = elements [ E.Positive, E.Negative ]
 genNaN :: Gen E.NaN
 genNaN = elements [ E.Quiet, E.Signaling ]
 
-genSignificand :: Gen E.Significand
-genSignificand = do
+genCoefficient :: Gen E.Coefficient
+genCoefficient = do
   i <- choose (0, biggestDigs c'DECQUAD_Pmax)
-  case E.significand i of
-    Nothing -> error "genSignificand failed"
-    Just r -> return r
+  case E.coefficient i of
+    Left _ -> error "genCoefficient failed"
+    Right g -> return g
+
+genExp
+  :: E.Coefficient
+  -- ^ Significand
+  -> Gen Int
+genExp = choose . E.minMaxExp
+
+genCoeffExp :: Gen E.CoeffExp
+genCoeffExp = do
+  s <- genCoefficient
+  e <- genExp s
+  case E.coeffExp s e of
+    Left _ -> error "genCoeffExp failed"
+    Right g -> return g
 
 genPayload :: Gen E.Payload
 genPayload = do
@@ -50,16 +73,9 @@ genPayload = do
     Nothing -> error "genPayload failed"
     Just r -> return r
 
-genExponent :: Gen E.Exponent
-genExponent = do
-  i <- choose (c'DECQUAD_Emin, c'DECQUAD_Emax)
-  case E.exponent i of
-    Nothing -> error "genExponent failed"
-    Just r -> return r
-
 genValue :: Gen E.Value
 genValue = oneof
-  [ liftM2 E.Finite genSignificand genExponent
+  [ liftM E.Finite genCoeffExp
   , return E.Infinite
   , liftM2 E.NaN genNaN genPayload
   ]
@@ -73,7 +89,7 @@ genFromDecoded = do
   return . fst . runEnv . E.encode $ d
 
 
-tests = testGroup "Env"
+tests = testGroup "IO"
   [ testGroup "helper functions"
     [ testGroup "biggestDigs"
       [ testProperty "generates correct number of digits" $
@@ -101,36 +117,60 @@ tests = testGroup "Env"
     ]
   
   , testGroup "conversions"
-    [ testGroup "Significand"
-      [ testGroup "significand"
-        [ testProperty "fails on negative numbers" $
-          isNothing . E.significand . negate . getPositive
+    [ testGroup "coefficient"
+      [ testProperty "fails on negative integers" $
+        forAll (choose (minInteger, (-1))) $
+        isLeft . E.coefficient
 
-        , testProperty "fails when number of digits > Pmax" $
-          isNothing . E.significand . smallestDigs $ c'DECQUAD_Pmax + 1
-        ]
+      , testProperty "fails when num digits > Pmax" $
+        forAll (choose (smallestDigs c'DECQUAD_Pmax, maxInteger)) $
+        isLeft . E.coefficient
+
+      , testProperty "succeeds when it should" $
+        forAll (choose (0, smallestDigs c'DECQUAD_Pmax - 1)) $
+        isRight . E.coefficient
+      ]
+
+    , testGroup "coeffExp"
+      [ testProperty "fails when exponent is too small" $
+        forAll genCoefficient $ \c -> do
+          let (l, _) = E.minMaxExp c
+          e <- choose (minBound, l - 1)
+          return . isLeft $ E.coeffExp c e
+
+      , testProperty "fails when exponent is too large" $
+        forAll genCoefficient $ \c -> do
+          let (_, h) = E.minMaxExp c
+          e <- choose (h + 1, maxBound)
+          return . isLeft $ E.coeffExp c e
+
+      , testProperty "fails when exponent is < c'DECQUAD_Emin" $
+        forAll genCoefficient $ \c ->
+        forAll (choose (minBound, c'DECQUAD_Emin - 1)) $ \e ->
+        isLeft $ E.coeffExp c e
+
+      , testProperty "fails when exponent is > c'DECQUAD_Emax" $
+        forAll genCoefficient $ \c ->
+        forAll (choose (c'DECQUAD_Emax + 1, maxBound)) $ \e ->
+        isLeft $ E.coeffExp c e
+
+      , testProperty "succeeds when it should" $
+        forAll genCoefficient $ \c -> do
+          e <- choose . E.minMaxExp $ c
+          return . isRight $ E.coeffExp c e
+      ]
 
       , testGroup "Payload"
         [ testGroup "payload"
           [ testProperty "fails on negative numbers" $
-            isNothing . E.significand . negate . getPositive
+            isNothing . E.payload . negate . getPositive
 
           , testProperty "succeeds when number of digits <= Pmax - 1" $
-            isJust . E.significand . smallestDigs $ c'DECQUAD_Pmax - 1
-          ]
-        ]
+            isJust . E.payload . smallestDigs $ c'DECQUAD_Pmax - 1
 
-      , testGroup "Exponent"
-        [ testGroup "exponent"
-          [ testProperty "fails when exponent < c'DECFLOAT_Emin" $
-            isNothing . E.exponent $ c'DECQUAD_Emin - 1
-
-          , testProperty "fails when exponent > c'DECFLOAT_Emax" $
-            isNothing . E.exponent $ c'DECQUAD_Emax + 1
-
-          , testProperty "succeeds when exponent between min and max" $
-            forAll (choose (c'DECQUAD_Emin, c'DECQUAD_Emax)) $ \i ->
-            isJust . E.exponent $ i
+          , testProperty "fails when number of digits > Pmax - 1" $
+            forAll (choose (smallestDigs (c'DECQUAD_Pmax - 1), maxInteger)) $
+            isNothing . E.payload
           ]
         ]
 
@@ -152,4 +192,3 @@ tests = testGroup "Env"
         ]
       ]
     ]
-  ]

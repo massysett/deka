@@ -128,12 +128,10 @@ crashy = either (error . ("Deka: error: " ++)) id
 
 integralToDeka :: Integral a => a -> Either String Deka
 integralToDeka i = do
-  let e2 = "Deka: error: fromIntegral integer "
-            ++ "out of range"
-  sig <- maybe (Left e2) Right . P.significand . fromIntegral $ i
-  let d = Decoded sgn v
+  coe <- coefficient . fromIntegral $ i
+  se <- coeffExp coe 0
+  let d = Decoded sgn (Finite se)
       sgn = if i < 0 then Negative else Positive
-      v = Finite sig zeroExponent
   fmap Deka . checked $ encode d
 
 strToDeka :: String -> Either String Deka

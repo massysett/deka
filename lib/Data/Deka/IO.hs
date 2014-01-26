@@ -140,17 +140,18 @@ module Data.Deka.IO
   , zero
 
   -- * Conversions
-  , Significand
-  , unSignificand
-  , significand
+  , Coefficient
+  , coefficient
+  , unCoefficient
+  , CoeffExp
+  , seCoeff
+  , seExp
+  , coeffExp
+  , minMaxExp
   , Payload
   , unPayload
   , payload
   , zeroPayload
-  , Exponent
-  , unExponent
-  , zeroExponent
-  , exponent
   , Sign(..)
   , NaN(..)
   , Value(..)
@@ -185,7 +186,7 @@ import Prelude hiding
   , exponent
   )
 import qualified Data.ByteString.Char8 as BS8
-import Data.List (foldl', unfoldr, intersperse)
+import Data.List (foldl', unfoldr, intersperse, genericLength)
 import Control.Monad.Trans.Writer
 
 -- # Rounding
@@ -791,16 +792,56 @@ data NaN
   | Signaling
   deriving (Eq, Ord, Show, Enum, Bounded)
 
--- | This is always zero or positive.  The number of digits is
--- always less than or equal to Pmax (34 digits).
-data Significand = Significand { unSignificand :: Integer }
+data Coefficient = Coefficient { unCoefficient :: Integer }
   deriving (Eq, Ord, Show)
 
-significand :: Integer -> Maybe Significand
-significand i
-  | i < 0 = Nothing
-  | length (show i) > c'DECQUAD_Pmax = Nothing
-  | otherwise = Just . Significand $ i
+-- | Coefficients must be zero or positive, and the number of digits
+-- must be less than or equal to c'DECQUAD_Pmax
+coefficient :: Integer -> Either String Coefficient
+coefficient i
+  | i < 0 = Left "coefficient cannot be negative"
+  | len > c'DECQUAD_Pmax = Left "coefficient has too many digits"
+  | otherwise = Right . Coefficient $ i
+  where
+    len = genericLength . show $ i
+    _types = len :: Integer
+
+-- | Significand and exponent for a finite number.
+data CoeffExp = CoeffExp
+  { seCoeff :: Coefficient
+  , seExp :: Int
+  } deriving (Eq, Ord, Show)
+
+-- | Enforces relationship between significand and exponent.
+--
+-- If the coefficient has c digits, and Emax is x, the exponent e
+-- is within the closed-ended range
+--
+-- @-x - (c - 1) + 1@ and @x - (c - 1)@
+--
+-- See Decimal Arithmetic Specification version 1.70, page 10.
+
+coeffExp
+  :: Coefficient
+  -> Int
+  -- ^ Exponent
+  -> Either String CoeffExp
+coeffExp c e
+  | e > h = Left "exponent is too large"
+  | e < l = Left "exponent is too small"
+  | otherwise = Right $ CoeffExp c e
+  where
+    (l, h) = minMaxExp c
+
+-- | The minimum and maximum possible exponent for a given
+-- significand.
+minMaxExp :: Coefficient -> (Int, Int)
+minMaxExp (Coefficient s) = (l, h)
+  where
+    l = negate x - (c - 1) + 1
+    h = x - (c - 1)
+    x = c'DECQUAD_Emax
+    c = length . show $ s
 
 -- | A Payload is associated with an NaN.  It is always zero or
 -- positive.  The number of digits is always less than or equal to
@@ -817,21 +858,8 @@ payload i
 zeroPayload :: Payload
 zeroPayload = Payload 0
 
--- | This is restricted to the same size as a C uint32_t.
-data Exponent = Exponent { unExponent :: C'int32_t }
-  deriving (Eq, Ord, Show)
-
-zeroExponent :: Exponent
-zeroExponent = Exponent 0
-
-exponent :: Int -> Maybe Exponent
-exponent i
-  | i < c'DECQUAD_Emin = Nothing
-  | i > c'DECQUAD_Emax = Nothing
-  | otherwise = Just . Exponent . fromIntegral $ i
-
 data Value
-  = Finite Significand Exponent
+  = Finite CoeffExp
   | Infinite
   | NaN NaN Payload
   deriving (Eq, Ord, Show)
@@ -899,8 +927,8 @@ packDecoded (Decoded s v) = (expn, bcd, sign)
       Positive -> 0
       Negative -> c'DECFLOAT_Sign
     (expn, bcd) = case v of
-      Finite sig ex ->
-        (unExponent ex, toBCD c'DECQUAD_Pmax (unSignificand sig))
+      Finite (CoeffExp coe ex) ->
+        (fromIntegral ex, toBCD c'DECQUAD_Pmax (unCoefficient coe))
       Infinite ->
         (c'DECFLOAT_Inf, toBCD c'DECQUAD_Pmax 0)
       NaN n p -> (ex, bc)
@@ -926,7 +954,7 @@ getDecoded sgn ex coef = Decoded s v
     v | ex == c'DECFLOAT_qNaN = NaN Quiet pld
       | ex == c'DECFLOAT_sNaN = NaN Signaling pld
       | ex == c'DECFLOAT_Inf = Infinite
-      | otherwise = Finite sig (Exponent ex)
+      | otherwise = Finite (CoeffExp coe (fromIntegral ex))
       where
         pld = Payload $ fromBCD (c'DECQUAD_Pmax - 1) (tail coef)
-        sig = Significand $ fromBCD c'DECQUAD_Pmax coef
+        coe = Coefficient $ fromBCD c'DECQUAD_Pmax coef
