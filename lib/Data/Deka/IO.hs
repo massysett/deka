@@ -51,95 +51,13 @@ module Data.Deka.IO
   , posSubnormal
   , posNormal
   , posInf
+  , decClass
 
   -- * Dec
   , Dec
 
-  -- * Arithmetic
-  , abs
-  , add
-  , and
-  , canonical
-  , decClass
-  -- skipped: classString - not needed
-  , compare
-  , compareSignal
-  , compareTotal
-  , compareTotalMag
-  -- skipped: copy - not needed
-  , copyAbs
-  , copyNegate
-  , copySign
-  , digits
-  , divide
-  , divideInteger
-  , fma
-  -- skipped: fromBCD - use encode function instead
-  , fromInt32
-  -- skipped: fromNumber - not needed
-  -- skipped: fromPacked - use encode function instead
-  -- skipped: fromPackedChecked - use encode function instead
-  , fromString
-  , fromUInt32
-  -- skipped: fromWider - not needed
-  -- skipped: getCoefficient - use decode function instead
-  -- to be removed: getExponent - use decode function instead
-  , getExponent
-  , invert
-  , isCanonical
-  , isFinite
-  , isInfinite
-  , isInteger
-  , isLogical
-  , isNaN
-  , isNegative
-  , isNormal
-  , isPositive
-  , isSignaling
-  , isSigned
-  , isSubnormal
-  , isZero
-  , logB
-  , max
-  , maxMag
-  , min
-  , minMag
-  , minus
-  , multiply
-  , nextMinus
-  , nextPlus
-  , nextToward
-  , or
-  , plus
-  , quantize
-  -- skipped: radix - not needed
-  , reduce
-  , remainder
-  , remainderNear
-  , rotate
-  , sameQuantum
-  , scaleB
-  -- skipped: setCoefficient - use encode function instead
-  -- skipped: setExponent - use encode function instead
-  , shift
-  , subtract
-  -- skipped: toBCD - use decode function instead
-  , toEngString
-  , toInt32
-  , toInt32Exact
-  , toIntegralExact
-  , toIntegralValue
-  -- skipped: toNumber - not needed
-  -- skipped: toPacked - use decode function instead
-  , toString
-  , toUInt32
-  , toUInt32Exact
-  -- skipped: toWider - not needed
-  , version
-  , xor
-  , zero
-
   -- * Conversions
+  -- ** Complete encoding and decoding
   , Coefficient
   , coefficient
   , unCoefficient
@@ -158,6 +76,101 @@ module Data.Deka.IO
   , Decoded(..)
   , decode
   , encode
+
+  -- ** Strings
+  , fromString
+  , toString
+  , toEngString
+
+  -- ** Integers
+  , fromInt32
+  , fromUInt32
+  , toInt32
+  , toInt32Exact
+  , toUInt32
+  , toUInt32Exact
+
+  -- ** Other Dec
+  , toIntegralExact
+  , toIntegralValue
+
+  -- * Arithmetic
+  , add
+  , subtract
+  , multiply
+  , fma
+  , divide
+  , divideInteger
+  , remainder
+  , remainderNear
+
+  -- * Exponent and coefficient adjustment
+  , quantize
+  , reduce
+
+  -- * Comparisons
+  , compare
+  , compareSignal
+  , compareTotal
+  , compareTotalMag
+  , max
+  , maxMag
+  , min
+  , minMag
+  , sameQuantum
+
+  -- * Tests
+  , isCanonical
+  , isFinite
+  , isInfinite
+  , isInteger
+  , isLogical
+  , isNaN
+  , isNegative
+  , isNormal
+  , isPositive
+  , isSignaling
+  , isSigned
+  , isSubnormal
+  , isZero
+
+  -- * Signs
+  , plus
+  , minus
+  , abs
+
+  -- * Increment and decrement
+  , nextMinus
+  , nextPlus
+  , nextToward
+
+  -- * Logical, bitwise, digit shifting
+  , and
+  , or
+  , shift
+  , xor
+  , rotate
+  , invert
+
+  -- * Transcendental
+  , logB
+  , scaleB
+
+  -- * Copies
+  -- FIXME many of these are broken
+  , canonical
+  , copyAbs
+  , copyNegate
+  , copySign
+
+  -- * Attributes
+  , digits
+
+  -- * Constants
+  , zero
+
+  -- * Library info
+  , version
 
   ) where
 
@@ -543,7 +556,7 @@ getRounded f (Round r) d = Env $ \pC ->
 
 -- # End Helpers
 
--- # Functions
+-- # Functions from decQuad. In alphabetical order.
 
 abs :: Dec -> Env Dec
 abs = unary c'decQuadAbs
@@ -615,9 +628,6 @@ fromUInt32 i = Env $ \_ ->
   withForeignPtr (unDec r) $ \pR ->
   void (c'decQuadFromUInt32 pR i)
   >> return r
-
-getExponent :: Dec -> Env C'int32_t
-getExponent = unaryGet c'decQuadGetExponent
 
 invert :: Dec -> Env Dec
 invert = unary c'decQuadInvert
@@ -958,3 +968,22 @@ getDecoded sgn ex coef = Decoded s v
       where
         pld = Payload $ fromBCD (c'DECQUAD_Pmax - 1) (tail coef)
         coe = Coefficient $ fromBCD c'DECQUAD_Pmax coef
+
+-- decQuad functions not recreated here:
+
+-- skipped: classString - not needed
+-- skipped: copy - not needed
+-- skipped: fromBCD - use encode function instead
+-- skipped: fromNumber - not needed
+-- skipped: fromPacked - use encode function instead
+-- skipped: fromPackedChecked - use encode function instead
+-- skipped: fromWider - not needed
+-- skipped: getCoefficient - use decode function instead
+-- skipped: getExponent - use decode function instead
+-- skipped: radix - not needed
+-- skipped: setCoefficient - use encode function instead
+-- skipped: setExponent - use encode function instead
+-- skipped: toBCD - use decode function instead
+-- skipped: toNumber - not needed
+-- skipped: toPacked - use decode function instead
+-- skipped: toWider - not needed

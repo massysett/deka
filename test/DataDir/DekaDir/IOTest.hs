@@ -160,18 +160,16 @@ tests = testGroup "IO"
           return . isRight $ E.coeffExp c e
       ]
 
-      , testGroup "Payload"
-        [ testGroup "payload"
-          [ testProperty "fails on negative numbers" $
-            isNothing . E.payload . negate . getPositive
+      , testGroup "payload"
+        [ testProperty "fails on negative numbers" $
+          isNothing . E.payload . negate . getPositive
 
-          , testProperty "succeeds when number of digits <= Pmax - 1" $
-            isJust . E.payload . smallestDigs $ c'DECQUAD_Pmax - 1
+        , testProperty "succeeds when number of digits <= Pmax - 1" $
+          isJust . E.payload . smallestDigs $ c'DECQUAD_Pmax - 1
 
-          , testProperty "fails when number of digits > Pmax - 1" $
-            forAll (choose (smallestDigs (c'DECQUAD_Pmax - 1), maxInteger)) $
-            isNothing . E.payload
-          ]
+        , testProperty "fails when number of digits > Pmax - 1" $
+          forAll (choose (smallestDigs (c'DECQUAD_Pmax - 1), maxInteger)) $
+          isNothing . E.payload
         ]
 
       , testGroup "decode and encode"
