@@ -135,13 +135,20 @@ tests = testGroup "Env"
         ]
 
       , testGroup "decode and encode"
-        [ testProperty "round trip" $
+        [ testProperty "round trip from Dec" $
           forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
           evalEnvPure $ do
             dcd <- E.decode d
             ecd <- E.encode dcd
             r <- E.compareTotal ecd d
             E.isZero r
+
+        , testProperty "round trip from Decoded" $
+          forAll genDecoded $ \d ->
+          evalEnvPure $ do
+            ecd <- E.encode d
+            dcd <- E.decode ecd
+            return $ dcd == d
         ]
       ]
     ]

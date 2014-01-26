@@ -856,12 +856,10 @@ encode :: Decoded -> Env Dec
 encode dcd = Env $ \_ ->
   newDec >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
-  let (ex, arr) = packDecoded dcd in
+  let (expn, arr, sgn) = packDecoded dcd in
   withArray arr $ \pArr ->
-  c'decQuadFromPackedChecked pD ex pArr >>= \r ->
-  if ptrToIntPtr r == 0
-    then fail "encode failed"
-    else return d
+  c'decQuadFromBCD pD expn pArr sgn >>= \_ ->
+  return d
 
 -- Converts a BCD to an Integer.
 fromBCD
@@ -893,27 +891,25 @@ toBCD len start = unfoldr f (len, start)
             | otherwise = Just (fromIntegral q, (c', r'))
       in g
 
--- | Transform a BCD to the packed format.
-packBCD :: Sign -> [C'uint8_t] -> [C'uint8_t]
-packBCD s ls = case ls of
-  x:y:xs -> shiftL x 4 + y : packBCD s xs
-  [] -> case s of
-    Positive -> [c'DECPPLUS]
-    Negative -> [c'DECPMINUS]
-  _ -> error "packBCD: odd-length list"
 
+packDecoded :: Decoded -> (C'int32_t, [C'uint8_t], C'int32_t)
+packDecoded (Decoded s v) = (expn, bcd, sign)
+  where
+    sign = case s of
+      Positive -> 0
+      Negative -> c'DECFLOAT_Sign
+    (expn, bcd) = case v of
+      Finite sig ex ->
+        (unExponent ex, toBCD c'DECQUAD_Pmax (unSignificand sig))
+      Infinite ->
+        (c'DECFLOAT_Inf, toBCD c'DECQUAD_Pmax 0)
+      NaN n p -> (ex, bc)
+        where
+          ex = case n of
+            Signaling -> c'DECFLOAT_sNaN
+            Quiet -> c'DECFLOAT_qNaN
+          bc = 0 : toBCD (c'DECQUAD_Pmax - 1) (unPayload p)
 
-packDecoded :: Decoded -> (C'int32_t, [C'uint8_t])
-packDecoded (Decoded s v) = case v of
-  NaN n p ->
-    let pld = packBCD s (0 : toBCD (c'DECQUAD_Pmax - 1) (unPayload p))
-        e = case n of
-          Quiet -> c'DECFLOAT_qNaN
-          Signaling -> c'DECFLOAT_sNaN
-    in (e, pld)
-  Infinite -> (c'DECFLOAT_Inf, packBCD s (toBCD c'DECQUAD_Pmax 0))
-  Finite (Significand sig) (Exponent ex) ->
-    (ex, packBCD s (toBCD c'DECQUAD_Pmax sig))
 
 getDecoded
   :: C'int32_t
