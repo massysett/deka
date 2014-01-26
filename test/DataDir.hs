@@ -4,9 +4,9 @@ module DataDir where
 
 import Test.Tasty
 import qualified DataDir.DekaDir
-import qualified DataDir.Deka
+import qualified DataDir.DekaTest
 
 tests = testGroup "DataDir"
   [ DataDir.DekaDir.tests
-  , DataDir.Deka.tests
+  , DataDir.DekaTest.tests
   ]

@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module DataDir.DekaDir.Env where
+module DataDir.DekaDir.EnvTest where
 
 import Control.Monad
 import Test.Tasty

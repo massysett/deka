@@ -1,7 +1,8 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module DataDir.Deka where
+module DataDir.DekaDir.PureTest where
 
 import Test.Tasty
 
-tests = testGroup "Deka" []
+tests = testGroup "Pure" []
+
