@@ -75,6 +75,7 @@ Test-Suite tasty-test
     , tasty-quickcheck ==0.3.*
     , tasty ==0.7.*
     , QuickCheck ==2.6.*
+    , bytestring ==0.10.*
 
   type: exitcode-stdio-1.0
   hs-source-dirs: test

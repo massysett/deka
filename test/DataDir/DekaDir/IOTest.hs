@@ -2,6 +2,7 @@
 
 module DataDir.DekaDir.IOTest where
 
+import qualified Data.ByteString.Char8 as BS8
 import Control.Monad
 import Test.Tasty
 import Data.Maybe
@@ -90,21 +91,49 @@ genFromDecoded = do
   d <- genDecoded
   return . fst . runEnv . E.encode $ d
 
+genFinite :: Gen E.Dec
+genFinite = do
+  v <- liftM E.Finite genCoeffExp
+  s <- genSign
+  return . evalEnv . E.encode $ E.Decoded s v
+
+newtype Visible = Visible { unVisible :: E.Dec }
+
+instance Show Visible where
+  show = BS8.unpack . evalEnv . E.toString . unVisible
+
 -- # Test builders
 
--- | Dec arguments are unchanged.
-imuUni
+associativity
   :: String
-  -- ^ Name of this function
-  -> (E.Dec -> E.Env E.Dec)
+  -- ^ Name
+  -> (E.Dec -> E.Dec -> E.Env E.Dec)
   -> TestTree
-imuUni n f = testGroup (n ++ ": unary")
-  [ testProperty "only argument is unchanged" $
-    forAll genFromDecoded $ \d -> evalEnv $ do
-      _ <- f d
-      undefined
-  ]
+associativity n f = testProperty desc $
+  forAll (fmap Visible genFinite) $ \(Visible x) ->
+  forAll (fmap Visible genFinite) $ \(Visible y) ->
+  forAll (fmap Visible genFinite) $ \(Visible z) -> evalEnv $ do
+    r1 <- f x y >>= f z
+    r2 <- f y z >>= f x
+    c <- E.compareTotal r1 r2
+    E.isZero c
+  where
+    desc = n ++ " is associative on finite numbers"
 
+commutativity
+  :: String
+  -- ^ Name
+  -> (E.Dec -> E.Dec -> E.Env E.Dec)
+  -> TestTree
+commutativity n f = testProperty desc $
+  forAll (fmap Visible genFinite) $ \(Visible x) ->
+  forAll (fmap Visible genFinite) $ \(Visible y) -> evalEnv $ do
+    r1 <- f x y
+    r2 <- f y x
+    c <- E.compareTotal r1 r2
+    E.isZero c
+  where
+    desc = n ++ " is commutative on finite numbers"
 
 tests = testGroup "IO"
   [ testGroup "helper functions"
@@ -204,6 +233,18 @@ tests = testGroup "IO"
             ecd <- E.encode d
             dcd <- E.decode ecd
             return $ dcd == d
+        ]
+      ]
+
+    , testGroup "arithmetic"
+      [ testGroup "add"
+        [ associativity "add" E.add
+        , commutativity "add" E.add
+        ]
+
+      , testGroup "multiply"
+        [ associativity "multiply" E.multiply
+        , commutativity "multiply" E.multiply
         ]
       ]
     ]
