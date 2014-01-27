@@ -127,13 +127,17 @@ commutativity
   -> TestTree
 commutativity n f = testProperty desc $
   forAll (fmap Visible genFinite) $ \(Visible x) ->
-  forAll (fmap Visible genFinite) $ \(Visible y) -> evalEnv $ do
-    r1 <- f x y
-    r2 <- f y x
-    c <- E.compareTotal r1 r2
-    E.isZero c
+  forAll (fmap Visible genFinite) $ \(Visible y) ->
+  let (noFlags, resIsZero) = evalEnv $ do
+        r1 <- f x y
+        r2 <- f y x
+        c <- E.compareTotal r1 r2
+        isZ <- E.isZero c
+        fl <- E.getStatus
+        return (fl == E.emptyFlags, isZ)
+  in noFlags ==> resIsZero
   where
-    desc = n ++ " is commutative on finite numbers"
+    desc = n ++ " is commutative where there are no flags"
 
 tests = testGroup "IO"
   [ testGroup "helper functions"
