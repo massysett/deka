@@ -1,9 +1,39 @@
 {-# LANGUAGE Safe #-}
+
+-- | Floating-point decimals.
+--
+-- This uses the decNumber C library, so you will want to read the
+-- documentation about it to fully understand this module:
+--
+-- <http://speleotrove.com/decimal/decnumber.html>
+--
+-- <http://speleotrove.com/decimal/>
+--
+-- In particular, this module implements the decQuad type.  decQuad
+-- supports up to 34 digits of precision and exponents up to
+-- (roughly) 6144.  It doesn't silently round, overflow, or
+-- underflow; rather, the library will notify you if these things
+-- happen.
+--
+-- Every function in this module returns canonical 'Dec' (contrast
+-- the decNumber library which will, under limited circumstances,
+-- return non-canonical decimals).  I am not certain that canonical
+-- vs. non-canonical matters in typical use, though it may matter
+-- when using 'compareTotal'.
+--
+-- Many functions in this module clash with Prelude names, so you
+-- might want to do
+--
+-- > import qualified Data.Deka.Pure as D
 module Data.Deka.IO
   (
     -- * Dec
     Dec
+
     -- * Rounding
+    -- | For more on the rounding algorithms, see
+    --
+    -- <http://speleotrove.com/decimal/damodel.html>
   , Round
   , roundCeiling
   , roundUp
@@ -16,6 +46,10 @@ module Data.Deka.IO
   , roundMax
 
   -- * Flags
+  --
+  -- | For more on possible flags, see
+  --
+  -- <http://speleotrove.com/decimal/damodel.html>
   , Flag
   , divisionUndefined
   , divisionByZero
@@ -120,7 +154,6 @@ module Data.Deka.IO
   , sameQuantum
 
   -- * Tests
-  , isCanonical
   , isFinite
   , isInfinite
   , isInteger
@@ -138,6 +171,7 @@ module Data.Deka.IO
   , plus
   , minus
   , abs
+  , copySign
 
   -- * Increment and decrement
   , nextMinus
@@ -155,19 +189,6 @@ module Data.Deka.IO
   -- * Transcendental
   , logB
   , scaleB
-
-  -- * Copies
-  -- | Each copy function takes two arguments: a @from@ argument is
-  -- first, and then a @to@ argument. All 'Dec' are immutable, so
-  -- neither 'Dec' is changed; instead, a third 'Dec' is returned.
-  -- First a bitwise copy of the @to@ argument is created, then the
-  -- relevant information is copied from the @from@ 'Dec' to this
-  -- copy.
-  --
-  -- The result is always canonical.
-  , copyAbs
-  , copyNegate
-  , copySign
 
   -- * Attributes
   , digits
@@ -275,6 +296,8 @@ overflow = Flag c'DEC_Overflow
 conversionSyntax :: Flag
 conversionSyntax = Flag c'DEC_Conversion_syntax
 
+-- | A container for multiple 'Flag' indicating which are set and
+-- which are not.
 newtype Flags = Flags { unFlags :: C'uint32_t }
   deriving (Eq, Ord, Show)
 
@@ -284,9 +307,11 @@ setFlag (Flag f1) (Flags fA) = Flags (f1 .|. fA)
 clearFlag :: Flag -> Flags -> Flags
 clearFlag (Flag f1) (Flags fA) = Flags (complement f1 .&. fA)
 
+-- | Is this 'Flag' set?
 checkFlag :: Flag -> Flags -> Bool
 checkFlag (Flag f1) (Flags fA) = (f1 .&. fA) /= 0
 
+-- | A 'Flags' with no 'Flag' set.
 emptyFlags :: Flags
 emptyFlags = Flags 0
 
@@ -307,6 +332,24 @@ displayFlags fl = execWriter $ do
   f "conversionSyntax" conversionSyntax
 
 
+-- | The Env monad
+--
+-- Since this is a binding to a C library, all the work happens in
+-- the mutable land of C pointers.  In addition, the General Decimal
+-- Arithmetic specification states that most computations occur
+-- within a @context@, which affects the manner in which
+-- computations are done (for instance, the context determines the
+-- rounding algorithm).  The context also carries some results from
+-- computations (for instance, a computation might set a flag to
+-- indicate that the result is rounded or inexact or was a division
+-- by zero.)
+--
+-- The Env monad captures both the context and the IO.  Because
+-- 'Dec' is exposed only as an immutable type, and because there is
+-- no way to do arbitrary IO in the Env monad (which is why it is
+-- not an instance of the 'MonadIO' class), it is safe to put an
+-- 'unsafePerformIO' on Env computations so they can be done in pure
+-- functions.
 newtype Env a = Env { unEnv :: Ptr C'decContext -> IO a }
 
 instance Functor Env where
@@ -324,21 +367,26 @@ instance Monad Env where
     b p
   fail s = Env $ \_ -> fail s
 
+-- | The current status flags, which indicate results from previous
+-- computations.
 getStatus :: Env Flags
 getStatus = Env $ \cPtr -> do
   let pSt = p'decContext'status cPtr
   fmap Flags . peek $ pSt
 
+-- | Set the current status to whatever you wish.
 setStatus :: Flags -> Env ()
 setStatus f = Env $ \cPtr -> do
   let pSt = p'decContext'status cPtr
   poke pSt . unFlags $ f
 
+-- | The current rounding method
 getRound :: Env Round
 getRound = Env $ \cPtr -> do
   let pR = p'decContext'round cPtr
   fmap Round . peek $ pR
 
+-- | Change the current rounding method
 setRound :: Round -> Env ()
 setRound r = Env $ \cPtr -> do
   let pR = p'decContext'round cPtr
@@ -358,6 +406,7 @@ runEnvIO (Env k) = do
 
 -- # Class
 
+-- | Different categories of 'Dec'.
 newtype DecClass = DecClass CInt
   deriving (Eq, Ord, Show)
 
@@ -394,7 +443,15 @@ posInf = DecClass c'DEC_CLASS_POS_INF
 
 
 -- | Decimal number.  This is immutable, like any Haskell value you
--- would ordinarily work with.
+-- would ordinarily work with.  (Actually, that is a bit of a lie.
+-- Under the covers it is a pointer to a C struct, which is in fact
+-- mutable like anything in C.  However, the API exposed in this
+-- module does not mutate a Dec after a function returns one.)
+--
+-- As indicated in the General Decimal Arithmetic specification,
+-- a 'Dec' might be a finite number (perhaps the most common type)
+-- or it might be infinite or a not-a-number.  'decClass' will tell
+-- you a little more about a particular 'Dec'.
 newtype Dec = Dec { unDec :: ForeignPtr C'decQuad }
 
 -- | Creates a new Dec.  Uninitialized, so don't export this
@@ -403,28 +460,6 @@ newDec :: IO Dec
 newDec = fmap Dec mallocForeignPtr
 
 -- # Helpers
-
-type Copier
-  = Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> IO (Ptr C'decQuad)
-
-copier
-  :: Copier
-  -> Dec
-  -> Dec
-  -> Env Dec
-copier f fr to = Env $ \_ ->
-  newDec >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
-  withForeignPtr (unDec fr) $ \pF ->
-  withForeignPtr (unDec to) $ \pT ->
-  c'decQuadCopy pR pT >>
-  f pR pF >>
-  newDec >>= \c ->
-  withForeignPtr (unDec c) $ \pC ->
-  c'decQuadCanonical pC pR >>
-  return r
 
 type Unary
   = Ptr C'decQuad
@@ -565,39 +600,69 @@ getRounded f (Round r) d = Env $ \pC ->
 
 -- # Functions from decQuad. In alphabetical order.
 
+-- | Absolute value.  NaNs are handled normally (the sign of an NaN
+-- is not affected, and an sNaN sets 'invalidOperation'.
 abs :: Dec -> Env Dec
 abs = unary c'decQuadAbs
 
 add :: Dec -> Dec -> Env Dec
 add = binary c'decQuadAdd
 
+-- | Digit-wise logical and.  Operands must be:
+--
+-- * zero or positive
+-- * integers
+-- * comprise only zeroes and/or ones
+--
+-- If not, 'invalidOperation' is set.
 and :: Dec -> Dec -> Env Dec
 and = binary c'decQuadAnd
 
+-- | More information about a particular 'Dec'.
 decClass :: Dec -> Env DecClass
 decClass = fmap DecClass . unaryGet c'decQuadClass
 
--- | Does not return an Ordering because the result might be an NaN.
+-- | Compares two 'Dec' numerically.  The result might be @-1@, @0@,
+-- @1@, or NaN, where @-1@ means x is less than y, @0@ indicates
+-- numerical equality, @1@ means y is greater than x.  NaN is
+-- returned only if x or y is an NaN.
+--
+-- Thus, this function does not return an 'Ordering' because the
+-- result might be an NaN.
+--
 compare :: Dec -> Dec -> Env Dec
 compare = binary c'decQuadCompare
 
+-- | Same as 'compare', but a quietNaN is treated like a signaling
+-- NaN (sets 'invalidOperation').
 compareSignal :: Dec -> Dec -> Env Dec
 compareSignal = binary c'decQuadCompareSignal
 
+-- | Compares using an IEEE 754 total ordering, which takes into
+-- account the exponent.  IEEE 754 says that this function might
+-- return different results depending upon whether the operands are
+-- canonical; 'Dec' are always canonical so you don't need to worry
+-- about that here.
 compareTotal :: Dec -> Dec -> Env Dec
 compareTotal = binaryCtxFree c'decQuadCompareTotal
 
+-- | Same as 'compareTotal' but compares the absolute value of the
+-- two arguments.
 compareTotalMag :: Dec -> Dec -> Env Dec
 compareTotalMag = binaryCtxFree c'decQuadCompareTotalMag
 
-copyAbs :: Dec -> Dec -> Env Dec
-copyAbs = copier c'decQuadCopyAbs
-
-copyNegate :: Dec -> Dec -> Env Dec
-copyNegate = copier c'decQuadCopyNegate
-
+-- | @copySign x y@ returns @z@, which is a copy of @x@ but has the
+-- sign of @y@.  Unlike @decQuadCopySign@, the result is always
+-- canonical.  This function never raises any signals.
 copySign :: Dec -> Dec -> Env Dec
-copySign = copier c'decQuadCopySign
+copySign fr to = Env $ \_ ->
+  newDec >>= \r ->
+  withForeignPtr (unDec r) $ \pR ->
+  withForeignPtr (unDec fr) $ \pF ->
+  withForeignPtr (unDec to) $ \pT ->
+  c'decQuadCopySign pR pF pT >>
+  c'decQuadCanonical pR pR >>
+  return r
 
 digits :: Dec -> Env Int
 digits = fmap fromIntegral . unaryGet c'decQuadDigits
@@ -608,6 +673,7 @@ divide = binary c'decQuadDivide
 divideInteger :: Dec -> Dec -> Env Dec
 divideInteger = binary c'decQuadDivideInteger
 
+-- | fused multiply add.
 fma :: Dec -> Dec -> Dec -> Env Dec
 fma = ternary c'decQuadFMA
 
@@ -635,9 +701,6 @@ fromUInt32 i = Env $ \_ ->
 
 invert :: Dec -> Env Dec
 invert = unary c'decQuadInvert
-
-isCanonical :: Dec -> Env Bool
-isCanonical = boolean c'decQuadIsCanonical
 
 isFinite :: Dec -> Env Bool
 isFinite = boolean c'decQuadIsFinite
@@ -705,12 +768,26 @@ nextPlus = unary c'decQuadNextPlus
 nextToward :: Dec -> Dec -> Env Dec
 nextToward = binary c'decQuadNextToward
 
+-- | Digit wise logical inclusive Or.  Operands must be:
+--
+-- * zero or positive
+-- * integers
+-- * comprise only zeroes and/or ones
+--
+-- If not, 'invalidOperation' is set.
 or :: Dec -> Dec -> Env Dec
 or = binary c'decQuadOr
 
+-- | Same effect as @0 + x@ where the exponent of the zero is the
+-- same as that of @x@ if @x@ is finite).  NaNs are handled as for
+-- arithmetic operations.
 plus :: Dec -> Env Dec
 plus = unary c'decQuadPlus
 
+-- | @quantize x y@ returns @z@ which is @x@ set to have the same
+-- quantum as @y@; that is, numerically the same value but rounded
+-- or padded if necessary to have the same exponent as @y@.  Useful
+-- for rounding monetary quantities.
 quantize :: Dec -> Dec -> Env Dec
 quantize = binary c'decQuadQuantize
 
@@ -894,13 +971,16 @@ decode d = Env $ \_ ->
   peekArray c'DECQUAD_Pmax pArr >>= \coef ->
   return (getDecoded sgn ex coef)
 
+-- | Encodes a new 'Dec'.  The result is always canonical.  However,
+-- the function does not signal if the result is an sNaN.
 encode :: Decoded -> Env Dec
 encode dcd = Env $ \_ ->
   newDec >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
   let (expn, arr, sgn) = packDecoded dcd in
   withArray arr $ \pArr ->
-  c'decQuadFromBCD pD expn pArr sgn >>= \_ ->
+  c'decQuadFromBCD pD expn pArr sgn >>
+  c'decQuadCanonical pD pD >>
   return d
 
 -- Converts a BCD to an Integer.
@@ -977,6 +1057,8 @@ getDecoded sgn ex coef = Decoded s v
 
 -- skipped: classString - not needed
 -- skipped: copy - not needed
+-- skipped: copyAbs - use abs instead
+-- skipped: copyNegate - use negate instead
 -- skipped: fromBCD - use encode function instead
 -- skipped: fromNumber - not needed
 -- skipped: fromPacked - use encode function instead
@@ -984,6 +1066,7 @@ getDecoded sgn ex coef = Decoded s v
 -- skipped: fromWider - not needed
 -- skipped: getCoefficient - use decode function instead
 -- skipped: getExponent - use decode function instead
+-- skipped: isCanonical - not needed
 -- skipped: radix - not needed
 -- skipped: setCoefficient - use encode function instead
 -- skipped: setExponent - use encode function instead
@@ -991,3 +1074,4 @@ getDecoded sgn ex coef = Decoded s v
 -- skipped: toNumber - not needed
 -- skipped: toPacked - use decode function instead
 -- skipped: toWider - not needed
+-- skipped: show - not needed; impure

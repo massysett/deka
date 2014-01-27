@@ -1,5 +1,8 @@
 deka provides correctly rounded decimal arithmetic for Haskell.
 
+Currently the library is nearly done, but it needs more tests and
+documentation, which I'm working on.  Use at your own risk.
+
 The core of deka is a binding to the C library decNumber. As the
 author of deka, I have no association with the author of decNumber,
 and any errors in this library are mine and should be reported to
