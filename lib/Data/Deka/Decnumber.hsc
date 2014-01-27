@@ -180,7 +180,8 @@ module Data.Deka.Decnumber where
 #ccall decQuadCanonical , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
 #ccall decQuadCopyAbs , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
 #ccall decQuadCopyNegate , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
-#ccall decQuadCopySign , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall decQuadCopySign , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall decQuadCopy , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
 
 -- Non-computational
 

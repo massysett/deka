@@ -157,8 +157,14 @@ module Data.Deka.IO
   , scaleB
 
   -- * Copies
-  -- FIXME many of these are broken
-  , canonical
+  -- | Each copy function takes two arguments: a @from@ argument is
+  -- first, and then a @to@ argument. All 'Dec' are immutable, so
+  -- neither 'Dec' is changed; instead, a third 'Dec' is returned.
+  -- First a bitwise copy of the @to@ argument is created, then the
+  -- relevant information is copied from the @from@ 'Dec' to this
+  -- copy.
+  --
+  -- The result is always canonical.
   , copyAbs
   , copyNegate
   , copySign
@@ -398,6 +404,28 @@ newDec = fmap Dec mallocForeignPtr
 
 -- # Helpers
 
+type Copier
+  = Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> IO (Ptr C'decQuad)
+
+copier
+  :: Copier
+  -> Dec
+  -> Dec
+  -> Env Dec
+copier f fr to = Env $ \_ ->
+  newDec >>= \r ->
+  withForeignPtr (unDec r) $ \pR ->
+  withForeignPtr (unDec fr) $ \pF ->
+  withForeignPtr (unDec to) $ \pT ->
+  c'decQuadCopy pR pT >>
+  f pR pF >>
+  newDec >>= \c ->
+  withForeignPtr (unDec c) $ \pC ->
+  c'decQuadCanonical pC pR >>
+  return r
+
 type Unary
   = Ptr C'decQuad
   -> Ptr C'decQuad
@@ -412,8 +440,8 @@ unary f d = Env $ \ptrC ->
   newDec >>= \r ->
   withForeignPtr (unDec d) $ \ptrX ->
   withForeignPtr (unDec r) $ \ptrR ->
-  void (f ptrR ptrX ptrC)
-  >> return r
+  f ptrR ptrX ptrC >>
+  return r
 
 type Binary
   = Ptr C'decQuad
@@ -432,8 +460,8 @@ binary f x y = Env $ \pC ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
-  void (f pR pX pY pC)
-  >> return r
+  f pR pX pY pC >>
+  return r
 
 type BinaryCtxFree
   = Ptr C'decQuad
@@ -451,7 +479,8 @@ binaryCtxFree f x y = Env $ \_ ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
-  void (f pR pX pY) >> return r
+  f pR pX pY >>
+  return r
 
 type UnaryGet a
   = Ptr C'decQuad
@@ -463,21 +492,6 @@ unaryGet
   -> Env a
 unaryGet f d = Env $ \_ ->
   withForeignPtr (unDec d) $ \pD -> f pD
-
-type UnaryCtxFree
-  = Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> IO (Ptr C'decQuad)
-
-unaryCtxFree
-  :: UnaryCtxFree
-  -> Dec
-  -> Env Dec
-unaryCtxFree f d = Env $ \_ ->
-  newDec >>= \n -> 
-  withForeignPtr (unDec n) $ \pN ->
-  withForeignPtr (unDec d) $ \pD -> f pN pD
-  >> return n
 
 type Ternary
   = Ptr C'decQuad
@@ -499,7 +513,7 @@ ternary f x y z = Env $ \pC ->
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
   withForeignPtr (unDec z) $ \pZ ->
-  void (f pR pX pY pZ pC)
+  f pR pX pY pZ pC
   >> return r
 
 type Boolean
@@ -529,7 +543,7 @@ mkString
 mkString f d = Env $ \_ ->
   withForeignPtr (unDec d) $ \pD ->
   allocaBytes c'DECQUAD_String $ \pS ->
-  void (f pD pS)
+  f pD pS
   >> BS8.packCString pS
 
 type GetRounded a
@@ -560,9 +574,6 @@ add = binary c'decQuadAdd
 and :: Dec -> Dec -> Env Dec
 and = binary c'decQuadAnd
 
-canonical :: Dec -> Env Dec
-canonical = unaryCtxFree c'decQuadCanonical
-
 decClass :: Dec -> Env DecClass
 decClass = fmap DecClass . unaryGet c'decQuadClass
 
@@ -579,14 +590,14 @@ compareTotal = binaryCtxFree c'decQuadCompareTotal
 compareTotalMag :: Dec -> Dec -> Env Dec
 compareTotalMag = binaryCtxFree c'decQuadCompareTotalMag
 
-copyAbs :: Dec -> Env Dec
-copyAbs = unaryCtxFree c'decQuadCopyAbs
+copyAbs :: Dec -> Dec -> Env Dec
+copyAbs = copier c'decQuadCopyAbs
 
-copyNegate :: Dec -> Env Dec
-copyNegate = unaryCtxFree c'decQuadCopyNegate
+copyNegate :: Dec -> Dec -> Env Dec
+copyNegate = copier c'decQuadCopyNegate
 
-copySign :: Dec -> Env Dec
-copySign = unaryCtxFree c'decQuadCopySign
+copySign :: Dec -> Dec -> Env Dec
+copySign = copier c'decQuadCopySign
 
 digits :: Dec -> Env Int
 digits = fmap fromIntegral . unaryGet c'decQuadDigits
@@ -604,7 +615,7 @@ fromInt32 :: C'int32_t -> Env Dec
 fromInt32 i = Env $ \_ ->
   newDec >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
-  void (c'decQuadFromInt32 pR i)
+  c'decQuadFromInt32 pR i
   >> return r
 
 fromString :: BS8.ByteString -> Env Dec
@@ -612,15 +623,15 @@ fromString s = Env $ \pC ->
   newDec >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   BS8.useAsCString s $ \pS ->
-  void (c'decQuadFromString pR pS pC)
-  >> return r
+  c'decQuadFromString pR pS pC >>
+  return r
 
 fromUInt32 :: C'uint32_t -> Env Dec
 fromUInt32 i = Env $ \_ ->
   newDec >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
-  void (c'decQuadFromUInt32 pR i)
-  >> return r
+  c'decQuadFromUInt32 pR i >>
+  return r
 
 invert :: Dec -> Env Dec
 invert = unary c'decQuadInvert
@@ -755,8 +766,8 @@ toIntegralValue (Round rnd) d = Env $ \pC ->
   withForeignPtr (unDec d) $ \pD ->
   newDec >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
-  void (c'decQuadToIntegralValue pR pD pC rnd)
-  >> return r
+  c'decQuadToIntegralValue pR pD pC rnd >>
+  return r
 
 toString :: Dec -> Env BS8.ByteString
 toString = mkString c'decQuadToString
@@ -778,8 +789,8 @@ zero :: Env Dec
 zero = Env $ \_ ->
   newDec >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
-  void (c'decQuadZero pD)
-  >> return d
+  c'decQuadZero pD >>
+  return d
 
 -- # Conversions
 
