@@ -39,6 +39,8 @@ maxSize s g = sized $ \o -> resize (min o s) g
 numDigits :: (Num a, Show a) => a -> Int
 numDigits = length . show . abs
 
+-- # Generators
+
 genSign :: Gen E.Sign
 genSign = elements [ E.Positive, E.Negative ]
 
@@ -87,6 +89,21 @@ genFromDecoded :: Gen E.Dec
 genFromDecoded = do
   d <- genDecoded
   return . fst . runEnv . E.encode $ d
+
+-- # Test builders
+
+-- | Dec arguments are unchanged.
+imuUni
+  :: String
+  -- ^ Name of this function
+  -> (E.Dec -> E.Env E.Dec)
+  -> TestTree
+imuUni n f = testGroup (n ++ ": unary")
+  [ testProperty "only argument is unchanged" $
+    forAll genFromDecoded $ \d -> evalEnv $ do
+      _ <- f d
+      undefined
+  ]
 
 
 tests = testGroup "IO"
