@@ -29,6 +29,10 @@ and decNumber is at
 
 http://speleotrove.com/decimal/decnumber.html
 
+and more about decimal arithmetic generally at
+
+http://speleotrove.com/decimal/
+
 You will need to have the decNumber library installed in order to
 use this library.  I have packaged decNumber for easy installation,
 as the original decNumber files are distributed as plain C files

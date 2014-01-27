@@ -7,6 +7,8 @@
 --
 -- <http://speleotrove.com/decimal/decnumber.html>
 --
+-- <http://speleotrove.com/decimal/decarith.html>
+--
 -- <http://speleotrove.com/decimal/>
 --
 -- In particular, this module implements the decQuad type.  decQuad
