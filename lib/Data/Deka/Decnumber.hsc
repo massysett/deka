@@ -13,6 +13,7 @@ module Data.Deka.Decnumber where
 
 #strict_import
 
+#num NULL
 #num DEC_ROUND_CEILING
 #num DEC_ROUND_UP
 #num DEC_ROUND_HALF_UP

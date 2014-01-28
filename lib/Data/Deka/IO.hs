@@ -924,17 +924,16 @@ coeffExp c e
   | e < l = Left "exponent is too small"
   | otherwise = Right $ CoeffExp c e
   where
-    (l, h) = minMaxExp c
+    (l, h) = minMaxExp
 
--- | The minimum and maximum possible exponent for a given
--- significand.
-minMaxExp :: Coefficient -> (Int, Int)
-minMaxExp (Coefficient s) = (l, h)
+-- | The minimum and maximum possible exponent.
+minMaxExp :: (Int, Int)
+minMaxExp = (l, h)
   where
     l = negate x - (c - 1) + 1
     h = x - (c - 1)
     x = c'DECQUAD_Emax
-    c = length . show $ s
+    c = c'DECQUAD_Pmax
 
 -- | A Payload is associated with an NaN.  It is always zero or
 -- positive.  The number of digits is always less than or equal to
@@ -979,10 +978,13 @@ encode :: Decoded -> Env Dec
 encode dcd = Env $ \_ ->
   newDec >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
-  let (expn, arr, sgn) = packDecoded dcd in
+  let (expn, arr) = packBCD dcd in
   withArray arr $ \pArr ->
-  c'decQuadFromBCD pD expn pArr sgn >>
-  c'decQuadCanonical pD pD >>
+  c'decQuadFromPackedChecked pD expn pArr >>= \r ->
+  let iPtr = ptrToIntPtr r
+  in if iPtr == c'NULL
+      then error ("Deka.IO: encode failed. Decoded: " ++ show dcd)
+      else return () >>
   return d
 
 -- Converts a BCD to an Integer.
@@ -1016,8 +1018,8 @@ toBCD len start = unfoldr f (len, start)
       in g
 
 
-packDecoded :: Decoded -> (C'int32_t, [C'uint8_t], C'int32_t)
-packDecoded (Decoded s v) = (expn, bcd, sign)
+_packDecoded :: Decoded -> (C'int32_t, [C'uint8_t], C'int32_t)
+_packDecoded (Decoded s v) = (expn, bcd, sign)
   where
     sign = case s of
       Positive -> 0
@@ -1054,6 +1056,62 @@ getDecoded sgn ex coef = Decoded s v
       where
         pld = Payload $ fromBCD (c'DECQUAD_Pmax - 1) (tail coef)
         coe = Coefficient $ fromBCD c'DECQUAD_Pmax coef
+
+packNibbles
+  :: C'uint8_t
+  -> C'uint8_t
+  -> C'uint8_t
+packNibbles a b =
+  let r = a
+      r' = shiftL r 4
+  in r' + b
+
+lastByte :: Sign -> C'uint8_t -> C'uint8_t
+lastByte s u =
+  shiftL u 4 .|. case s of
+    Positive -> c'DECPPLUS
+    Negative -> c'DECPMINUS
+
+firstByte :: C'uint8_t -> C'uint8_t
+firstByte = id
+
+-- | List must be DECQUAD_Pmax long
+packList :: Sign -> [C'uint8_t] -> [C'uint8_t]
+packList s ls = case ls of
+  x:xs ->
+    firstByte x : packRest xs
+  [] -> error "packList: empty list"
+  where
+    packRest rs = case rs of
+      x:y:xs -> packNibbles x y : packRest xs
+      x:[] -> [lastByte s x]
+      [] -> error "packRest: empty list"
+
+packInfinite :: Sign -> [C'uint8_t]
+packInfinite s = packList s (replicate c'DECQUAD_Pmax 0)
+
+packNaN :: Sign -> Payload -> [C'uint8_t]
+packNaN s p =
+  packList s (0 : toBCD (c'DECQUAD_Pmax - 1) (unPayload p))
+
+packFinite :: Sign -> Coefficient -> [C'uint8_t]
+packFinite s c =
+  packList s (toBCD c'DECQUAD_Pmax (unCoefficient c))
+
+
+packBCD :: Decoded -> (C'int32_t, [C'uint8_t])
+packBCD (Decoded s v) = (expt, ls)
+  where
+    expt = case v of
+      Infinite -> c'DECFLOAT_Inf
+      NaN n _ -> case n of
+        Signaling -> c'DECFLOAT_sNaN
+        Quiet -> c'DECFLOAT_qNaN
+      Finite (CoeffExp _ i) -> fromIntegral i
+    ls = case v of
+      Infinite -> packInfinite s
+      NaN _ p -> packNaN s p
+      Finite (CoeffExp c _) -> packFinite s c
 
 -- decQuad functions not recreated here:
 

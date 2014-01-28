@@ -55,16 +55,13 @@ genCoefficient = do
     Left _ -> error "genCoefficient failed"
     Right g -> return g
 
-genExp
-  :: E.Coefficient
-  -- ^ Significand
-  -> Gen Int
-genExp = choose . E.minMaxExp
+genExp :: Gen Int
+genExp = choose E.minMaxExp
 
 genCoeffExp :: Gen E.CoeffExp
 genCoeffExp = do
   s <- genCoefficient
-  e <- genExp s
+  e <- genExp
   case E.coeffExp s e of
     Left _ -> error "genCoeffExp failed"
     Right g -> return g
@@ -202,16 +199,16 @@ tests = testGroup "IO"
 
     , testGroup "coeffExp"
       [ testProperty "fails when exponent is too small" $
-        forAll genCoefficient $ \c -> do
-          let (l, _) = E.minMaxExp c
-          e <- choose (minBound, l - 1)
-          return . isLeft $ E.coeffExp c e
+        forAll genCoefficient $ \c ->
+        let (l, _) = E.minMaxExp in
+        forAll (choose (minBound, l - 1)) $ \e ->
+        isLeft $ E.coeffExp c e
 
       , testProperty "fails when exponent is too large" $
-        forAll genCoefficient $ \c -> do
-          let (_, h) = E.minMaxExp c
-          e <- choose (h + 1, maxBound)
-          return . isLeft $ E.coeffExp c e
+        forAll genCoefficient $ \c ->
+          let (_, h) = E.minMaxExp
+          in forAll (choose (h + 1, maxBound)) $ \e ->
+          isLeft $ E.coeffExp c e
 
       , testProperty "fails when exponent is < c'DECQUAD_Emin" $
         forAll genCoefficient $ \c ->
@@ -224,9 +221,9 @@ tests = testGroup "IO"
         isLeft $ E.coeffExp c e
 
       , testProperty "succeeds when it should" $
-        forAll genCoefficient $ \c -> do
-          e <- choose . E.minMaxExp $ c
-          return . isRight $ E.coeffExp c e
+        forAll genCoefficient $ \c ->
+        forAll (choose E.minMaxExp) $ \e ->
+        isRight $ E.coeffExp c e
       ]
 
       , testGroup "payload"
