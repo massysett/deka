@@ -97,6 +97,21 @@ genFinite = do
   s <- genSign
   return . evalEnv . E.encode $ E.Decoded s v
 
+genSmallFinite :: Gen Visible
+genSmallFinite = do
+  c <- choose (0, biggestDigs 5)
+  let co = case E.coefficient c of
+        Left _ -> error "genSmallFinite: coefficient failed"
+        Right g -> g
+  e <- choose (-10, 10)
+  let ce = case E.coeffExp co e of
+        Left _ -> error "genSmallFinite: coeffExp failed"
+        Right g -> g
+  s <- genSign
+  let d = E.Decoded s (E.Finite ce)
+      dec = evalEnv (E.encode d)
+  return . Visible $ dec
+
 newtype Visible = Visible { unVisible :: E.Dec }
 
 instance Show Visible where
@@ -110,13 +125,17 @@ associativity
   -> (E.Dec -> E.Dec -> E.Env E.Dec)
   -> TestTree
 associativity n f = testProperty desc $
-  forAll (fmap Visible genFinite) $ \(Visible x) ->
-  forAll (fmap Visible genFinite) $ \(Visible y) ->
-  forAll (fmap Visible genFinite) $ \(Visible z) -> evalEnv $ do
-    r1 <- f x y >>= f z
-    r2 <- f y z >>= f x
-    c <- E.compareTotal r1 r2
-    E.isZero c
+  forAll genSmallFinite $ \(Visible x) ->
+  forAll genSmallFinite $ \(Visible y) ->
+  forAll genSmallFinite $ \(Visible z) ->
+  let (noFlags, resIsZero) = evalEnv $ do
+        r1 <- f x y >>= f z
+        r2 <- f y z >>= f x
+        c <- E.compare r1 r2
+        isZ <- E.isZero c
+        fl <- E.getStatus
+        return (fl == E.emptyFlags, isZ)
+  in noFlags ==> resIsZero
   where
     desc = n ++ " is associative on finite numbers"
 
@@ -126,12 +145,12 @@ commutativity
   -> (E.Dec -> E.Dec -> E.Env E.Dec)
   -> TestTree
 commutativity n f = testProperty desc $
-  forAll (fmap Visible genFinite) $ \(Visible x) ->
-  forAll (fmap Visible genFinite) $ \(Visible y) ->
+  forAll genSmallFinite $ \(Visible x) ->
+  forAll genSmallFinite $ \(Visible y) ->
   let (noFlags, resIsZero) = evalEnv $ do
         r1 <- f x y
         r2 <- f y x
-        c <- E.compareTotal r1 r2
+        c <- E.compare r1 r2
         isZ <- E.isZero c
         fl <- E.getStatus
         return (fl == E.emptyFlags, isZ)
@@ -233,10 +252,10 @@ tests = testGroup "IO"
 
         , testProperty "round trip from Decoded" $
           forAll genDecoded $ \d ->
-          evalEnv $ do
-            ecd <- E.encode d
-            dcd <- E.decode ecd
-            return $ dcd == d
+          let r = evalEnv $ do
+                ecd <- E.encode d
+                E.decode ecd
+          in printTestCase ("result: " ++ show r) (r == d)
         ]
       ]
 
