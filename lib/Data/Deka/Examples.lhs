@@ -11,6 +11,9 @@
 
 module Data.Deka.Examples where
 
+-- For very simple arithmetic, just import Data.Deka.  It contains a
+-- Deka type, which is an instance of Num.
+
 -- For work that goes beyond very simple arithmetic, you will
 -- typically import Data.Deka.Pure.  This allows you to run all the
 -- code in pure functions.  "Under the covers" things happen in the
@@ -23,6 +26,7 @@ module Data.Deka.Examples where
 -- Data.Deka.Pure exports a lot of functions that clash with Prelude
 -- names.
 
+import Data.Deka
 import Data.Deka.Pure as D
 
--- | 
+-- | A Quad is the number type. 

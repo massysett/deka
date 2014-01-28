@@ -57,6 +57,7 @@ library
     , Data.Deka.Decnumber
     , Data.Deka.IO
     , Data.Deka.Pure
+    , Data.Deka.Examples
   
   build-depends:
       base >=4.6 && <4.7
