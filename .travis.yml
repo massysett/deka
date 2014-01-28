@@ -8,3 +8,7 @@ before_install:
   - sudo ldconfig
   - cd ..
 
+script:
+  - cabal configure --enable-tests
+  - cabal build
+  - cabal test --show-details=always
