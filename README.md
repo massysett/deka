@@ -44,3 +44,6 @@ downloadable by clicking on the big green button here:
 https://github.com/massysett/decnumber/releases
 
 deka is licensed under the BSD license, see the LICENSE file.
+
+[![Build Status](https://travis-ci.org/massysett/deka.png?branch=master)](https://travis-ci.org/massysett/deka)
+
