@@ -14,6 +14,8 @@ module Data.Deka.Decnumber where
 #strict_import
 
 #num NULL
+
+#integral_t enum rounding
 #num DEC_ROUND_CEILING
 #num DEC_ROUND_UP
 #num DEC_ROUND_HALF_UP
@@ -35,7 +37,7 @@ module Data.Deka.Decnumber where
 #field digits , <int32_t>
 #field emax , <int32_t>
 #field emin , <int32_t>
-#field round , CInt
+#field round , <enum rounding>
 #field traps , <uint32_t>
 #field status , <uint32_t>
 #field clamp , <uint8_t>
@@ -45,6 +47,7 @@ module Data.Deka.Decnumber where
 #num DEC_INIT_DECQUAD
 #ccall decContextDefault , Ptr <decContext> -> <int32_t> -> IO (Ptr <decContext>)
 
+#integral_t enum decClass
 #num DEC_CLASS_SNAN
 #num DEC_CLASS_QNAN
 #num DEC_CLASS_NEG_INF
@@ -120,8 +123,8 @@ module Data.Deka.Decnumber where
 
 -- Utilities
 
-#ccall decQuadToInt32 , Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO <int32_t>
-#ccall decQuadToInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO <int32_t>
+#ccall decQuadToInt32 , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <int32_t>
+#ccall decQuadToInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <int32_t>
 
 #ccall decQuadFromInt32 , Ptr <decQuad> -> <int32_t> -> IO (Ptr <decQuad>)
 #ccall decQuadFromPackedChecked , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> IO (Ptr <decQuad>)
@@ -134,8 +137,8 @@ module Data.Deka.Decnumber where
 #ccall decQuadShow , Ptr <decQuad> -> CString -> IO ()
 #ccall decQuadToEngString , Ptr <decQuad> -> CString -> IO CString
 #ccall decQuadToString , Ptr <decQuad> -> CString -> IO CString
-#ccall decQuadToUInt32 , Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO <uint32_t>
-#ccall decQuadToUInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO <uint32_t>
+#ccall decQuadToUInt32 , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <uint32_t>
+#ccall decQuadToUInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <uint32_t>
 #ccall decQuadZero , Ptr <decQuad> -> IO (Ptr <decQuad>)
 #ccall decQuadAbs , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadAdd , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
@@ -166,7 +169,7 @@ module Data.Deka.Decnumber where
 #ccall decQuadShift , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadSubtract , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadToBCD , Ptr <decQuad> -> Ptr <int32_t> -> Ptr <uint8_t> -> IO <int32_t>
-#ccall decQuadToIntegralValue , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> CInt -> IO (Ptr <decQuad>)
+#ccall decQuadToIntegralValue , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO (Ptr <decQuad>)
 #ccall decQuadToIntegralExact , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 #ccall decQuadXor , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 
@@ -186,7 +189,7 @@ module Data.Deka.Decnumber where
 
 -- Non-computational
 
-#ccall decQuadClass , Ptr <decQuad> -> IO CInt
+#ccall decQuadClass , Ptr <decQuad> -> IO <decClass>
 #ccall decQuadClassString , Ptr <decQuad> -> IO CString
 #ccall decQuadDigits , Ptr <decQuad> -> IO <uint32_t>
 #ccall decQuadIsCanonical , Ptr <decQuad> -> IO <uint32_t>

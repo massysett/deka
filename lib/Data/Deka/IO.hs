@@ -233,7 +233,7 @@ import Control.Monad.Trans.Writer
 
 -- # Rounding
 
-newtype Round = Round { unRound :: CInt }
+newtype Round = Round { unRound :: C'rounding }
   deriving (Eq, Ord, Show)
 
 roundCeiling :: Round
@@ -409,7 +409,7 @@ runEnvIO (Env k) = do
 -- # Class
 
 -- | Different categories of 'Dec'.
-newtype DecClass = DecClass CInt
+newtype DecClass = DecClass C'decClass
   deriving (Eq, Ord, Show)
 
 sNan :: DecClass
@@ -586,7 +586,7 @@ mkString f d = Env $ \_ ->
 type GetRounded a
   = Ptr C'decQuad
   -> Ptr C'decContext
-  -> CInt
+  -> C'rounding
   -> IO a
 
 getRounded
