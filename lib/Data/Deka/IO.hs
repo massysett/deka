@@ -1018,25 +1018,6 @@ toBCD len start = unfoldr f (len, start)
       in g
 
 
-_packDecoded :: Decoded -> (C'int32_t, [C'uint8_t], C'int32_t)
-_packDecoded (Decoded s v) = (expn, bcd, sign)
-  where
-    sign = case s of
-      Positive -> 0
-      Negative -> c'DECFLOAT_Sign
-    (expn, bcd) = case v of
-      Finite (CoeffExp coe ex) ->
-        (fromIntegral ex, toBCD c'DECQUAD_Pmax (unCoefficient coe))
-      Infinite ->
-        (c'DECFLOAT_Inf, toBCD c'DECQUAD_Pmax 0)
-      NaN n p -> (ex, bc)
-        where
-          ex = case n of
-            Signaling -> c'DECFLOAT_sNaN
-            Quiet -> c'DECFLOAT_qNaN
-          bc = 0 : toBCD (c'DECQUAD_Pmax - 1) (unPayload p)
-
-
 getDecoded
   :: C'int32_t
   -- ^ Sign. Zero if sign is zero; non-zero if sign is not zero
