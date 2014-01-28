@@ -43,6 +43,15 @@ downloadable by clicking on the big green button here:
 
 https://github.com/massysett/decnumber/releases
 
+Much more documentation is available in the Haddock comments in the
+source files.  There is also a file of examples to get you started.
+It has copious comments.  It is written in literate Haskell, so the
+compiler keeps me honest with the example code.  Unfortunately
+Haddock does not play very nice with literate Haskell.  However, the
+file is easy to view on Github:
+
+[Examples](lib/Data/Deka/Docs/Examples.lhs)
+
 deka is licensed under the BSD license, see the LICENSE file.
 
 [![Build Status](https://travis-ci.org/massysett/deka.png?branch=master)](https://travis-ci.org/massysett/deka)

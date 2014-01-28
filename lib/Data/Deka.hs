@@ -18,7 +18,7 @@ import qualified Data.ByteString.Char8 as BS8
 import Control.Monad.Trans.Either
 
 flagsErrorMessage :: Flags -> Either String ()
-flagsErrorMessage fl = case displayFlags fl of
+flagsErrorMessage fl = case flagList fl of
   [] -> Right ()
   xs -> Left ("flags set: " ++
                 (concat . intersperse ", " $ xs))

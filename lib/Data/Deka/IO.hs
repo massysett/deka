@@ -68,7 +68,7 @@ module Data.Deka.IO
   , clearFlag
   , checkFlag
   , emptyFlags
-  , displayFlags
+  , flagList
 
   -- * Env monad
   , Env
@@ -318,8 +318,8 @@ emptyFlags :: Flags
 emptyFlags = Flags 0
 
 -- | Gives a list of strings, one for each flag that is set.
-displayFlags :: Flags -> [String]
-displayFlags fl = execWriter $ do
+flagList :: Flags -> [String]
+flagList fl = execWriter $ do
   let f s g
         | checkFlag g fl = tell [s]
         | otherwise = return ()
