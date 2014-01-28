@@ -168,12 +168,11 @@ available, which you can set.  This can be useful with division, for
 example, where you will not get exact results.  All results are
 computed to 34 digits of precision.
 
-> let tenThirds = P.evalEnv $ do
+> let { tenThirds = P.evalEnv $ do
 >         ten <- P.fromString . BS8.pack $ "10"
 >         three <- P.fromString . BS8.pack $ "6"
 >         P.divide ten three
->
-> in do {
+>     };
 
 > putStrLn "This is the result of 10 / 6:";
 > BS8.putStrLn . P.evalEnv . P.toString $ tenThirds;
@@ -200,8 +199,8 @@ methods are listed in the Haddock documentation for Data.Deka.IO.
 >   P.setRound P.roundDown
 >   r <- P.quantize tenThirds twoPlaces
 >   P.toString r
+> ;
 
-> };
 
 Flags
 -----
@@ -215,17 +214,16 @@ In addition to flags being available for inspection within the Env
 monad, you can get the final flags using runEnv.  FlagList gives you
 a list of flags that are set.
 
-> let (r, fl) = P.runEnv $ do
->       big1 <- P.fromString . BS8.pack $ "987e3000"
->       big2 <- P.fromString . BS8.pack $ "322e6000"
->       rslt <- P.multiply big1 big2
->       P.toString rslt
-> in do
->      putStr "result: "
->      BS8.putStrLn r
->      putStr "flags set: "
->      print . P.flagList $ fl
-> ;
+> let { (r, fl) = P.runEnv $ do
+>         big1 <- P.fromString . BS8.pack $ "987e3000"
+>         big2 <- P.fromString . BS8.pack $ "322e6000"
+>         rslt <- P.multiply big1 big2
+>         P.toString rslt
+>     };
+> putStr "result: ";
+> BS8.putStrLn r;
+> putStr "flags set: ";
+> print . P.flagList $ fl;
 
 The above example also shows that computations may return a Quad
 that is not finite--that is, it might be inifite, or it might be a
