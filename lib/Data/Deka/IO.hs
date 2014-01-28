@@ -17,7 +17,7 @@
 -- underflow; rather, the library will notify you if these things
 -- happen.
 --
--- Every function in this module returns canonical 'Dec' (contrast
+-- Every function in this module returns canonical 'Quad' (contrast
 -- the decNumber library which will, under limited circumstances,
 -- return non-canonical decimals).  I am not certain that canonical
 -- vs. non-canonical matters in typical use, though it may matter
@@ -29,8 +29,8 @@
 -- > import qualified Data.Deka.Pure as D
 module Data.Deka.IO
   (
-    -- * Dec
-    Dec
+    -- * Quad
+    Quad
 
     -- * Rounding
     -- | For more on the rounding algorithms, see
@@ -126,7 +126,7 @@ module Data.Deka.IO
   , toUInt32
   , toUInt32Exact
 
-  -- ** Other Dec
+  -- ** Other Quad
   , toIntegralExact
   , toIntegralValue
 
@@ -347,7 +347,7 @@ displayFlags fl = execWriter $ do
 -- by zero.)
 --
 -- The Env monad captures both the context and the IO.  Because
--- 'Dec' is exposed only as an immutable type, and because there is
+-- 'Quad' is exposed only as an immutable type, and because there is
 -- no way to do arbitrary IO in the Env monad (which is why it is
 -- not an instance of the 'MonadIO' class), it is safe to put an
 -- 'unsafePerformIO' on Env computations so they can be done in pure
@@ -408,7 +408,7 @@ runEnvIO (Env k) = do
 
 -- # Class
 
--- | Different categories of 'Dec'.
+-- | Different categories of 'Quad'.
 newtype DecClass = DecClass C'decClass
   deriving (Eq, Ord, Show)
 
@@ -448,18 +448,18 @@ posInf = DecClass c'DEC_CLASS_POS_INF
 -- would ordinarily work with.  (Actually, that is a bit of a lie.
 -- Under the covers it is a pointer to a C struct, which is in fact
 -- mutable like anything in C.  However, the API exposed in this
--- module does not mutate a Dec after a function returns one.)
+-- module does not mutate a Quad after a function returns one.)
 --
 -- As indicated in the General Decimal Arithmetic specification,
--- a 'Dec' might be a finite number (perhaps the most common type)
+-- a 'Quad' might be a finite number (perhaps the most common type)
 -- or it might be infinite or a not-a-number.  'decClass' will tell
--- you a little more about a particular 'Dec'.
-newtype Dec = Dec { unDec :: ForeignPtr C'decQuad }
+-- you a little more about a particular 'Quad'.
+newtype Quad = Quad { unDec :: ForeignPtr C'decQuad }
 
--- | Creates a new Dec.  Uninitialized, so don't export this
+-- | Creates a new Quad.  Uninitialized, so don't export this
 -- function.
-newDec :: IO Dec
-newDec = fmap Dec mallocForeignPtr
+newQuad :: IO Quad
+newQuad = fmap Quad mallocForeignPtr
 
 -- # Helpers
 
@@ -471,10 +471,10 @@ type Unary
 
 unary
   :: Unary
-  -> Dec
-  -> Env Dec
+  -> Quad
+  -> Env Quad
 unary f d = Env $ \ptrC ->
-  newDec >>= \r ->
+  newQuad >>= \r ->
   withForeignPtr (unDec d) $ \ptrX ->
   withForeignPtr (unDec r) $ \ptrR ->
   f ptrR ptrX ptrC >>
@@ -489,11 +489,11 @@ type Binary
 
 binary
   :: Binary
-  -> Dec
-  -> Dec
-  -> Env Dec
+  -> Quad
+  -> Quad
+  -> Env Quad
 binary f x y = Env $ \pC ->
-  newDec >>= \r ->
+  newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
@@ -508,11 +508,11 @@ type BinaryCtxFree
 
 binaryCtxFree
   :: BinaryCtxFree
-  -> Dec
-  -> Dec
-  -> Env Dec
+  -> Quad
+  -> Quad
+  -> Env Quad
 binaryCtxFree f x y = Env $ \_ ->
-  newDec >>= \r ->
+  newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
@@ -525,7 +525,7 @@ type UnaryGet a
 
 unaryGet
   :: UnaryGet a
-  -> Dec
+  -> Quad
   -> Env a
 unaryGet f d = Env $ \_ ->
   withForeignPtr (unDec d) $ \pD -> f pD
@@ -540,12 +540,12 @@ type Ternary
 
 ternary
   :: Ternary
-  -> Dec
-  -> Dec
-  -> Dec
-  -> Env Dec
+  -> Quad
+  -> Quad
+  -> Quad
+  -> Env Quad
 ternary f x y z = Env $ \pC ->
-  newDec >>= \r ->
+  newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
@@ -559,7 +559,7 @@ type Boolean
 
 boolean
   :: Boolean
-  -> Dec
+  -> Quad
   -> Env Bool
 boolean f d = Env $ \_ ->
   withForeignPtr (unDec d) $ \pD ->
@@ -575,7 +575,7 @@ type MkString
 
 mkString
   :: MkString
-  -> Dec
+  -> Quad
   -> Env BS8.ByteString
 mkString f d = Env $ \_ ->
   withForeignPtr (unDec d) $ \pD ->
@@ -592,7 +592,7 @@ type GetRounded a
 getRounded
   :: GetRounded a
   -> Round
-  -> Dec
+  -> Quad
   -> Env a
 getRounded f (Round r) d = Env $ \pC ->
   withForeignPtr (unDec d) $ \pD ->
@@ -604,10 +604,10 @@ getRounded f (Round r) d = Env $ \pC ->
 
 -- | Absolute value.  NaNs are handled normally (the sign of an NaN
 -- is not affected, and an sNaN sets 'invalidOperation'.
-abs :: Dec -> Env Dec
+abs :: Quad -> Env Quad
 abs = unary c'decQuadAbs
 
-add :: Dec -> Dec -> Env Dec
+add :: Quad -> Quad -> Env Quad
 add = binary c'decQuadAdd
 
 -- | Digit-wise logical and.  Operands must be:
@@ -617,14 +617,14 @@ add = binary c'decQuadAdd
 -- * comprise only zeroes and/or ones
 --
 -- If not, 'invalidOperation' is set.
-and :: Dec -> Dec -> Env Dec
+and :: Quad -> Quad -> Env Quad
 and = binary c'decQuadAnd
 
--- | More information about a particular 'Dec'.
-decClass :: Dec -> Env DecClass
+-- | More information about a particular 'Quad'.
+decClass :: Quad -> Env DecClass
 decClass = fmap DecClass . unaryGet c'decQuadClass
 
--- | Compares two 'Dec' numerically.  The result might be @-1@, @0@,
+-- | Compares two 'Quad' numerically.  The result might be @-1@, @0@,
 -- @1@, or NaN, where @-1@ means x is less than y, @0@ indicates
 -- numerical equality, @1@ means y is greater than x.  NaN is
 -- returned only if x or y is an NaN.
@@ -632,33 +632,33 @@ decClass = fmap DecClass . unaryGet c'decQuadClass
 -- Thus, this function does not return an 'Ordering' because the
 -- result might be an NaN.
 --
-compare :: Dec -> Dec -> Env Dec
+compare :: Quad -> Quad -> Env Quad
 compare = binary c'decQuadCompare
 
 -- | Same as 'compare', but a quietNaN is treated like a signaling
 -- NaN (sets 'invalidOperation').
-compareSignal :: Dec -> Dec -> Env Dec
+compareSignal :: Quad -> Quad -> Env Quad
 compareSignal = binary c'decQuadCompareSignal
 
 -- | Compares using an IEEE 754 total ordering, which takes into
 -- account the exponent.  IEEE 754 says that this function might
 -- return different results depending upon whether the operands are
--- canonical; 'Dec' are always canonical so you don't need to worry
+-- canonical; 'Quad' are always canonical so you don't need to worry
 -- about that here.
-compareTotal :: Dec -> Dec -> Env Dec
+compareTotal :: Quad -> Quad -> Env Quad
 compareTotal = binaryCtxFree c'decQuadCompareTotal
 
 -- | Same as 'compareTotal' but compares the absolute value of the
 -- two arguments.
-compareTotalMag :: Dec -> Dec -> Env Dec
+compareTotalMag :: Quad -> Quad -> Env Quad
 compareTotalMag = binaryCtxFree c'decQuadCompareTotalMag
 
 -- | @copySign x y@ returns @z@, which is a copy of @x@ but has the
 -- sign of @y@.  Unlike @decQuadCopySign@, the result is always
 -- canonical.  This function never raises any signals.
-copySign :: Dec -> Dec -> Env Dec
+copySign :: Quad -> Quad -> Env Quad
 copySign fr to = Env $ \_ ->
-  newDec >>= \r ->
+  newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec fr) $ \pF ->
   withForeignPtr (unDec to) $ \pT ->
@@ -666,108 +666,108 @@ copySign fr to = Env $ \_ ->
   c'decQuadCanonical pR pR >>
   return r
 
-digits :: Dec -> Env Int
+digits :: Quad -> Env Int
 digits = fmap fromIntegral . unaryGet c'decQuadDigits
 
-divide :: Dec -> Dec -> Env Dec
+divide :: Quad -> Quad -> Env Quad
 divide = binary c'decQuadDivide
 
-divideInteger :: Dec -> Dec -> Env Dec
+divideInteger :: Quad -> Quad -> Env Quad
 divideInteger = binary c'decQuadDivideInteger
 
 -- | fused multiply add.
-fma :: Dec -> Dec -> Dec -> Env Dec
+fma :: Quad -> Quad -> Quad -> Env Quad
 fma = ternary c'decQuadFMA
 
-fromInt32 :: C'int32_t -> Env Dec
+fromInt32 :: C'int32_t -> Env Quad
 fromInt32 i = Env $ \_ ->
-  newDec >>= \r ->
+  newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   c'decQuadFromInt32 pR i
   >> return r
 
-fromString :: BS8.ByteString -> Env Dec
+fromString :: BS8.ByteString -> Env Quad
 fromString s = Env $ \pC ->
-  newDec >>= \r ->
+  newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   BS8.useAsCString s $ \pS ->
   c'decQuadFromString pR pS pC >>
   return r
 
-fromUInt32 :: C'uint32_t -> Env Dec
+fromUInt32 :: C'uint32_t -> Env Quad
 fromUInt32 i = Env $ \_ ->
-  newDec >>= \r ->
+  newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   c'decQuadFromUInt32 pR i >>
   return r
 
-invert :: Dec -> Env Dec
+invert :: Quad -> Env Quad
 invert = unary c'decQuadInvert
 
-isFinite :: Dec -> Env Bool
+isFinite :: Quad -> Env Bool
 isFinite = boolean c'decQuadIsFinite
 
-isInfinite :: Dec -> Env Bool
+isInfinite :: Quad -> Env Bool
 isInfinite = boolean c'decQuadIsInfinite
 
-isInteger :: Dec -> Env Bool
+isInteger :: Quad -> Env Bool
 isInteger = boolean c'decQuadIsInteger
 
-isLogical :: Dec -> Env Bool
+isLogical :: Quad -> Env Bool
 isLogical = boolean c'decQuadIsLogical
 
-isNaN :: Dec -> Env Bool
+isNaN :: Quad -> Env Bool
 isNaN = boolean c'decQuadIsNaN
 
-isNegative :: Dec -> Env Bool
+isNegative :: Quad -> Env Bool
 isNegative = boolean c'decQuadIsNegative
 
-isNormal :: Dec -> Env Bool
+isNormal :: Quad -> Env Bool
 isNormal = boolean c'decQuadIsNormal
 
-isPositive :: Dec -> Env Bool
+isPositive :: Quad -> Env Bool
 isPositive = boolean c'decQuadIsPositive
 
-isSignaling :: Dec -> Env Bool
+isSignaling :: Quad -> Env Bool
 isSignaling = boolean c'decQuadIsSignaling
 
-isSigned :: Dec -> Env Bool
+isSigned :: Quad -> Env Bool
 isSigned = boolean c'decQuadIsSigned
 
-isSubnormal :: Dec -> Env Bool
+isSubnormal :: Quad -> Env Bool
 isSubnormal = boolean c'decQuadIsSubnormal
 
-isZero :: Dec -> Env Bool
+isZero :: Quad -> Env Bool
 isZero = boolean c'decQuadIsZero
 
-logB :: Dec -> Env Dec
+logB :: Quad -> Env Quad
 logB = unary c'decQuadLogB
 
-max :: Dec -> Dec -> Env Dec
+max :: Quad -> Quad -> Env Quad
 max = binary c'decQuadMax
 
-maxMag :: Dec -> Dec -> Env Dec
+maxMag :: Quad -> Quad -> Env Quad
 maxMag = binary c'decQuadMaxMag
 
-min :: Dec -> Dec -> Env Dec
+min :: Quad -> Quad -> Env Quad
 min = binary c'decQuadMin
 
-minMag :: Dec -> Dec -> Env Dec
+minMag :: Quad -> Quad -> Env Quad
 minMag = binary c'decQuadMinMag
 
-minus :: Dec -> Env Dec
+minus :: Quad -> Env Quad
 minus = unary c'decQuadMinus
 
-multiply :: Dec -> Dec -> Env Dec
+multiply :: Quad -> Quad -> Env Quad
 multiply = binary c'decQuadMultiply
 
-nextMinus :: Dec -> Env Dec
+nextMinus :: Quad -> Env Quad
 nextMinus = unary c'decQuadNextMinus
 
-nextPlus :: Dec -> Env Dec
+nextPlus :: Quad -> Env Quad
 nextPlus = unary c'decQuadNextPlus
 
-nextToward :: Dec -> Dec -> Env Dec
+nextToward :: Quad -> Quad -> Env Quad
 nextToward = binary c'decQuadNextToward
 
 -- | Digit wise logical inclusive Or.  Operands must be:
@@ -777,35 +777,35 @@ nextToward = binary c'decQuadNextToward
 -- * comprise only zeroes and/or ones
 --
 -- If not, 'invalidOperation' is set.
-or :: Dec -> Dec -> Env Dec
+or :: Quad -> Quad -> Env Quad
 or = binary c'decQuadOr
 
 -- | Same effect as @0 + x@ where the exponent of the zero is the
 -- same as that of @x@ if @x@ is finite).  NaNs are handled as for
 -- arithmetic operations.
-plus :: Dec -> Env Dec
+plus :: Quad -> Env Quad
 plus = unary c'decQuadPlus
 
 -- | @quantize x y@ returns @z@ which is @x@ set to have the same
 -- quantum as @y@; that is, numerically the same value but rounded
 -- or padded if necessary to have the same exponent as @y@.  Useful
 -- for rounding monetary quantities.
-quantize :: Dec -> Dec -> Env Dec
+quantize :: Quad -> Quad -> Env Quad
 quantize = binary c'decQuadQuantize
 
-reduce :: Dec -> Env Dec
+reduce :: Quad -> Env Quad
 reduce = unary c'decQuadReduce
 
-remainder :: Dec -> Dec -> Env Dec
+remainder :: Quad -> Quad -> Env Quad
 remainder = binary c'decQuadRemainder
 
-remainderNear :: Dec -> Dec -> Env Dec
+remainderNear :: Quad -> Quad -> Env Quad
 remainderNear = binary c'decQuadRemainderNear
 
-rotate :: Dec -> Dec -> Env Dec
+rotate :: Quad -> Quad -> Env Quad
 rotate = binary c'decQuadRotate
 
-sameQuantum :: Dec -> Dec -> Env Bool
+sameQuantum :: Quad -> Quad -> Env Bool
 sameQuantum x y = Env $ \_ ->
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
@@ -814,59 +814,59 @@ sameQuantum x y = Env $ \_ ->
     1 -> True
     _ -> False
 
-scaleB :: Dec -> Dec -> Env Dec
+scaleB :: Quad -> Quad -> Env Quad
 scaleB = binary c'decQuadScaleB
 
 -- skipped: SetCoefficient
 -- skipped : SetExponent
 
-shift :: Dec -> Dec -> Env Dec
+shift :: Quad -> Quad -> Env Quad
 shift = binary c'decQuadShift
 
 -- omitted: Show
 
-subtract :: Dec -> Dec -> Env Dec
+subtract :: Quad -> Quad -> Env Quad
 subtract = binary c'decQuadSubtract
 
-toEngString :: Dec -> Env BS8.ByteString
+toEngString :: Quad -> Env BS8.ByteString
 toEngString = mkString c'decQuadToEngString
 
-toInt32 :: Round -> Dec -> Env C'int32_t
+toInt32 :: Round -> Quad -> Env C'int32_t
 toInt32 = getRounded c'decQuadToInt32
 
-toInt32Exact :: Round -> Dec -> Env C'int32_t
+toInt32Exact :: Round -> Quad -> Env C'int32_t
 toInt32Exact = getRounded c'decQuadToInt32Exact
 
-toIntegralExact :: Dec -> Env Dec
+toIntegralExact :: Quad -> Env Quad
 toIntegralExact = unary c'decQuadToIntegralExact
 
-toIntegralValue :: Round -> Dec -> Env Dec
+toIntegralValue :: Round -> Quad -> Env Quad
 toIntegralValue (Round rnd) d = Env $ \pC ->
   withForeignPtr (unDec d) $ \pD ->
-  newDec >>= \r ->
+  newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   c'decQuadToIntegralValue pR pD pC rnd >>
   return r
 
-toString :: Dec -> Env BS8.ByteString
+toString :: Quad -> Env BS8.ByteString
 toString = mkString c'decQuadToString
 
-toUInt32 :: Round -> Dec -> Env C'uint32_t
+toUInt32 :: Round -> Quad -> Env C'uint32_t
 toUInt32 = getRounded c'decQuadToUInt32
 
-toUInt32Exact :: Round -> Dec -> Env C'uint32_t
+toUInt32Exact :: Round -> Quad -> Env C'uint32_t
 toUInt32Exact = getRounded c'decQuadToUInt32Exact
 
 version :: Env BS8.ByteString
 version = Env $ \_ ->
   c'decQuadVersion >>= BS8.packCString
 
-xor :: Dec -> Dec -> Env Dec
+xor :: Quad -> Quad -> Env Quad
 xor = binary c'decQuadXor
 
-zero :: Env Dec
+zero :: Env Quad
 zero = Env $ \_ ->
-  newDec >>= \d ->
+  newQuad >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
   c'decQuadZero pD >>
   return d
@@ -962,7 +962,7 @@ data Decoded = Decoded
   } deriving (Eq, Ord, Show)
 
 
-decode :: Dec -> Env Decoded
+decode :: Quad -> Env Decoded
 decode d = Env $ \_ ->
   withForeignPtr (unDec d) $ \pD ->
   allocaBytes c'DECQUAD_Pmax $ \pArr ->
@@ -972,11 +972,11 @@ decode d = Env $ \_ ->
   peekArray c'DECQUAD_Pmax pArr >>= \coef ->
   return (getDecoded sgn ex coef)
 
--- | Encodes a new 'Dec'.  The result is always canonical.  However,
+-- | Encodes a new 'Quad'.  The result is always canonical.  However,
 -- the function does not signal if the result is an sNaN.
-encode :: Decoded -> Env Dec
+encode :: Decoded -> Env Quad
 encode dcd = Env $ \_ ->
-  newDec >>= \d ->
+  newQuad >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
   let (expn, arr) = packBCD dcd in
   withArray arr $ \pArr ->

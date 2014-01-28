@@ -41,20 +41,20 @@ evalEither
     checkE = error . ("Deka: Deka error: " ++)
     checkOuterE = error . ("Deka: decQuad error: " ++)
 
-eqDec :: Dec -> Dec -> EitherT String Env Bool
+eqDec :: Quad -> Quad -> EitherT String Env Bool
 eqDec x y = fmap (== EQ) $ cmpDec x y
 
-cmpDec :: Dec -> Dec -> EitherT String Env Ordering
+cmpDec :: Quad -> Quad -> EitherT String Env Ordering
 cmpDec x y = do
   r <- lift $ P.compare x y
   decToOrd r
 
-cmpDecTotal :: Dec -> Dec -> EitherT String Env Ordering
+cmpDecTotal :: Quad -> Quad -> EitherT String Env Ordering
 cmpDecTotal x y = do
   r <- lift $ P.compareTotal x y
   decToOrd r
 
-eqDecTotal :: Dec -> Dec -> EitherT String Env Bool
+eqDecTotal :: Quad -> Quad -> EitherT String Env Bool
 eqDecTotal x y = fmap (== EQ) $ cmpDecTotal x y
 
 -- | Runs monadic actions.  When the first action returns True,
@@ -74,7 +74,7 @@ runIf dflt a rs = do
   r <- a
   if r then rs else dflt
 
-decToOrd :: Dec -> EitherT String Env Ordering
+decToOrd :: Quad -> EitherT String Env Ordering
 decToOrd d
   = runIf (left "decToOrd: non-finite operand") (lift (isFinite d))
   .  successfulPair (left "decToOrd: nonsense result")
@@ -84,10 +84,10 @@ decToOrd d
     , (isNegative d, LT)
     ]
 
-showDec :: Dec -> String
+showDec :: Quad -> String
 showDec = BS8.unpack . eval . toString
 
-newtype Deka = Deka { unDeka :: Dec }
+newtype Deka = Deka { unDeka :: Quad }
 
 -- | Eq compares by value.  For instance, @3.5 == 3.500@.
 instance Eq Deka where

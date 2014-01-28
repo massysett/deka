@@ -93,12 +93,12 @@ genValue = oneof
 genDecoded :: Gen E.Decoded
 genDecoded = liftM2 E.Decoded genSign genValue
 
-genFromDecoded :: Gen E.Dec
+genFromDecoded :: Gen E.Quad
 genFromDecoded = do
   d <- genDecoded
   return . fst . runEnv . E.encode $ d
 
-genFinite :: Gen E.Dec
+genFinite :: Gen E.Quad
 genFinite = do
   v <- liftM E.Finite genCoeffExp
   s <- genSign
@@ -124,7 +124,7 @@ genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
   E.roundHalfEven, E.roundHalfDown, E.roundDown, E.roundFloor,
   E.round05Up, E.roundMax ]
 
-newtype Visible = Visible { unVisible :: E.Dec }
+newtype Visible = Visible { unVisible :: E.Quad }
 
 instance Show Visible where
   show = BS8.unpack . evalEnv . E.toString . unVisible
@@ -137,7 +137,7 @@ instance Arbitrary Visible where
 associativity
   :: String
   -- ^ Name
-  -> (E.Dec -> E.Dec -> E.Env E.Dec)
+  -> (E.Quad -> E.Quad -> E.Env E.Quad)
   -> TestTree
 associativity n f = testProperty desc $
   forAll genSmallFinite $ \(Visible x) ->
@@ -157,7 +157,7 @@ associativity n f = testProperty desc $
 commutativity
   :: String
   -- ^ Name
-  -> (E.Dec -> E.Dec -> E.Env E.Dec)
+  -> (E.Quad -> E.Quad -> E.Env E.Quad)
   -> TestTree
 commutativity n f = testProperty desc $
   forAll genSmallFinite $ \(Visible x) ->
@@ -176,7 +176,7 @@ commutativity n f = testProperty desc $
 imuUni
   :: String
   -- ^ Name
-  -> (E.Dec -> E.Env a)
+  -> (E.Quad -> E.Env a)
   -> TestTree
 imuUni n f = testProperty desc $ \(Visible d) -> evalEnv $ do
   dcd1 <- E.decode d
@@ -188,7 +188,7 @@ imuUni n f = testProperty desc $ \(Visible d) -> evalEnv $ do
 
 imuBinary
   :: String
-  -> (E.Dec -> E.Dec -> E.Env a)
+  -> (E.Quad -> E.Quad -> E.Env a)
   -> TestTree
 imuBinary n f = testGroup ("immutability - " ++ n)
   [ imuBinary1st n (arbitrary, unVisible) f
@@ -200,7 +200,7 @@ imuBinary1st
   => String
   -- ^ Name
   -> (Gen a, a -> c)
-  -> (E.Dec -> c -> E.Env b)
+  -> (E.Quad -> c -> E.Env b)
   -> TestTree
 imuBinary1st n (genA, getC) f = testProperty desc $
   forAll arbitrary $ \(Visible d) ->
@@ -217,7 +217,7 @@ imuBinary2nd
   => String
   -- ^ Name
   -> (Gen a, a -> c)
-  -> (c -> E.Dec -> E.Env b)
+  -> (c -> E.Quad -> E.Env b)
   -> TestTree
 imuBinary2nd n (genA, getC) f = testProperty desc $
   forAll arbitrary $ \(Visible d) ->
@@ -231,7 +231,7 @@ imuBinary2nd n (genA, getC) f = testProperty desc $
 
 imuTernary
   :: String
-  -> (E.Dec -> E.Dec -> E.Dec -> E.Env a)
+  -> (E.Quad -> E.Quad -> E.Quad -> E.Env a)
   -> TestTree
 imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
   [ testProperty "first argument" $
@@ -432,7 +432,7 @@ tests = testGroup "IO"
         ]
 
       , testGroup "decode and encode"
-        [ testProperty "round trip from Dec" $
+        [ testProperty "round trip from Quad" $
           forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
           evalEnv $ do
             dcd <- E.decode d
