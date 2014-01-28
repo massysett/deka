@@ -16,7 +16,7 @@ Usually you will want to perform a qualified import, because
 Data.Deka.Pure exports a lot of functions that clash with Prelude
 names.
 
-> module Data.Deka.Examples where
+> module Data.Deka.Docs.Examples where
 
 > import Data.Deka
 > import qualified Data.Deka.Pure as P

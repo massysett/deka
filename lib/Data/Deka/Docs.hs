@@ -1,8 +1,8 @@
 -- | Documentation for Deka.
-
+--
 -- At the moment, documentation is scattered about.  Some of it is
 -- in the main README.md, which is in the source code tree and is
--- viewable in Githut at
+-- viewable in Github at
 --
 -- <http://github.com/massysett/deka/blob/master/README.md>
 --
@@ -19,3 +19,5 @@
 -- get a blank page.  Fortunately it is easily readable in Github:
 --
 -- <http://github.com/massysett/deka/blob/master/lib/Data/Deka/Docs/Examples.hs>
+
+module Data.Deka.Docs where
