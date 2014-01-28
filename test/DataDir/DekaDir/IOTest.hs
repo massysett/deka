@@ -1,5 +1,15 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
+-- | Tests for the IO module.
+--
+-- The object of these tests is not to test decNumber but, rather,
+-- to test Deka to ensure there are no transposed arguments or other
+-- glaring errors.  Also, ensures that the FFI binding behaves as it
+-- should and that there are no side effects where there shouldn't
+-- be any.
+--
+-- encoding and decoding must also be thoroughly tested as this can
+-- be quite error prone.
 module DataDir.DekaDir.IOTest where
 
 import qualified Data.ByteString.Char8 as BS8
@@ -109,10 +119,18 @@ genSmallFinite = do
       dec = evalEnv (E.encode d)
   return . Visible $ dec
 
+genRound :: Gen E.Round
+genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
+  E.roundHalfEven, E.roundHalfDown, E.roundDown, E.roundFloor,
+  E.round05Up, E.roundMax ]
+
 newtype Visible = Visible { unVisible :: E.Dec }
 
 instance Show Visible where
   show = BS8.unpack . evalEnv . E.toString . unVisible
+
+instance Arbitrary Visible where
+  arbitrary = fmap Visible genFromDecoded
 
 -- # Test builders
 
@@ -128,7 +146,7 @@ associativity n f = testProperty desc $
   let (noFlags, resIsZero) = evalEnv $ do
         r1 <- f x y >>= f z
         r2 <- f y z >>= f x
-        c <- E.compare r1 r2
+        c <- E.compareTotal r1 r2
         isZ <- E.isZero c
         fl <- E.getStatus
         return (fl == E.emptyFlags, isZ)
@@ -147,13 +165,98 @@ commutativity n f = testProperty desc $
   let (noFlags, resIsZero) = evalEnv $ do
         r1 <- f x y
         r2 <- f y x
-        c <- E.compare r1 r2
+        c <- E.compareTotal r1 r2
         isZ <- E.isZero c
         fl <- E.getStatus
         return (fl == E.emptyFlags, isZ)
   in noFlags ==> resIsZero
   where
     desc = n ++ " is commutative where there are no flags"
+
+imuUni
+  :: String
+  -- ^ Name
+  -> (E.Dec -> E.Env a)
+  -> TestTree
+imuUni n f = testProperty desc $ \(Visible d) -> evalEnv $ do
+  dcd1 <- E.decode d
+  _ <- f d
+  dcd2 <- E.decode d
+  return $ dcd1 == dcd2
+  where
+    desc = n ++ " (unary function) does not mutate only argument"
+
+imuBinary
+  :: String
+  -> (E.Dec -> E.Dec -> E.Env a)
+  -> TestTree
+imuBinary n f = testGroup ("immutability - " ++ n)
+  [ imuBinary1st n (arbitrary, unVisible) f
+  , imuBinary2nd n (arbitrary, unVisible) f
+  ]
+
+imuBinary1st
+  :: Show a
+  => String
+  -- ^ Name
+  -> (Gen a, a -> c)
+  -> (E.Dec -> c -> E.Env b)
+  -> TestTree
+imuBinary1st n (genA, getC) f = testProperty desc $
+  forAll arbitrary $ \(Visible d) ->
+  forAll genA $ \a -> evalEnv $ do
+    dcd1 <- E.decode d
+    _ <- f d (getC a)
+    dcd2 <- E.decode d
+    return $ dcd1 == dcd2
+  where
+    desc = n ++ " (binary function) does not mutate first argument"
+
+imuBinary2nd
+  :: Show a
+  => String
+  -- ^ Name
+  -> (Gen a, a -> c)
+  -> (c -> E.Dec -> E.Env b)
+  -> TestTree
+imuBinary2nd n (genA, getC) f = testProperty desc $
+  forAll arbitrary $ \(Visible d) ->
+  forAll genA $ \a -> evalEnv $ do
+    dcd1 <- E.decode d
+    _ <- f (getC a) d
+    dcd2 <- E.decode d
+    return $ dcd1 == dcd2
+  where
+    desc = n ++ " (binary function) does not mutate second argument"
+
+imuTernary
+  :: String
+  -> (E.Dec -> E.Dec -> E.Dec -> E.Env a)
+  -> TestTree
+imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
+  [ testProperty "first argument" $
+    \(Visible a) (Visible b) (Visible c) -> evalEnv $ do
+      dcd1 <- E.decode a
+      _ <- f a b c
+      dcd2 <- E.decode a
+      return $ dcd1 == dcd2
+
+  , testProperty "second argument" $
+    \(Visible a) (Visible b) (Visible c) -> evalEnv $ do
+      dcd1 <- E.decode b
+      _ <- f a b c
+      dcd2 <- E.decode b
+      return $ dcd1 == dcd2
+
+  , testProperty "third argument" $
+    \(Visible a) (Visible b) (Visible c) -> evalEnv $ do
+      dcd1 <- E.decode c
+      _ <- f a b c
+      dcd2 <- E.decode c
+      return $ dcd1 == dcd2
+  ]
+
+-- # Tests
 
 tests = testGroup "IO"
   [ testGroup "helper functions"
@@ -181,7 +284,97 @@ tests = testGroup "IO"
           in r > 1 ==> numDigits r - 1 == numDigits (r - 1)
         ]
     ]
-  
+
+  , testGroup "immutability"
+    [ testGroup "conversions"
+      [ imuUni "decClass" E.decClass
+      , imuUni "decode" E.decode
+      , imuUni "toString" E.toString
+      , imuUni "toEngString" E.toEngString
+      , imuBinary2nd "toInt32" (genRound, id) E.toInt32
+      , imuBinary2nd "toInt32Exact" (genRound, id) E.toInt32Exact
+      , imuBinary2nd "toUInt32" (genRound, id) E.toUInt32
+      , imuBinary2nd "toUInt32Exact" (genRound, id) E.toUInt32Exact
+      , imuUni "toIntegralExact" E.toIntegralExact
+      , imuBinary2nd "toIntegralValue" (genRound, id) E.toIntegralValue
+      ]
+
+    , testGroup "arithmetic"
+      [ imuBinary "add" E.add
+      , imuBinary "subtract" E.subtract
+      , imuBinary "multiply" E.multiply
+      , imuTernary "fma" E.fma
+      , imuBinary "divide" E.divide
+      , imuBinary "divideInteger" E.divideInteger
+      , imuBinary "remainder" E.remainder
+      , imuBinary "remainderNear" E.remainderNear
+      ]
+
+    , testGroup "exponent and coefficient adjustment"
+      [ imuBinary "quantize" E.quantize
+      , imuUni "reduce" E.reduce
+      ]
+
+    , testGroup "comparisons"
+      [ imuBinary "compare" E.compare
+      , imuBinary "compareSignal" E.compareSignal
+      , imuBinary "compareTotal" E.compareTotal
+      , imuBinary "compareTotalMag" E.compareTotalMag
+      , imuBinary "max" E.max
+      , imuBinary "maxMag" E.maxMag
+      , imuBinary "min" E.min
+      , imuBinary "minMag" E.minMag
+      , imuBinary "sameQuantum" E.sameQuantum
+      ]
+
+    , let f = imuUni in
+      testGroup "tests"
+      [ f "isFinite" E.isFinite
+      , f "isInfinite" E.isInfinite
+      , f "isInteger" E.isInteger
+      , f "isLogical" E.isLogical
+      , f "isNaN" E.isNaN
+      , f "isNegative" E.isNegative
+      , f "isNormal" E.isNormal
+      , f "isPositive" E.isPositive
+      , f "isSignaling" E.isSignaling
+      , f "isSigned" E.isSigned
+      , f "isSubnormal" E.isSubnormal
+      , f "isZero" E.isZero
+      ]
+
+    , testGroup "signs"
+      [ imuUni "plus" E.plus
+      , imuUni "minus" E.minus
+      , imuUni "abs" E.abs
+      , imuBinary "copySign" E.copySign
+      ]
+
+    , testGroup "increment and decrement"
+      [ imuUni "nextMinus" E.nextMinus
+      , imuUni "nextPlus" E.nextPlus
+      , imuBinary "nextToward" E.nextToward
+      ]
+
+    , testGroup "logical, bitwise, digit shifting"
+      [ imuBinary "and" E.and
+      , imuBinary "or" E.or
+      , imuBinary "shift" E.shift
+      , imuBinary "xor" E.xor
+      , imuBinary "rotate" E.rotate
+      , imuUni "invert" E.invert
+      ]
+
+    , testGroup "transcendental"
+      [ imuUni "logB" E.logB
+      , imuBinary "scaleB" E.scaleB
+      ]
+
+    , testGroup "attributes"
+      [ imuUni "digits" E.digits
+      ]
+    ]
+
   , testGroup "conversions"
     [ testGroup "coefficient"
       [ testProperty "fails on negative integers" $
