@@ -8,10 +8,3 @@ before_install:
   - sudo ldconfig
   - cd ..
 
-install:
-  - cabal configure --enable-tests
-  - cabal install --only-dependencies
-  - cabal build
-
-script:
-  - dist/build/tasty-test/tasty-test
