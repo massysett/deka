@@ -136,8 +136,8 @@ crashy = either (error . ("Deka: error: " ++)) id
 integralToDeka :: Integral a => a -> Either String Deka
 integralToDeka i = do
   coe <- coefficient . fromIntegral $ i
-  se <- coeffExp coe 0
-  let d = Decoded sgn (Finite se)
+  en <- P.exponent 0
+  let d = Decoded sgn (Finite coe en)
       sgn = if i < 0 then Negative else Positive
   fmap Deka . checked $ encode d
 

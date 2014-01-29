@@ -97,10 +97,9 @@ module Data.Deka.IO
   , Coefficient
   , coefficient
   , unCoefficient
-  , CoeffExp
-  , seCoeff
-  , seExp
-  , coeffExp
+  , Exponent
+  , exponent
+  , unExponent
   , minMaxExp
   , Payload
   , unPayload
@@ -899,27 +898,6 @@ coefficient i
     len = genericLength . show $ i
     _types = len :: Integer
 
--- | Significand and exponent for a finite number.
-data CoeffExp = CoeffExp
-  { seCoeff :: Coefficient
-  , seExp :: Int
-  } deriving (Eq, Ord, Show)
-
--- | Enforces relationship between significand and exponent.
---
-
-coeffExp
-  :: Coefficient
-  -> Int
-  -- ^ Exponent
-  -> Either String CoeffExp
-coeffExp c e
-  | e > h = Left "exponent is too large"
-  | e < l = Left "exponent is too small"
-  | otherwise = Right $ CoeffExp c e
-  where
-    (l, h) = minMaxExp
-
 -- | The minimum and maximum possible exponent.
 -- If the coefficient has c digits, and Emax is x, the exponent e
 -- is within the closed-ended range
@@ -934,6 +912,18 @@ minMaxExp = (l, h)
     h = x - (c - 1)
     x = c'DECQUAD_Emax
     c = c'DECQUAD_Pmax
+
+newtype Exponent = Exponent { unExponent :: Int }
+  deriving (Eq, Ord, Show)
+
+-- | Ensures the exponent falls within the correct range.
+exponent :: Int -> Either String Exponent
+exponent i
+  | i < l = Left "exponent too small"
+  | i > h = Left "exponent too large"
+  | otherwise = Right . Exponent $ i
+  where
+    (l, h) = minMaxExp
 
 -- | A Payload is associated with an NaN.  It is always zero or
 -- positive.  The number of digits is always less than or equal to
@@ -951,7 +941,7 @@ zeroPayload :: Payload
 zeroPayload = Payload 0
 
 data Value
-  = Finite CoeffExp
+  = Finite Coefficient Exponent
   | Infinite
   | NaN NaN Payload
   deriving (Eq, Ord, Show)
@@ -1033,7 +1023,7 @@ getDecoded sgn ex coef = Decoded s v
     v | ex == c'DECFLOAT_qNaN = NaN Quiet pld
       | ex == c'DECFLOAT_sNaN = NaN Signaling pld
       | ex == c'DECFLOAT_Inf = Infinite
-      | otherwise = Finite (CoeffExp coe (fromIntegral ex))
+      | otherwise = Finite coe (Exponent $ fromIntegral ex)
       where
         pld = Payload $ fromBCD (c'DECQUAD_Pmax - 1) (tail coef)
         coe = Coefficient $ fromBCD c'DECQUAD_Pmax coef
@@ -1088,11 +1078,11 @@ packBCD (Decoded s v) = (expt, ls)
       NaN n _ -> case n of
         Signaling -> c'DECFLOAT_sNaN
         Quiet -> c'DECFLOAT_qNaN
-      Finite (CoeffExp _ i) -> fromIntegral i
+      Finite _ i -> fromIntegral . unExponent $ i
     ls = case v of
       Infinite -> packInfinite s
       NaN _ p -> packNaN s p
-      Finite (CoeffExp c _) -> packFinite s c
+      Finite c _ -> packFinite s c
 
 -- decQuad functions not recreated here:
 

@@ -65,16 +65,12 @@ genCoefficient = do
     Left _ -> error "genCoefficient failed"
     Right g -> return g
 
-genExp :: Gen Int
-genExp = choose E.minMaxExp
-
-genCoeffExp :: Gen E.CoeffExp
-genCoeffExp = do
-  s <- genCoefficient
-  e <- genExp
-  case E.coeffExp s e of
-    Left _ -> error "genCoeffExp failed"
-    Right g -> return g
+genExp :: Gen E.Exponent
+genExp = fmap f (choose E.minMaxExp)
+  where
+    f e = case E.exponent e of
+      Left _ -> error "genExp failed"
+      Right g -> g
 
 genPayload :: Gen E.Payload
 genPayload = do
@@ -85,7 +81,7 @@ genPayload = do
 
 genValue :: Gen E.Value
 genValue = oneof
-  [ liftM E.Finite genCoeffExp
+  [ liftM2 E.Finite genCoefficient genExp
   , return E.Infinite
   , liftM2 E.NaN genNaN genPayload
   ]
@@ -100,7 +96,7 @@ genFromDecoded = do
 
 genFinite :: Gen E.Quad
 genFinite = do
-  v <- liftM E.Finite genCoeffExp
+  v <- liftM2 E.Finite genCoefficient genExp
   s <- genSign
   return . evalEnv . E.encode $ E.Decoded s v
 
@@ -111,11 +107,11 @@ genSmallFinite = do
         Left _ -> error "genSmallFinite: coefficient failed"
         Right g -> g
   e <- choose (-10, 10)
-  let ce = case E.coeffExp co e of
-        Left _ -> error "genSmallFinite: coeffExp failed"
+  let en = case E.exponent e of
+        Left _ -> error "genSmallFinite: coefficient failed"
         Right g -> g
   s <- genSign
-  let d = E.Decoded s (E.Finite ce)
+  let d = E.Decoded s (E.Finite co en)
       dec = evalEnv (E.encode d)
   return . Visible $ dec
 
@@ -128,10 +124,10 @@ genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
               coef = either
                 (const $ error "genOne: coefficient failed")
                 id . E.coefficient $ c
-              ce = either
+              en = either
                 (const $ error "genOne: coeffExp failed")
-                id $ E.coeffExp coef expn
-              dcd = E.Decoded E.Positive (E.Finite ce)
+                id $ E.exponent expn
+              dcd = E.Decoded E.Positive (E.Finite coef en)
           in Visible . evalEnv . E.encode $ dcd
               
 
@@ -407,33 +403,29 @@ tests = testGroup "IO"
         isRight . E.coefficient
       ]
 
-    , testGroup "coeffExp"
+    , testGroup "exponent"
       [ testProperty "fails when exponent is too small" $
-        forAll genCoefficient $ \c ->
         let (l, _) = E.minMaxExp in
-        forAll (choose (minBound, l - 1)) $ \e ->
-        isLeft $ E.coeffExp c e
+        forAll (choose (minBound, l - 1)) $
+        isLeft . E.exponent
 
       , testProperty "fails when exponent is too large" $
-        forAll genCoefficient $ \c ->
-          let (_, h) = E.minMaxExp
-          in forAll (choose (h + 1, maxBound)) $ \e ->
-          isLeft $ E.coeffExp c e
+        let (_, h) = E.minMaxExp in
+        forAll (choose (h + 1, maxBound)) $
+        isLeft . E.exponent
 
       , testProperty "fails when exponent is < c'DECQUAD_Emin" $
-        forAll genCoefficient $ \c ->
-        forAll (choose (minBound, c'DECQUAD_Emin - 1)) $ \e ->
-        isLeft $ E.coeffExp c e
+        forAll (choose (minBound, c'DECQUAD_Emin - 1)) $
+        isLeft . E.exponent
 
       , testProperty "fails when exponent is > c'DECQUAD_Emax" $
-        forAll genCoefficient $ \c ->
-        forAll (choose (c'DECQUAD_Emax + 1, maxBound)) $ \e ->
-        isLeft $ E.coeffExp c e
+        forAll (choose (c'DECQUAD_Emax + 1, maxBound)) $
+        isLeft . E.exponent
 
       , testProperty "succeeds when it should" $
-        forAll genCoefficient $ \c ->
-        forAll (choose E.minMaxExp) $ \e ->
-        isRight $ E.coeffExp c e
+        forAll (choose E.minMaxExp) $
+        isRight . E.exponent
+
       ]
 
       , testGroup "payload"
