@@ -119,6 +119,23 @@ genSmallFinite = do
       dec = evalEnv (E.encode d)
   return . Visible $ dec
 
+genOne :: Gen Visible
+genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
+  where
+    f e = let expn = negate e
+              c = 1 * 10 ^ e
+              _types = e :: Int
+              coef = either
+                (const $ error "genOne: coefficient failed")
+                id . E.coefficient $ c
+              ce = either
+                (const $ error "genOne: coeffExp failed")
+                id $ E.coeffExp coef expn
+              dcd = E.Decoded E.Positive (E.Finite ce)
+          in Visible . evalEnv . E.encode $ dcd
+              
+
+
 genRound :: Gen E.Round
 genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
   E.roundHalfEven, E.roundHalfDown, E.roundDown, E.roundFloor,
