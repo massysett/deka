@@ -78,7 +78,7 @@ coefficient is c and the exponent is e, do
 
     c * 10 ^ e
 
-So, for example, you can say that "12345e0" and "1234500e-2" are the
+So, for example, you can say that `12345e0` and `1234500e-2` are the
 same number, but they have different coefficients.
 
 For more about decimal arithmetic, you will really want to read
@@ -87,7 +87,7 @@ http://speleotrove.com/decimal/decarith.html
 
 It's written in a very clear style.
 
-OK, so back to Deka.  We said that "print $ 0.1 + 0.1 + 0.1" yields
+OK, so back to Deka.  We said that `print $ 0.1 + 0.1 + 0.1` yields
 an inaccurate result.  How to do it with Deka?
 
 First we have to create a Deka. Deka is not an instance of Read.
