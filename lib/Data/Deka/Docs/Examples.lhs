@@ -64,11 +64,12 @@ The coefficient is an integer, and the exponent is an
 integer that may be negative, zero, or positive.  Here, the
 coefficient is always 12345, but the exponent varies:
 
-Number               Exponent
-12345                0
-123.45               -2
-0.12345              -5
-.00012345            -8
+Number       | Exponent
+-----------------------
+12345        | 0
+123.45       | -2
+0.12345      | -5
+.00012345    | -8
 
 Some numbers can only accurately be written down using scientific
 notation if we want to reflect how many digits are in the
@@ -76,7 +77,7 @@ coefficient.  We can do this with E notation, where the coefficient
 is followed by the exponent.  To get the original number, if the
 coefficient is c and the exponent is e, do
 
-c * 10 ^ e
+    c * 10 ^ e
 
 So, for example, you can say that "12345e0" and "1234500e-2" are the
 same number, but they have different coefficients.
@@ -93,7 +94,7 @@ an inaccurate result.  How to do it with Deka?
 First we have to create a Deka. Deka is not an instance of Read.
 However you can use strToDeka, which has the type
 
-strToDeka :: String -> Either String Deka
+    strToDeka :: String -> Either String Deka
 
 You get a Left with an error message if your Deka could not be
 created; otherwise, you get a Right with the Deka.  The input string
@@ -102,7 +103,7 @@ can be in regular or scientific notation.
 The following function makes it easier to use strToDeka
 interactively:
 
-crashy :: Either String a -> a
+    crashy :: Either String a -> a
 
 It applies the "error" function to the error message if there is
 one; otherwise you get the result.
