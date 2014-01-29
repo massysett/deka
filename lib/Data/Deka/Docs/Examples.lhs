@@ -54,22 +54,21 @@ more than 34 digits of precision, you can afford to pay someone to
 develop your own library :) For example, these numbers all have 5
 digits of precision:
 
-12345
-123.45
-0.12345
-0.00012345
+    12345
+    123.45
+    0.12345
+    0.00012345
 
 All numbers in Deka are stored as a "coefficient" and an "exponent".
 The coefficient is an integer, and the exponent is an
 integer that may be negative, zero, or positive.  Here, the
 coefficient is always 12345, but the exponent varies:
 
-Number       | Exponent
------------------------
-12345        | 0
-123.45       | -2
-0.12345      | -5
-.00012345    | -8
+    Number      Exponent
+    12345       0
+    123.45      -2
+    0.12345     -5
+    0.00012345  -8
 
 Some numbers can only accurately be written down using scientific
 notation if we want to reflect how many digits are in the
