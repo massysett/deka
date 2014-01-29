@@ -168,14 +168,14 @@ available, which you can set.  This can be useful with division, for
 example, where you will not get exact results.  All results are
 computed to 34 digits of precision.
 
-> let { tenThirds = P.evalEnv $ do
+> let { tenSixths = P.evalEnv $ do
 >         ten <- P.fromString . BS8.pack $ "10"
 >         three <- P.fromString . BS8.pack $ "6"
 >         P.divide ten three
 >     };
 
 > putStrLn "This is the result of 10 / 6:";
-> BS8.putStrLn . P.evalEnv . P.toString $ tenThirds;
+> BS8.putStrLn . P.evalEnv . P.toString $ tenSixths;
 
 Perhaps you want to round the result to a particular number of
 decimal places.  You do this with the "quantize" function.  It takes
@@ -185,7 +185,7 @@ number of decimal places you want to round to.
 > putStrLn "This is 10 / 6, rounded to two places:";
 > BS8.putStrLn . P.evalEnv $ do
 >   twoPlaces <- P.fromString . BS8.pack $ "1e-2"
->   r <- P.quantize tenThirds twoPlaces
+>   r <- P.quantize tenSixths twoPlaces
 >   P.toString r
 > ;
 
@@ -197,7 +197,7 @@ methods are listed in the Haddock documentation for Data.Deka.IO.
 > BS8.putStrLn . P.evalEnv $ do
 >   twoPlaces <- P.fromString . BS8.pack $ "1e-2"
 >   P.setRound P.roundDown
->   r <- P.quantize tenThirds twoPlaces
+>   r <- P.quantize tenSixths twoPlaces
 >   P.toString r
 > ;
 
