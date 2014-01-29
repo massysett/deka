@@ -907,12 +907,6 @@ data CoeffExp = CoeffExp
 
 -- | Enforces relationship between significand and exponent.
 --
--- If the coefficient has c digits, and Emax is x, the exponent e
--- is within the closed-ended range
---
--- @-x - (c - 1) + 1@ and @x - (c - 1)@
---
--- See Decimal Arithmetic Specification version 1.70, page 10.
 
 coeffExp
   :: Coefficient
@@ -927,6 +921,12 @@ coeffExp c e
     (l, h) = minMaxExp
 
 -- | The minimum and maximum possible exponent.
+-- If the coefficient has c digits, and Emax is x, the exponent e
+-- is within the closed-ended range
+--
+-- @-x - (c - 1) + 1@ and @x - (c - 1)@
+--
+-- See Decimal Arithmetic Specification version 1.70, page 10.
 minMaxExp :: (Int, Int)
 minMaxExp = (l, h)
   where
