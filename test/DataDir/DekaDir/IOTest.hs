@@ -559,6 +559,41 @@ tests = testGroup "IO"
 
         -- remainderNear - no test - not sure I understand the
         -- semantics
+
+        , testGroup "quantize"
+          [ testProperty "result has same quantum" $
+            \(SmallFin x) (SmallFin y) ->
+            let (r, fl) = runEnv $ do
+                  c <- E.quantize x y
+                  dc <- E.decode c
+                  dy <- E.decode y
+                  return $ E.finiteExponent dc == E.finiteExponent dy
+            in fl == E.emptyFlags ==> r
+          ]
         ]
       ]
-    ]
+
+      , testGroup "exponent and coefficient adjustment"
+        [ testGroup "reduce"
+          [ testProperty "result is equivalent" $
+            \(SmallFin x) -> evalEnv $ do
+                r <- E.reduce x
+                c <- E.compare r x
+                E.isZero c
+
+          , testProperty "result has no trailing zeroes" $
+            \(SmallFin x) -> evalEnv $ do
+                r <- E.reduce x
+                dx <- E.decode x
+                dr <- E.decode r
+                let cr = E.finiteCoefficient dr
+                return $ case E.finiteCoefficient dx of
+                  Just i
+                    | i == 0 -> E.finiteCoefficient dr == Just 0
+                    | otherwise -> case cr of
+                        Nothing -> False
+                        Just i' -> i' `mod` 10 /= 0
+                  _ -> False
+          ]
+        ]
+      ]
