@@ -94,11 +94,11 @@ genFromDecoded = do
   d <- genDecoded
   return . fst . runEnv . E.encode $ d
 
-genFinite :: Gen E.Quad
+genFinite :: Gen Visible
 genFinite = do
   v <- liftM2 E.Finite genCoefficient genExp
   s <- genSign
-  return . evalEnv . E.encode $ E.Decoded s v
+  return . Visible . evalEnv . E.encode $ E.Decoded s v
 
 genSmallFinite :: Gen Visible
 genSmallFinite = do
@@ -115,6 +115,14 @@ genSmallFinite = do
       dec = evalEnv (E.encode d)
   return . Visible $ dec
 
+newtype SmallFin = SmallFin { unSmallFin :: E.Quad }
+
+instance Arbitrary SmallFin where
+  arbitrary = fmap (SmallFin . unVisible) genSmallFinite
+
+instance Show SmallFin where
+  show = BS8.unpack . evalEnv . E.toString . unSmallFin
+
 genOne :: Gen Visible
 genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
   where
@@ -130,6 +138,17 @@ genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
               dcd = E.Decoded E.Positive (E.Finite coef en)
           in Visible . evalEnv . E.encode $ dcd
               
+genZero :: Gen Visible
+genZero = fmap f $ choose E.minMaxExp
+  where
+    f e = let expn = either
+                (const $ error "genZero: exponent failed")
+                id . E.exponent $ e
+              coef = either
+                (const $ error "genZero: coefficient failed")
+                id . E.coefficient $ 0
+              dcd = E.Decoded E.Positive (E.Finite coef expn)
+          in Visible . evalEnv . E.encode $ dcd
 
 
 genRound :: Gen E.Round
@@ -268,6 +287,21 @@ imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
       dcd2 <- E.decode c
       return $ dcd1 == dcd2
   ]
+
+identity
+  :: String
+  -- ^ Name of thing that is identity (e.g. zero)
+  -> Gen Visible
+  -> (E.Quad -> E.Quad -> E.Env E.Quad)
+  -> TestTree
+identity n g f = testProperty name $
+  forAll g $ \(Visible a) ->
+  forAll genFinite $ \(Visible b) -> evalEnv $ do
+    r <- f b a
+    c <- E.compare b r
+    E.isZero c
+  where
+    name = n ++ " is the identity for finite numbers"
 
 -- # Tests
 
@@ -462,11 +496,69 @@ tests = testGroup "IO"
       [ testGroup "add"
         [ associativity "add" E.add
         , commutativity "add" E.add
+        , identity "zero" genZero E.add
         ]
 
       , testGroup "multiply"
         [ associativity "multiply" E.multiply
         , commutativity "multiply" E.multiply
+        , identity "one" genOne E.multiply
+        ]
+
+      , testGroup "subtract"
+        [ testProperty "is the inverse of add" $
+          forAll genSmallFinite $ \(Visible a) ->
+          forAll genSmallFinite $ \(Visible b) ->
+          let (r, fl) = runEnv $ do
+                r1 <- E.add a b
+                r2 <- E.subtract r1 b
+                c <- E.compare r2 a
+                E.isZero c
+          in fl == E.emptyFlags ==> r
+
+        , identity "zero" genZero E.subtract
+        ]
+
+      , testGroup "fused multiply add"
+        [ testProperty "is same as multiply and add" $
+          forAll genSmallFinite $ \(Visible a) ->
+          forAll genSmallFinite $ \(Visible b) ->
+          forAll genSmallFinite $ \(Visible c) ->
+          let (r, fl) = runEnv $ do
+                r1 <- E.multiply a b
+                r2 <- E.add r1 c
+                r2' <- E.fma a b c
+                cm <- E.compare r2 r2'
+                E.isZero cm
+          in fl == E.emptyFlags ==> r
+
+        , testGroup "divide"
+          [ identity "one" genOne E.divide ]
+
+        , testGroup "divideInteger"
+          [ testProperty "result has exponent 0" $
+            \(SmallFin a) (SmallFin b) ->
+            let (e, fl) = runEnv $ do
+                  c <- E.divideInteger a b
+                  E.decode c
+            in fl == E.emptyFlags ==> E.finiteExponent e == Just 0
+          ]
+
+        , testGroup "remainder"
+          [ testProperty "x = int * y + rem" $
+            \(SmallFin x) (SmallFin y) ->
+            let (r, fl) = runEnv $ do
+                  it <- E.divideInteger x y
+                  rm <- E.remainder x y
+                  i1 <- E.multiply it y
+                  i2 <- E.add i1 rm
+                  c <- E.compare i2 x
+                  E.isZero c
+            in fl == E.emptyFlags ==> r
+          ]
+
+        -- remainderNear - no test - not sure I understand the
+        -- semantics
         ]
       ]
     ]

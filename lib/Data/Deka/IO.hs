@@ -109,6 +109,8 @@ module Data.Deka.IO
   , NaN(..)
   , Value(..)
   , Decoded(..)
+  , finiteExponent
+  , finiteCoefficient
   , decode
   , encode
 
@@ -950,6 +952,19 @@ data Decoded = Decoded
   { dSign :: Sign
   , dValue :: Value
   } deriving (Eq, Ord, Show)
+
+-- | Gets the exponent of a finite number, if the Decoded is finite.
+finiteExponent :: Decoded -> Maybe Int
+finiteExponent d = case dValue d of
+  Finite _ e -> Just $ unExponent e
+  _ -> Nothing
+
+-- | Gets the coefficient of a finite number, if the Decoded is
+-- finite.
+finiteCoefficient :: Decoded -> Maybe Integer
+finiteCoefficient d = case dValue d of
+  Finite c _ -> Just $ unCoefficient c
+  _ -> Nothing
 
 
 decode :: Quad -> Env Decoded
