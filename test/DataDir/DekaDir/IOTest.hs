@@ -50,6 +50,20 @@ maxSize s g = sized $ \o -> resize (min o s) g
 numDigits :: (Num a, Show a) => a -> Int
 numDigits = length . show . abs
 
+increaseAbs :: E.Quad -> E.Env E.Quad
+increaseAbs q = do
+    neg <- E.isNegative q
+    if neg
+      then E.nextMinus q
+      else E.nextPlus q
+
+decreaseAbs :: E.Quad -> E.Env E.Quad
+decreaseAbs q = do
+  neg <- E.isNegative q
+  if neg
+    then E.nextPlus q
+    else E.nextMinus q
+
 -- # Generators
 
 genSign :: Gen E.Sign
@@ -122,6 +136,28 @@ instance Arbitrary SmallFin where
 
 instance Show SmallFin where
   show = BS8.unpack . evalEnv . E.toString . unSmallFin
+
+-- | Non zero small finite number.
+newtype NZSmallFin = NZSmallFin { unNZSmallFin :: E.Quad }
+
+instance Show NZSmallFin where
+  show = BS8.unpack . evalEnv . E.toString . unNZSmallFin
+
+instance Arbitrary NZSmallFin where
+  arbitrary = do
+    c <- choose (1, biggestDigs 5)
+    let co = case E.coefficient c of
+          Left _ -> error "genSmallFinite: coefficient failed"
+          Right g -> g
+    e <- choose (-10, 10)
+    let en = case E.exponent e of
+          Left _ -> error "genSmallFinite: coefficient failed"
+          Right g -> g
+    s <- genSign
+    let d = E.Decoded s (E.Finite co en)
+        dec = evalEnv (E.encode d)
+    return . NZSmallFin $ dec
+
 
 genOne :: Gen Visible
 genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
@@ -302,6 +338,98 @@ identity n g f = testProperty name $
     E.isZero c
   where
     name = n ++ " is the identity for finite numbers"
+
+comparison
+  :: String
+  -- ^ Name of function
+  -> (E.Quad -> E.Env E.Quad)
+  -- ^ How to make a larger Quad
+  -> (E.Quad -> E.Env E.Quad)
+  -- ^ How to make a smaller Quad
+  -> (E.Quad -> E.Quad -> E.Env E.Quad)
+  -> TestTree
+
+comparison n fB fS fC = testGroup (n ++ " comparisons")
+  [ testProperty "x > y" $ \(NZSmallFin a) -> evalEnv $ do
+      b <- fB a
+      c <- fC b a
+      E.isPositive c
+
+  , testProperty "x < y" $ \(NZSmallFin a) -> evalEnv $ do
+      b <- fS a
+      c <- fC b a
+      E.isNegative c
+
+  , testProperty "x == x" $ \(NZSmallFin a) -> evalEnv $ do
+      c <- fC a a
+      E.isZero c
+
+  , testProperty "transitive"
+    $ \(NZSmallFin a) (NZSmallFin b) -> evalEnv $ do
+      c <- fC a b
+      z <- E.isZero c
+      if z
+        then do
+          c' <- fC b a
+          E.isZero c'
+        else do
+          c' <- fC b a
+          newSign <- E.minus c
+          cmpResults <- E.compare c' newSign
+          E.isZero cmpResults
+  ]
+
+testMinMax
+  :: String
+  -> Bool
+  -- ^ True if testing absolute values
+  -> (E.Quad -> E.Quad -> E.Env E.Quad)
+  -> TestTree
+testMinMax n ab f = testProperty (n ++ " and compare")
+  $ \(SmallFin aa) (SmallFin bb) -> evalEnv $ do
+    (a, b) <- if ab
+      then do
+        aaa <- E.abs aa
+        bbb <- E.abs bb
+        return $ (aaa, bbb)
+      else return (aa, bb)
+    r <- E.compare a b
+    m <- f a b
+    z <- E.isZero r
+    if z
+      then do
+        r' <- E.compare m a
+        r'' <- E.compare m b
+        zr' <- E.isZero r'
+        zr'' <- E.isZero r''
+        return $ zr' && zr''
+      else do
+        new <- f b a
+        r' <- E.compare new m
+        E.isZero r' 
+
+decodedSameQuantum :: E.Decoded -> E.Decoded -> Bool
+decodedSameQuantum x y = case (E.dValue x, E.dValue y) of
+  (E.Finite _ e1, E.Finite _ e2) -> e1 == e2
+  (E.Infinite, E.Infinite) -> True
+  (E.NaN _ _, E.NaN _ _) -> True
+  _ -> False
+
+matchClass
+  :: String
+  -> (E.Quad -> E.Env Bool)
+  -> [E.DecClass]
+  -- ^ If the function returns True, then the Quad is a member of
+  -- one of these classes; otherwise, it is not a member of one of
+  -- these classes.
+  -> TestTree
+matchClass n f ls = testProperty n $ \(Visible a) ->
+  let r = evalEnv $ do
+        b <- f a
+        c <- E.decClass a
+        let isElem = c `elem` ls
+        return $ if b then (isElem, c) else (not isElem, c)
+  in printTestCase (snd r) (fst r)
 
 -- # Tests
 
@@ -560,7 +688,11 @@ tests = testGroup "IO"
         -- remainderNear - no test - not sure I understand the
         -- semantics
 
-        , testGroup "quantize"
+        ]
+      ]
+
+      , testGroup "exponent and coefficient adjustment"
+        [ testGroup "quantize"
           [ testProperty "result has same quantum" $
             \(SmallFin x) (SmallFin y) ->
             let (r, fl) = runEnv $ do
@@ -570,11 +702,8 @@ tests = testGroup "IO"
                   return $ E.finiteExponent dc == E.finiteExponent dy
             in fl == E.emptyFlags ==> r
           ]
-        ]
-      ]
 
-      , testGroup "exponent and coefficient adjustment"
-        [ testGroup "reduce"
+        , testGroup "reduce"
           [ testProperty "result is equivalent" $
             \(SmallFin x) -> evalEnv $ do
                 r <- E.reduce x
@@ -595,5 +724,50 @@ tests = testGroup "IO"
                         Just i' -> i' `mod` 10 /= 0
                   _ -> False
           ]
+        ]
+
+      , testGroup "comparisons"
+        [ comparison "compare" E.nextPlus E.nextMinus E.compare
+        , comparison "compareSignal" E.nextPlus
+            E.nextMinus E.compare
+
+        , comparison "compareTotal" E.nextPlus E.nextMinus
+            E.compareTotal
+
+        , comparison "compareTotalMag" increaseAbs decreaseAbs
+              E.compareTotalMag
+
+        , testMinMax "min" False E.min
+        , testMinMax "max" False E.max
+        , testMinMax "maxMag" True E.maxMag
+        , testMinMax "minMag" True E.minMag
+
+        , testGroup "sameQuantum"
+          [ testProperty "is true for same Decoded" $
+            forAll genDecoded $ \d -> evalEnv $ do
+              x <- E.encode d
+              E.sameQuantum x x
+
+          , testProperty "is false for different Decoded" $
+            forAll ( liftM2 (,) genDecoded genDecoded
+                      `suchThat` (not . uncurry decodedSameQuantum))
+            $ \p -> evalEnv $ do
+              qx <- E.encode . fst $ p
+              qy <- E.encode . snd $ p
+              fmap not $ E.sameQuantum qx qy
+           ]
+        ]
+
+      , testGroup "tests"
+        [ matchClass "isFinite" E.isFinite
+          [ E.negNormal, E.negSubnormal, E.negZero,
+            E.posZero, E.posSubnormal, E.posNormal ]
+
+        , matchClass "isInfinite" E.isInfinite
+            [ E.negInf, E.posInf ]
+
+        , matchClass "isInteger" E.isInteger
+            [ E.negNormal, E.negZero, E.posZero, E.posNormal,
+              E.negSubnormal, E.posSubnormal ]
         ]
       ]
