@@ -411,7 +411,7 @@ runCtxIO (Ctx k) = do
 
 -- | Different categories of 'Quad'.
 newtype DecClass = DecClass C'decClass
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
 
 sNan :: DecClass
 sNan = DecClass c'DEC_CLASS_SNAN
@@ -443,6 +443,19 @@ posNormal = DecClass c'DEC_CLASS_POS_NORMAL
 posInf :: DecClass
 posInf = DecClass c'DEC_CLASS_POS_INF
 
+instance Show DecClass where
+  show (DecClass x)
+    | x == c'DEC_CLASS_SNAN = "sNaN"
+    | x == c'DEC_CLASS_QNAN = "NaN"
+    | x == c'DEC_CLASS_NEG_INF = "-Infinity"
+    | x == c'DEC_CLASS_NEG_NORMAL = "-Normal"
+    | x == c'DEC_CLASS_NEG_SUBNORMAL = "-Subnormal"
+    | x == c'DEC_CLASS_NEG_ZERO = "-Zero"
+    | x == c'DEC_CLASS_POS_ZERO = "+Zero"
+    | x == c'DEC_CLASS_POS_SUBNORMAL = "+Subnormal"
+    | x == c'DEC_CLASS_POS_NORMAL = "+Normal"
+    | x == c'DEC_CLASS_POS_INF = "+Infinity"
+    | otherwise = error "decClass show: invalid value"
 
 
 -- | Decimal number.  This is immutable, like any Haskell value you
