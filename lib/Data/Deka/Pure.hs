@@ -17,16 +17,16 @@
 --
 -- > import qualified Data.Deka.Pure as D
 module Data.Deka.Pure
-  ( runEnv
-  , evalEnv
+  ( runCtx
+  , evalCtx
   , module Data.Deka.IO
   ) where
 
 import Data.Deka.IO
 import System.IO.Unsafe
 
-runEnv :: Env a -> (a, Flags)
-runEnv e = unsafePerformIO $ runEnvIO e
+runCtx :: Ctx a -> (a, Flags)
+runCtx e = unsafePerformIO $ runCtxIO e
 
-evalEnv :: Env a -> a
-evalEnv = fst . runEnv
+evalCtx :: Ctx a -> a
+evalCtx = fst . runCtx

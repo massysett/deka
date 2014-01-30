@@ -23,15 +23,15 @@ flagsErrorMessage fl = case flagList fl of
   xs -> Left ("flags set: " ++
                 (concat . intersperse ", " $ xs))
 
-checked :: Env a -> Either String a
+checked :: Ctx a -> Either String a
 checked a =
-  let (r, fl) = runEnv a
+  let (r, fl) = runCtx a
   in flagsErrorMessage fl >> return r
 
-eval :: Env c -> c
+eval :: Ctx c -> c
 eval = either (error . ("Deka: error: " ++)) id . checked
 
-evalEither :: EitherT String Env a -> a
+evalEither :: EitherT String Ctx a -> a
 evalEither
   = either checkOuterE id
   . checked
@@ -41,20 +41,20 @@ evalEither
     checkE = error . ("Deka: Deka error: " ++)
     checkOuterE = error . ("Deka: decQuad error: " ++)
 
-eqDec :: Quad -> Quad -> EitherT String Env Bool
+eqDec :: Quad -> Quad -> EitherT String Ctx Bool
 eqDec x y = fmap (== EQ) $ cmpDec x y
 
-cmpDec :: Quad -> Quad -> EitherT String Env Ordering
+cmpDec :: Quad -> Quad -> EitherT String Ctx Ordering
 cmpDec x y = do
   r <- lift $ P.compare x y
   decToOrd r
 
-cmpDecTotal :: Quad -> Quad -> EitherT String Env Ordering
+cmpDecTotal :: Quad -> Quad -> EitherT String Ctx Ordering
 cmpDecTotal x y = do
   r <- lift $ P.compareTotal x y
   decToOrd r
 
-eqDecTotal :: Quad -> Quad -> EitherT String Env Bool
+eqDecTotal :: Quad -> Quad -> EitherT String Ctx Bool
 eqDecTotal x y = fmap (== EQ) $ cmpDecTotal x y
 
 -- | Runs monadic actions.  When the first action returns True,
@@ -74,7 +74,7 @@ runIf dflt a rs = do
   r <- a
   if r then rs else dflt
 
-decToOrd :: Quad -> EitherT String Env Ordering
+decToOrd :: Quad -> EitherT String Ctx Ordering
 decToOrd d
   = runIf (left "decToOrd: non-finite operand") (lift (isFinite d))
   .  successfulPair (left "decToOrd: nonsense result")
@@ -143,7 +143,7 @@ integralToDeka i = do
 
 strToDeka :: String -> Either String Deka
 strToDeka s =
-  fmap Deka . fst . runEnv $ do
+  fmap Deka . fst . runCtx $ do
     d <- fromString (BS8.pack s)
     fl <- getStatus
     case flagsErrorMessage fl of

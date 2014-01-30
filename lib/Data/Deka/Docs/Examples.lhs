@@ -137,7 +137,7 @@ Data.Deka.Pure module.
 The main type of the Pure module is called Quad, after decQuad in
 the decNumber library.  It exposes the full power of the decNumber
 library.  The disadvantage is that all computations must be
-performed in the Env monad.  This monad carries the state that
+performed in the Ctx monad.  This monad carries the state that
 decNumber needs to do its work.  It provides you with a lot of
 information about any errors that have occurred during computations.
 
@@ -149,7 +149,7 @@ http://speleotrove.com/decimal/decarith.html
 Following is an example of how you would add one tenth using the
 Quad type:
 
-> BS8.putStrLn . P.evalEnv $ do
+> BS8.putStrLn . P.evalCtx $ do
 >   oneTenth <- P.fromString . BS8.pack $ "0.1"
 >   r1 <- P.add oneTenth oneTenth
 >   r2 <- P.add r1 oneTenth
@@ -168,14 +168,14 @@ available, which you can set.  This can be useful with division, for
 example, where you will not get exact results.  All results are
 computed to 34 digits of precision.
 
-> let { tenSixths = P.evalEnv $ do
+> let { tenSixths = P.evalCtx $ do
 >         ten <- P.fromString . BS8.pack $ "10"
 >         three <- P.fromString . BS8.pack $ "6"
 >         P.divide ten three
 >     };
 
 > putStrLn "This is the result of 10 / 6:";
-> BS8.putStrLn . P.evalEnv . P.toString $ tenSixths;
+> BS8.putStrLn . P.evalCtx . P.toString $ tenSixths;
 
 Perhaps you want to round the result to a particular number of
 decimal places.  You do this with the "quantize" function.  It takes
@@ -183,7 +183,7 @@ two Quad: one that you want to round, and another that has the
 number of decimal places you want to round to.
 
 > putStrLn "This is 10 / 6, rounded to two places:";
-> BS8.putStrLn . P.evalEnv $ do
+> BS8.putStrLn . P.evalCtx $ do
 >   twoPlaces <- P.fromString . BS8.pack $ "1e-2"
 >   r <- P.quantize tenSixths twoPlaces
 >   P.toString r
@@ -194,7 +194,7 @@ can set a different rounding method if you wish; the rounding
 methods are listed in the Haddock documentation for Data.Deka.IO.
 
 > putStrLn "This is 10 / 6, rounded using the 'roundDown' method.";
-> BS8.putStrLn . P.evalEnv $ do
+> BS8.putStrLn . P.evalCtx $ do
 >   twoPlaces <- P.fromString . BS8.pack $ "1e-2"
 >   P.setRound P.roundDown
 >   r <- P.quantize tenSixths twoPlaces
@@ -210,11 +210,11 @@ Data.Deka.IO module.  Functions in Data.Deka.IO manipulate which
 flags are currently set.  Though computations set flags, they never
 clear them.  You have to clear them yourself.
 
-In addition to flags being available for inspection within the Env
-monad, you can get the final flags using runEnv.  FlagList gives you
+In addition to flags being available for inspection within the Ctx
+monad, you can get the final flags using runCtx.  FlagList gives you
 a list of flags that are set.
 
-> let { (r, fl) = P.runEnv $ do
+> let { (r, fl) = P.runCtx $ do
 >         big1 <- P.fromString . BS8.pack $ "987e3000"
 >         big2 <- P.fromString . BS8.pack $ "322e6000"
 >         rslt <- P.multiply big1 big2

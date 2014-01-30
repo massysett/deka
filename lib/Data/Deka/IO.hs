@@ -70,13 +70,13 @@ module Data.Deka.IO
   , emptyFlags
   , flagList
 
-  -- * Env monad
-  , Env
+  -- * Ctx monad
+  , Ctx
   , getStatus
   , setStatus
   , getRound
   , setRound
-  , runEnvIO
+  , runCtxIO
 
   -- * Class
   , DecClass
@@ -335,7 +335,7 @@ flagList fl = execWriter $ do
   f "conversionSyntax" conversionSyntax
 
 
--- | The Env monad
+-- | The Ctx monad
 --
 -- Since this is a binding to a C library, all the work happens in
 -- the mutable land of C pointers.  In addition, the General Decimal
@@ -347,59 +347,59 @@ flagList fl = execWriter $ do
 -- indicate that the result is rounded or inexact or was a division
 -- by zero.)
 --
--- The Env monad captures both the context and the IO.  Because
+-- The Ctx monad captures both the context and the IO.  Because
 -- 'Quad' is exposed only as an immutable type, and because there is
--- no way to do arbitrary IO in the Env monad (which is why it is
+-- no way to do arbitrary IO in the Ctx monad (which is why it is
 -- not an instance of the 'MonadIO' class), it is safe to put an
--- 'unsafePerformIO' on Env computations so they can be done in pure
+-- 'unsafePerformIO' on Ctx computations so they can be done in pure
 -- functions.
-newtype Env a = Env { unEnv :: Ptr C'decContext -> IO a }
+newtype Ctx a = Ctx { unCtx :: Ptr C'decContext -> IO a }
 
-instance Functor Env where
+instance Functor Ctx where
   fmap = liftM
 
-instance Applicative Env where
+instance Applicative Ctx where
   pure = return
   (<*>) = ap
 
-instance Monad Env where
-  return a = Env $ \_ -> return a
-  Env a >>= f = Env $ \p -> do
+instance Monad Ctx where
+  return a = Ctx $ \_ -> return a
+  Ctx a >>= f = Ctx $ \p -> do
     r1 <- a p
-    let b = unEnv $ f r1
+    let b = unCtx $ f r1
     b p
-  fail s = Env $ \_ -> fail s
+  fail s = Ctx $ \_ -> fail s
 
 -- | The current status flags, which indicate results from previous
 -- computations.
-getStatus :: Env Flags
-getStatus = Env $ \cPtr -> do
+getStatus :: Ctx Flags
+getStatus = Ctx $ \cPtr -> do
   let pSt = p'decContext'status cPtr
   fmap Flags . peek $ pSt
 
 -- | Set the current status to whatever you wish.
-setStatus :: Flags -> Env ()
-setStatus f = Env $ \cPtr -> do
+setStatus :: Flags -> Ctx ()
+setStatus f = Ctx $ \cPtr -> do
   let pSt = p'decContext'status cPtr
   poke pSt . unFlags $ f
 
 -- | The current rounding method
-getRound :: Env Round
-getRound = Env $ \cPtr -> do
+getRound :: Ctx Round
+getRound = Ctx $ \cPtr -> do
   let pR = p'decContext'round cPtr
   fmap Round . peek $ pR
 
 -- | Change the current rounding method
-setRound :: Round -> Env ()
-setRound r = Env $ \cPtr -> do
+setRound :: Round -> Ctx ()
+setRound r = Ctx $ \cPtr -> do
   let pR = p'decContext'round cPtr
   poke pR . unRound $ r
 
 -- | By default, rounding is half even.  No status flags are set
 -- initially.  Returns the final status flags along with the result
 -- of the computation.
-runEnvIO :: Env a -> IO (a, Flags)
-runEnvIO (Env k) = do
+runCtxIO :: Ctx a -> IO (a, Flags)
+runCtxIO (Ctx k) = do
   fp <- mallocForeignPtr
   withForeignPtr fp $ \pCtx -> do
     _ <- c'decContextDefault pCtx c'DEC_INIT_DECQUAD
@@ -473,8 +473,8 @@ type Unary
 unary
   :: Unary
   -> Quad
-  -> Env Quad
-unary f d = Env $ \ptrC ->
+  -> Ctx Quad
+unary f d = Ctx $ \ptrC ->
   newQuad >>= \r ->
   withForeignPtr (unDec d) $ \ptrX ->
   withForeignPtr (unDec r) $ \ptrR ->
@@ -492,8 +492,8 @@ binary
   :: Binary
   -> Quad
   -> Quad
-  -> Env Quad
-binary f x y = Env $ \pC ->
+  -> Ctx Quad
+binary f x y = Ctx $ \pC ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec x) $ \pX ->
@@ -511,8 +511,8 @@ binaryCtxFree
   :: BinaryCtxFree
   -> Quad
   -> Quad
-  -> Env Quad
-binaryCtxFree f x y = Env $ \_ ->
+  -> Ctx Quad
+binaryCtxFree f x y = Ctx $ \_ ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec x) $ \pX ->
@@ -527,8 +527,8 @@ type UnaryGet a
 unaryGet
   :: UnaryGet a
   -> Quad
-  -> Env a
-unaryGet f d = Env $ \_ ->
+  -> Ctx a
+unaryGet f d = Ctx $ \_ ->
   withForeignPtr (unDec d) $ \pD -> f pD
 
 type Ternary
@@ -544,8 +544,8 @@ ternary
   -> Quad
   -> Quad
   -> Quad
-  -> Env Quad
-ternary f x y z = Env $ \pC ->
+  -> Ctx Quad
+ternary f x y z = Ctx $ \pC ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec x) $ \pX ->
@@ -561,8 +561,8 @@ type Boolean
 boolean
   :: Boolean
   -> Quad
-  -> Env Bool
-boolean f d = Env $ \_ ->
+  -> Ctx Bool
+boolean f d = Ctx $ \_ ->
   withForeignPtr (unDec d) $ \pD ->
   f pD >>= \r ->
   return $ case r of
@@ -577,8 +577,8 @@ type MkString
 mkString
   :: MkString
   -> Quad
-  -> Env BS8.ByteString
-mkString f d = Env $ \_ ->
+  -> Ctx BS8.ByteString
+mkString f d = Ctx $ \_ ->
   withForeignPtr (unDec d) $ \pD ->
   allocaBytes c'DECQUAD_String $ \pS ->
   f pD pS
@@ -594,8 +594,8 @@ getRounded
   :: GetRounded a
   -> Round
   -> Quad
-  -> Env a
-getRounded f (Round r) d = Env $ \pC ->
+  -> Ctx a
+getRounded f (Round r) d = Ctx $ \pC ->
   withForeignPtr (unDec d) $ \pD ->
   f pD pC r
 
@@ -605,10 +605,10 @@ getRounded f (Round r) d = Env $ \pC ->
 
 -- | Absolute value.  NaNs are handled normally (the sign of an NaN
 -- is not affected, and an sNaN sets 'invalidOperation'.
-abs :: Quad -> Env Quad
+abs :: Quad -> Ctx Quad
 abs = unary c'decQuadAbs
 
-add :: Quad -> Quad -> Env Quad
+add :: Quad -> Quad -> Ctx Quad
 add = binary c'decQuadAdd
 
 -- | Digit-wise logical and.  Operands must be:
@@ -618,11 +618,11 @@ add = binary c'decQuadAdd
 -- * comprise only zeroes and/or ones
 --
 -- If not, 'invalidOperation' is set.
-and :: Quad -> Quad -> Env Quad
+and :: Quad -> Quad -> Ctx Quad
 and = binary c'decQuadAnd
 
 -- | More information about a particular 'Quad'.
-decClass :: Quad -> Env DecClass
+decClass :: Quad -> Ctx DecClass
 decClass = fmap DecClass . unaryGet c'decQuadClass
 
 -- | Compares two 'Quad' numerically.  The result might be @-1@, @0@,
@@ -633,12 +633,12 @@ decClass = fmap DecClass . unaryGet c'decQuadClass
 -- Thus, this function does not return an 'Ordering' because the
 -- result might be an NaN.
 --
-compare :: Quad -> Quad -> Env Quad
+compare :: Quad -> Quad -> Ctx Quad
 compare = binary c'decQuadCompare
 
 -- | Same as 'compare', but a quietNaN is treated like a signaling
 -- NaN (sets 'invalidOperation').
-compareSignal :: Quad -> Quad -> Env Quad
+compareSignal :: Quad -> Quad -> Ctx Quad
 compareSignal = binary c'decQuadCompareSignal
 
 -- | Compares using an IEEE 754 total ordering, which takes into
@@ -646,19 +646,19 @@ compareSignal = binary c'decQuadCompareSignal
 -- return different results depending upon whether the operands are
 -- canonical; 'Quad' are always canonical so you don't need to worry
 -- about that here.
-compareTotal :: Quad -> Quad -> Env Quad
+compareTotal :: Quad -> Quad -> Ctx Quad
 compareTotal = binaryCtxFree c'decQuadCompareTotal
 
 -- | Same as 'compareTotal' but compares the absolute value of the
 -- two arguments.
-compareTotalMag :: Quad -> Quad -> Env Quad
+compareTotalMag :: Quad -> Quad -> Ctx Quad
 compareTotalMag = binaryCtxFree c'decQuadCompareTotalMag
 
 -- | @copySign x y@ returns @z@, which is a copy of @x@ but has the
 -- sign of @y@.  Unlike @decQuadCopySign@, the result is always
 -- canonical.  This function never raises any signals.
-copySign :: Quad -> Quad -> Env Quad
-copySign fr to = Env $ \_ ->
+copySign :: Quad -> Quad -> Ctx Quad
+copySign fr to = Ctx $ \_ ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec fr) $ \pF ->
@@ -667,108 +667,108 @@ copySign fr to = Env $ \_ ->
   c'decQuadCanonical pR pR >>
   return r
 
-digits :: Quad -> Env Int
+digits :: Quad -> Ctx Int
 digits = fmap fromIntegral . unaryGet c'decQuadDigits
 
-divide :: Quad -> Quad -> Env Quad
+divide :: Quad -> Quad -> Ctx Quad
 divide = binary c'decQuadDivide
 
-divideInteger :: Quad -> Quad -> Env Quad
+divideInteger :: Quad -> Quad -> Ctx Quad
 divideInteger = binary c'decQuadDivideInteger
 
 -- | fused multiply add.
-fma :: Quad -> Quad -> Quad -> Env Quad
+fma :: Quad -> Quad -> Quad -> Ctx Quad
 fma = ternary c'decQuadFMA
 
-fromInt32 :: C'int32_t -> Env Quad
-fromInt32 i = Env $ \_ ->
+fromInt32 :: C'int32_t -> Ctx Quad
+fromInt32 i = Ctx $ \_ ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   c'decQuadFromInt32 pR i
   >> return r
 
-fromString :: BS8.ByteString -> Env Quad
-fromString s = Env $ \pC ->
+fromString :: BS8.ByteString -> Ctx Quad
+fromString s = Ctx $ \pC ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   BS8.useAsCString s $ \pS ->
   c'decQuadFromString pR pS pC >>
   return r
 
-fromUInt32 :: C'uint32_t -> Env Quad
-fromUInt32 i = Env $ \_ ->
+fromUInt32 :: C'uint32_t -> Ctx Quad
+fromUInt32 i = Ctx $ \_ ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   c'decQuadFromUInt32 pR i >>
   return r
 
-invert :: Quad -> Env Quad
+invert :: Quad -> Ctx Quad
 invert = unary c'decQuadInvert
 
-isFinite :: Quad -> Env Bool
+isFinite :: Quad -> Ctx Bool
 isFinite = boolean c'decQuadIsFinite
 
-isInfinite :: Quad -> Env Bool
+isInfinite :: Quad -> Ctx Bool
 isInfinite = boolean c'decQuadIsInfinite
 
-isInteger :: Quad -> Env Bool
+isInteger :: Quad -> Ctx Bool
 isInteger = boolean c'decQuadIsInteger
 
-isLogical :: Quad -> Env Bool
+isLogical :: Quad -> Ctx Bool
 isLogical = boolean c'decQuadIsLogical
 
-isNaN :: Quad -> Env Bool
+isNaN :: Quad -> Ctx Bool
 isNaN = boolean c'decQuadIsNaN
 
-isNegative :: Quad -> Env Bool
+isNegative :: Quad -> Ctx Bool
 isNegative = boolean c'decQuadIsNegative
 
-isNormal :: Quad -> Env Bool
+isNormal :: Quad -> Ctx Bool
 isNormal = boolean c'decQuadIsNormal
 
-isPositive :: Quad -> Env Bool
+isPositive :: Quad -> Ctx Bool
 isPositive = boolean c'decQuadIsPositive
 
-isSignaling :: Quad -> Env Bool
+isSignaling :: Quad -> Ctx Bool
 isSignaling = boolean c'decQuadIsSignaling
 
-isSigned :: Quad -> Env Bool
+isSigned :: Quad -> Ctx Bool
 isSigned = boolean c'decQuadIsSigned
 
-isSubnormal :: Quad -> Env Bool
+isSubnormal :: Quad -> Ctx Bool
 isSubnormal = boolean c'decQuadIsSubnormal
 
-isZero :: Quad -> Env Bool
+isZero :: Quad -> Ctx Bool
 isZero = boolean c'decQuadIsZero
 
-logB :: Quad -> Env Quad
+logB :: Quad -> Ctx Quad
 logB = unary c'decQuadLogB
 
-max :: Quad -> Quad -> Env Quad
+max :: Quad -> Quad -> Ctx Quad
 max = binary c'decQuadMax
 
-maxMag :: Quad -> Quad -> Env Quad
+maxMag :: Quad -> Quad -> Ctx Quad
 maxMag = binary c'decQuadMaxMag
 
-min :: Quad -> Quad -> Env Quad
+min :: Quad -> Quad -> Ctx Quad
 min = binary c'decQuadMin
 
-minMag :: Quad -> Quad -> Env Quad
+minMag :: Quad -> Quad -> Ctx Quad
 minMag = binary c'decQuadMinMag
 
-minus :: Quad -> Env Quad
+minus :: Quad -> Ctx Quad
 minus = unary c'decQuadMinus
 
-multiply :: Quad -> Quad -> Env Quad
+multiply :: Quad -> Quad -> Ctx Quad
 multiply = binary c'decQuadMultiply
 
-nextMinus :: Quad -> Env Quad
+nextMinus :: Quad -> Ctx Quad
 nextMinus = unary c'decQuadNextMinus
 
-nextPlus :: Quad -> Env Quad
+nextPlus :: Quad -> Ctx Quad
 nextPlus = unary c'decQuadNextPlus
 
-nextToward :: Quad -> Quad -> Env Quad
+nextToward :: Quad -> Quad -> Ctx Quad
 nextToward = binary c'decQuadNextToward
 
 -- | Digit wise logical inclusive Or.  Operands must be:
@@ -778,36 +778,36 @@ nextToward = binary c'decQuadNextToward
 -- * comprise only zeroes and/or ones
 --
 -- If not, 'invalidOperation' is set.
-or :: Quad -> Quad -> Env Quad
+or :: Quad -> Quad -> Ctx Quad
 or = binary c'decQuadOr
 
 -- | Same effect as @0 + x@ where the exponent of the zero is the
 -- same as that of @x@ if @x@ is finite).  NaNs are handled as for
 -- arithmetic operations.
-plus :: Quad -> Env Quad
+plus :: Quad -> Ctx Quad
 plus = unary c'decQuadPlus
 
 -- | @quantize x y@ returns @z@ which is @x@ set to have the same
 -- quantum as @y@; that is, numerically the same value but rounded
 -- or padded if necessary to have the same exponent as @y@.  Useful
 -- for rounding monetary quantities.
-quantize :: Quad -> Quad -> Env Quad
+quantize :: Quad -> Quad -> Ctx Quad
 quantize = binary c'decQuadQuantize
 
-reduce :: Quad -> Env Quad
+reduce :: Quad -> Ctx Quad
 reduce = unary c'decQuadReduce
 
-remainder :: Quad -> Quad -> Env Quad
+remainder :: Quad -> Quad -> Ctx Quad
 remainder = binary c'decQuadRemainder
 
-remainderNear :: Quad -> Quad -> Env Quad
+remainderNear :: Quad -> Quad -> Ctx Quad
 remainderNear = binary c'decQuadRemainderNear
 
-rotate :: Quad -> Quad -> Env Quad
+rotate :: Quad -> Quad -> Ctx Quad
 rotate = binary c'decQuadRotate
 
-sameQuantum :: Quad -> Quad -> Env Bool
-sameQuantum x y = Env $ \_ ->
+sameQuantum :: Quad -> Quad -> Ctx Bool
+sameQuantum x y = Ctx $ \_ ->
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
   c'decQuadSameQuantum pX pY >>= \r ->
@@ -815,58 +815,58 @@ sameQuantum x y = Env $ \_ ->
     1 -> True
     _ -> False
 
-scaleB :: Quad -> Quad -> Env Quad
+scaleB :: Quad -> Quad -> Ctx Quad
 scaleB = binary c'decQuadScaleB
 
 -- skipped: SetCoefficient
 -- skipped : SetExponent
 
-shift :: Quad -> Quad -> Env Quad
+shift :: Quad -> Quad -> Ctx Quad
 shift = binary c'decQuadShift
 
 -- omitted: Show
 
-subtract :: Quad -> Quad -> Env Quad
+subtract :: Quad -> Quad -> Ctx Quad
 subtract = binary c'decQuadSubtract
 
-toEngString :: Quad -> Env BS8.ByteString
+toEngString :: Quad -> Ctx BS8.ByteString
 toEngString = mkString c'decQuadToEngString
 
-toInt32 :: Round -> Quad -> Env C'int32_t
+toInt32 :: Round -> Quad -> Ctx C'int32_t
 toInt32 = getRounded c'decQuadToInt32
 
-toInt32Exact :: Round -> Quad -> Env C'int32_t
+toInt32Exact :: Round -> Quad -> Ctx C'int32_t
 toInt32Exact = getRounded c'decQuadToInt32Exact
 
-toIntegralExact :: Quad -> Env Quad
+toIntegralExact :: Quad -> Ctx Quad
 toIntegralExact = unary c'decQuadToIntegralExact
 
-toIntegralValue :: Round -> Quad -> Env Quad
-toIntegralValue (Round rnd) d = Env $ \pC ->
+toIntegralValue :: Round -> Quad -> Ctx Quad
+toIntegralValue (Round rnd) d = Ctx $ \pC ->
   withForeignPtr (unDec d) $ \pD ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   c'decQuadToIntegralValue pR pD pC rnd >>
   return r
 
-toString :: Quad -> Env BS8.ByteString
+toString :: Quad -> Ctx BS8.ByteString
 toString = mkString c'decQuadToString
 
-toUInt32 :: Round -> Quad -> Env C'uint32_t
+toUInt32 :: Round -> Quad -> Ctx C'uint32_t
 toUInt32 = getRounded c'decQuadToUInt32
 
-toUInt32Exact :: Round -> Quad -> Env C'uint32_t
+toUInt32Exact :: Round -> Quad -> Ctx C'uint32_t
 toUInt32Exact = getRounded c'decQuadToUInt32Exact
 
-version :: Env BS8.ByteString
-version = Env $ \_ ->
+version :: Ctx BS8.ByteString
+version = Ctx $ \_ ->
   c'decQuadVersion >>= BS8.packCString
 
-xor :: Quad -> Quad -> Env Quad
+xor :: Quad -> Quad -> Ctx Quad
 xor = binary c'decQuadXor
 
-zero :: Env Quad
-zero = Env $ \_ ->
+zero :: Ctx Quad
+zero = Ctx $ \_ ->
   newQuad >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
   c'decQuadZero pD >>
@@ -967,8 +967,8 @@ finiteCoefficient d = case dValue d of
   _ -> Nothing
 
 
-decode :: Quad -> Env Decoded
-decode d = Env $ \_ ->
+decode :: Quad -> Ctx Decoded
+decode d = Ctx $ \_ ->
   withForeignPtr (unDec d) $ \pD ->
   allocaBytes c'DECQUAD_Pmax $ \pArr ->
   alloca $ \pExp ->
@@ -979,8 +979,8 @@ decode d = Env $ \_ ->
 
 -- | Encodes a new 'Quad'.  The result is always canonical.  However,
 -- the function does not signal if the result is an sNaN.
-encode :: Decoded -> Env Quad
-encode dcd = Env $ \_ ->
+encode :: Decoded -> Ctx Quad
+encode dcd = Ctx $ \_ ->
   newQuad >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
   let (expn, arr) = packBCD dcd in
