@@ -127,6 +127,7 @@ module Data.Deka.Decnumber where
 #ccall decQuadToInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <int32_t>
 
 #ccall decQuadFromInt32 , Ptr <decQuad> -> <int32_t> -> IO (Ptr <decQuad>)
+#ccall decQuadFromPacked , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> IO (Ptr <decQuad>)
 #ccall decQuadFromPackedChecked , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> IO (Ptr <decQuad>)
 #ccall decQuadFromUInt32 , Ptr <decQuad> -> <uint32_t> -> IO (Ptr <decQuad>)
 #ccall decQuadFromString , Ptr <decQuad> -> CString -> Ptr <decContext> -> IO (Ptr <decQuad>)

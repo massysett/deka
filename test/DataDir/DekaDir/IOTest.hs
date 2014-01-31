@@ -106,13 +106,13 @@ genDecoded = liftM2 E.Decoded genSign genValue
 genFromDecoded :: Gen E.Quad
 genFromDecoded = do
   d <- genDecoded
-  return . fst . runCtx . liftEnv . E.encode $ d
+  return . fst . runCtx . liftEnv . E.fromPackedChecked $ d
 
 genFinite :: Gen Visible
 genFinite = do
   v <- liftM2 E.Finite genCoefficient genExp
   s <- genSign
-  return . Visible . evalCtx . liftEnv . E.encode $ E.Decoded s v
+  return . Visible . evalCtx . liftEnv . E.fromPackedChecked $ E.Decoded s v
 
 genSmallFinite :: Gen Visible
 genSmallFinite = do
@@ -126,7 +126,7 @@ genSmallFinite = do
         Right g -> g
   s <- genSign
   let d = E.Decoded s (E.Finite co en)
-      dec = runEnv (E.encode d)
+      dec = runEnv (E.fromPackedChecked d)
   return . Visible $ dec
 
 newtype SmallFin = SmallFin { unSmallFin :: E.Quad }
@@ -155,7 +155,7 @@ instance Arbitrary NZSmallFin where
           Right g -> g
     s <- genSign
     let d = E.Decoded s (E.Finite co en)
-        dec = runEnv (E.encode d)
+        dec = runEnv (E.fromPackedChecked d)
     return . NZSmallFin $ dec
 
 
@@ -172,7 +172,7 @@ genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
                 (const $ error "genOne: coeffExp failed")
                 id $ E.exponent expn
               dcd = E.Decoded E.Sign0 (E.Finite coef en)
-          in Visible . runEnv . E.encode $ dcd
+          in Visible . runEnv . E.fromPackedChecked $ dcd
               
 genZero :: Gen Visible
 genZero = fmap f $ choose E.minMaxExp
@@ -184,7 +184,7 @@ genZero = fmap f $ choose E.minMaxExp
                 (const $ error "genZero: coefficient failed")
                 id . E.coefficient $ 0
               dcd = E.Decoded E.Sign0 (E.Finite coef expn)
-          in Visible . runEnv . E.encode $ dcd
+          in Visible . runEnv . E.fromPackedChecked $ dcd
 
 
 genRound :: Gen E.Round
@@ -614,14 +614,14 @@ tests = testGroup "IO"
       forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
       runEnv $ do
         dcd <- E.decode d
-        ecd <- E.encode dcd
+        ecd <- E.fromPackedChecked dcd
         r <- E.compareTotal ecd d
         E.isZero r
 
     , testProperty "round trip from Decoded" $
       forAll genDecoded $ \d ->
       let r = runEnv $ do
-            ecd <- E.encode d
+            ecd <- E.fromPackedChecked d
             E.decode ecd
       in printTestCase ("result: " ++ show r) (r == d)
     ]
@@ -752,15 +752,15 @@ tests = testGroup "IO"
     , testGroup "sameQuantum"
       [ testProperty "is true for same Decoded" $
         forAll genDecoded $ \d -> runEnv $ do
-          x <- E.encode d
+          x <- E.fromPackedChecked d
           E.sameQuantum x x
 
       , testProperty "is false for different Decoded" $
         forAll ( liftM2 (,) genDecoded genDecoded
                   `suchThat` (not . uncurry decodedSameQuantum))
         $ \p -> runEnv $ do
-                  qx <- E.encode . fst $ p
-                  qy <- E.encode . snd $ p
+                  qx <- E.fromPackedChecked . fst $ p
+                  qy <- E.fromPackedChecked . snd $ p
                   fmap not $ E.sameQuantum qx qy
       ]
     ]

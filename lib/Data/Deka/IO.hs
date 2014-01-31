@@ -117,7 +117,7 @@ module Data.Deka.IO
   , finiteExponent
   , finiteCoefficient
   , decode
-  , encode
+  , fromPackedChecked
 
   -- ** Strings
   , fromByteString
@@ -1061,18 +1061,23 @@ decode d = Env $
 
 -- | Encodes a new 'Quad'.  The result is always canonical.  However,
 -- the function does not signal if the result is an sNaN.
-encode :: Decoded -> Env Quad
-encode dcd = Env $
+--
+-- decNumber checks the arguments to this function.  If decNumber's
+-- check fails, this function will apply 'error'.  This function has
+-- been throughly tested and should never fail; however, this extra
+-- safety belt ensures that the library does not start wandering
+-- about in the land of undefined behavior.
+fromPackedChecked :: Decoded -> Env Quad
+fromPackedChecked dcd = Env $
   newQuad >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
   let (expn, arr) = packBCD dcd in
   withArray arr $ \pArr ->
   c'decQuadFromPackedChecked pD expn pArr >>= \r ->
-  let iPtr = ptrToIntPtr r
-  in if iPtr == c'NULL
-      then error ("Deka.IO: encode failed. Decoded: " ++ show dcd)
-      else return () >>
-  return d
+  let ip = ptrToIntPtr r
+  in if ip == 0
+      then error "fromPacked: error: check failed"
+      else return d
 
 -- Converts a BCD to an Integer.
 fromBCD
@@ -1181,16 +1186,45 @@ packBCD (Decoded s v) = (expt, ls)
       NaN _ p -> packNaN s p
       Finite c _ -> packFinite s c
 
+-- ## Digits
+
+data Digit = D0 | D1 | D2 | D3 | D4 | D5 | D6 | D7 | D8 | D9
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+digitToInt :: Digit -> Integer
+digitToInt d = case d of
+  { D0 -> 0; D1 -> 1; D2 -> 2; D3 -> 3; D4 -> 4; D5 -> 5;
+    D6 -> 6; D7 -> 7; D8 -> 8; D9 -> 9 }
+
+-- | A list of digits, Pmax long.
+newtype DigitList = DigitList { unDigitList :: [Digit] }
+  deriving (Eq, Ord, Show)
+
+digitList :: [Digit] -> Maybe DigitList
+digitList ls
+  | length ls == c'DECQUAD_Pmax = Just . DigitList $ ls
+  | otherwise = Nothing
+
+digitListToInteger :: DigitList -> Integer
+digitListToInteger (DigitList ls) = go (c'DECQUAD_Pmax - 1) 0 ls
+  where
+    go c t ds = case ds of
+      [] -> t
+      x:xs -> let m = digitToInt x * 10 ^ c
+                  t' = m + t
+                  c' = c - 1
+                  _types = c :: Int
+              in t' `seq` c' `seq` go c' t' xs
+
 -- decQuad functions not recreated here:
 
 -- skipped: classString - not needed
 -- skipped: copy - not needed
 -- skipped: copyAbs - use abs instead
 -- skipped: copyNegate - use negate instead
--- skipped: fromBCD - use encode function instead
+-- skipped: fromBCD - use fromPacked function instead
 -- skipped: fromNumber - not needed
--- skipped: fromPacked - use encode function instead
--- skipped: fromPackedChecked - use encode function instead
+-- skipped: fromPacked - use fromPackedChecked instead
 -- skipped: fromWider - not needed
 -- skipped: getCoefficient - use decode function instead
 -- skipped: getExponent - use decode function instead
