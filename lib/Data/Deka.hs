@@ -134,8 +134,8 @@ instance Ord DekaT where
 integralToDeka :: Integral a => a -> Either String Deka
 integralToDeka i = do
   let coDigs = fromMaybe (error "Deka: integralToDeka failed")
-        . integerToDigits $ i
-      padLen = P.coefficientDigitsLen - length coDigs
+        . integralToDigits $ i
+      padLen = P.finiteDigitsLen - length coDigs
       notTooManyDigs
         | padLen < 0 =
             Left "Deka: integralToDeka: too many digits"

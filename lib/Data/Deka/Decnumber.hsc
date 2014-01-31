@@ -9,6 +9,7 @@
 #include <decContext.h>
 #include <decQuad.h>
 
+-- | Low-level bindings to the decNumber library.
 module Data.Deka.Decnumber where
 
 #strict_import

@@ -98,11 +98,20 @@ module Data.Deka.IO
   , decClass
 
   -- * Conversions
-  -- ** Complete encoding and decoding
+  -- ** Digits
   , Digit(..)
+  , digitsToIntegral
+  , integralToDigits
+
+  -- ** Complete encoding and decoding
+  , finiteDigitsLen
+  , payloadDigitsLen
   , FiniteDigits
   , finiteDigits
   , unFiniteDigits
+  , PayloadDigits
+  , payloadDigits
+  , unPayloadDigits
   , FiniteExp
   , finiteExp
   , unFiniteExp
@@ -114,21 +123,6 @@ module Data.Deka.IO
   , Decoded(..)
   , fromBCD
   , toBCD
-  , PayloadDigits
-  , payloadDigits
-  , unPayloadDigits
-  , digitsToInteger
-  , integerToDigits
-  , coefficientDigitsLen
-  , payloadDigitsLen
-
-  -- ** Partial decoding and encoding
-  , CoeffDigits
-  , unCoeffDigits
-  , coeffDigits
-  , getCoefficient
-  , getExponent
-  , setCoefficient
 
   -- ** Strings
   , fromByteString
@@ -160,7 +154,14 @@ module Data.Deka.IO
   -- * Exponent and coefficient adjustment
   , quantize
   , reduce
+  , Exponent(..)
+  , getExponent
   , setExponent
+  , CoeffDigits
+  , unCoeffDigits
+  , coeffDigits
+  , getCoefficient
+  , setCoefficient
 
   -- * Comparisons
   , compare
@@ -797,8 +798,8 @@ getExponent :: Quad -> Env Exponent
 getExponent q = Env $
   withForeignPtr (unDec q) $ \pQ ->
   c'decQuadGetExponent pQ >>= \i ->
-  let r | i == c'DECFLOAT_qNaN = EqNaN
-        | i == c'DECFLOAT_sNaN = EsNaN
+  let r | i == c'DECFLOAT_qNaN = EQuiet
+        | i == c'DECFLOAT_sNaN = ESignaling
         | i == c'DECFLOAT_Inf = EInf
         | otherwise = EFinite . FiniteExp . fromIntegral $ i
   in return r
@@ -941,8 +942,8 @@ setExponent e q = Ctx $ \pC ->
   withForeignPtr (unDec r) $ \pR ->
   c'decQuadCopy pR pQ >>= \_ ->
   let n = case e of
-            EqNaN -> c'DECFLOAT_qNaN
-            EsNaN -> c'DECFLOAT_sNaN
+            EQuiet -> c'DECFLOAT_qNaN
+            ESignaling -> c'DECFLOAT_sNaN
             EInf -> c'DECFLOAT_Inf
             EFinite ex -> fromIntegral . unFiniteExp $ ex in
   c'decQuadSetExponent pR pC n >>
@@ -1131,6 +1132,7 @@ getDecoded sgn ex coef = Decoded s v
 
 -- ## Digits
 
+-- | A single decimal digit.
 data Digit = D0 | D1 | D2 | D3 | D4 | D5 | D6 | D7 | D8 | D9
   deriving (Eq, Ord, Show, Enum, Bounded)
 
@@ -1138,6 +1140,12 @@ digitToInt :: Integral a => Digit -> a
 digitToInt d = case d of
   { D0 -> 0; D1 -> 1; D2 -> 2; D3 -> 3; D4 -> 4; D5 -> 5;
     D6 -> 6; D7 -> 7; D8 -> 8; D9 -> 9 }
+
+intToDigit :: Integral a => a -> Digit
+intToDigit i = case i of
+  { 0 -> D0; 1 -> D1; 2 -> D2; 3 -> D3; 4 -> D4;
+    5 -> D5; 6 -> D6; 7 -> D7; 8 -> D8; 9 -> D9;
+    _ -> error "intToDigit: integer out of range" }
 
 
 -- | A list of digits, Pmax long.  Could be either a payload or a
@@ -1170,8 +1178,9 @@ payloadDigits ds
   | otherwise = Nothing
 
 
-digitsToInteger :: [Digit] -> Integer
-digitsToInteger ls = go (length ls - 1) 0 ls
+-- | The most significant digit is at the head of the list.
+digitsToIntegral :: [Digit] -> Integer
+digitsToIntegral ls = go (length ls - 1) 0 ls
   where
     go c t ds = case ds of
       [] -> t
@@ -1181,8 +1190,10 @@ digitsToInteger ls = go (length ls - 1) 0 ls
                   _types = c :: Int
               in t' `seq` c' `seq` go c' t' xs
 
-integerToDigits :: Integral a => a -> Maybe [Digit]
-integerToDigits a
+-- | Fails on negative numbers.  The most significant digit is at
+-- the head of the list.
+integralToDigits :: Integral a => a -> Maybe [Digit]
+integralToDigits a
   | a < 0 = Nothing
   | otherwise = Just . reverse . go $ a
   where
@@ -1192,23 +1203,17 @@ integerToDigits a
           let (d, m) = i `divMod` 10
           in intToDigit m : go d
 
-coefficientDigitsLen :: Int
-coefficientDigitsLen = c'DECQUAD_Pmax
+finiteDigitsLen :: Int
+finiteDigitsLen = c'DECQUAD_Pmax
 
 payloadDigitsLen :: Int
 payloadDigitsLen = c'DECQUAD_Pmax - 1
 
-intToDigit :: Integral a => a -> Digit
-intToDigit i = case i of
-  { 0 -> D0; 1 -> D1; 2 -> D2; 3 -> D3; 4 -> D4;
-    5 -> D5; 6 -> D6; 7 -> D7; 8 -> D8; 9 -> D9;
-    _ -> error "intToDigit: integer out of range" }
-
 -- | No separate code for NaN; in the header, NaN and qNaN are the
 -- same value.
 data Exponent
-  = EqNaN
-  | EsNaN
+  = EQuiet
+  | ESignaling
   | EInf
   | EFinite FiniteExp
   deriving (Eq, Ord, Show)
