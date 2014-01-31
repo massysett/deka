@@ -19,6 +19,7 @@
 module Data.Deka.Pure
   ( runCtx
   , evalCtx
+  , runEnv
   , module Data.Deka.IO
   ) where
 
@@ -30,3 +31,6 @@ runCtx e = unsafePerformIO $ runCtxIO e
 
 evalCtx :: Ctx a -> a
 evalCtx = fst . runCtx
+
+runEnv :: Env a -> a
+runEnv = unsafePerformIO . runEnvIO

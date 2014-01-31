@@ -70,6 +70,10 @@ module Data.Deka.IO
   , emptyFlags
   , flagList
 
+  -- * Env monad
+  , Env
+  , runEnvIO
+
   -- * Ctx monad
   , Ctx
   , getStatus
@@ -77,6 +81,7 @@ module Data.Deka.IO
   , getRound
   , setRound
   , runCtxIO
+  , liftEnv
 
   -- * Class
   , DecClass
@@ -115,9 +120,9 @@ module Data.Deka.IO
   , encode
 
   -- ** Strings
-  , fromString
-  , toString
-  , toEngString
+  , fromByteString
+  , toByteString
+  , toEngByteString
 
   -- ** Integers
   , fromInt32
@@ -335,17 +340,54 @@ flagList fl = execWriter $ do
   f "conversionSyntax" conversionSyntax
 
 
+-- | The Env monad
+--
+-- Since Deka is a binding to a C library, all the work happens in
+-- the mutable land of C pointers.  That means that everything
+-- happens in the IO monad.  The Env monad is simply a wrapper of
+-- the IO monad.  Since the Env data constructor is not exported,
+-- you can't do arbitrary IO computations in the monad; you can only
+-- do the computations from this module.  Because all the
+-- computations in this module do not create observable side
+-- effects, it is safe to use 'unsafePerformIO' to perform Env
+-- computations in a pure function.  This module does not have such
+-- a function so that this module can stay Safe for Safe Haskell
+-- purposes; however, the "Data.Deka.Pure" module does have such a
+-- function.
+
+newtype Env a = Env { runEnvIO :: IO a }
+
+instance Functor Env where
+  fmap = liftM
+
+instance Applicative Env where
+  pure = return
+  (<*>) = ap
+
+instance Monad Env where
+  return = Env . return
+  Env a >>= f = Env $ do
+    r1 <- a
+    runEnvIO $ f r1
+  fail = Env . fail
+
+
 -- | The Ctx monad
 --
--- Since this is a binding to a C library, all the work happens in
--- the mutable land of C pointers.  In addition, the General Decimal
--- Arithmetic specification states that most computations occur
--- within a @context@, which affects the manner in which
--- computations are done (for instance, the context determines the
--- rounding algorithm).  The context also carries some results from
--- computations (for instance, a computation might set a flag to
--- indicate that the result is rounded or inexact or was a division
--- by zero.)
+-- The General Decimal Arithmetic specification states that most
+-- computations occur within a @context@, which affects the manner
+-- in which computations are done (for instance, the context
+-- determines the rounding algorithm).  The context also carries
+-- some results from computations (for instance, a computation might
+-- set a flag to indicate that the result is rounded or inexact or
+-- was a division by zero.) The Ctx monad carries this context.
+--
+-- Conceptually the Ctx monad includes the Env monad.  Any Env
+-- computation can be lifted into a Ctx computation with a
+-- 'liftEnv'.  You will do most computations in the Ctx monad;
+-- however, on occasion it is useful to do computations entirely in
+-- the Env monad.  You know that computations entirely in the Env
+-- monad are unaffected by, and cannot affect, the context.
 --
 -- The Ctx monad captures both the context and the IO.  Because
 -- 'Quad' is exposed only as an immutable type, and because there is
@@ -369,6 +411,10 @@ instance Monad Ctx where
     let b = unCtx $ f r1
     b p
   fail s = Ctx $ \_ -> fail s
+
+-- | Lifts an Env computation into a Ctx.
+liftEnv :: Env a -> Ctx a
+liftEnv (Env k) = Ctx $ \_ -> k
 
 -- | The current status flags, which indicate results from previous
 -- computations.
@@ -524,8 +570,8 @@ binaryCtxFree
   :: BinaryCtxFree
   -> Quad
   -> Quad
-  -> Ctx Quad
-binaryCtxFree f x y = Ctx $ \_ ->
+  -> Env Quad
+binaryCtxFree f x y = Env $
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec x) $ \pX ->
@@ -540,8 +586,8 @@ type UnaryGet a
 unaryGet
   :: UnaryGet a
   -> Quad
-  -> Ctx a
-unaryGet f d = Ctx $ \_ ->
+  -> Env a
+unaryGet f d = Env $
   withForeignPtr (unDec d) $ \pD -> f pD
 
 type Ternary
@@ -574,13 +620,14 @@ type Boolean
 boolean
   :: Boolean
   -> Quad
-  -> Ctx Bool
-boolean f d = Ctx $ \_ ->
+  -> Env Bool
+boolean f d = Env $
   withForeignPtr (unDec d) $ \pD ->
   f pD >>= \r ->
   return $ case r of
     1 -> True
-    _ -> False
+    0 -> False
+    _ -> error "boolean: bad return value"
 
 type MkString
   = Ptr C'decQuad
@@ -590,8 +637,8 @@ type MkString
 mkString
   :: MkString
   -> Quad
-  -> Ctx BS8.ByteString
-mkString f d = Ctx $ \_ ->
+  -> Env BS8.ByteString
+mkString f d = Env $
   withForeignPtr (unDec d) $ \pD ->
   allocaBytes c'DECQUAD_String $ \pS ->
   f pD pS
@@ -635,7 +682,7 @@ and :: Quad -> Quad -> Ctx Quad
 and = binary c'decQuadAnd
 
 -- | More information about a particular 'Quad'.
-decClass :: Quad -> Ctx DecClass
+decClass :: Quad -> Env DecClass
 decClass = fmap DecClass . unaryGet c'decQuadClass
 
 -- | Compares two 'Quad' numerically.  The result might be @-1@, @0@,
@@ -659,19 +706,19 @@ compareSignal = binary c'decQuadCompareSignal
 -- return different results depending upon whether the operands are
 -- canonical; 'Quad' are always canonical so you don't need to worry
 -- about that here.
-compareTotal :: Quad -> Quad -> Ctx Quad
+compareTotal :: Quad -> Quad -> Env Quad
 compareTotal = binaryCtxFree c'decQuadCompareTotal
 
 -- | Same as 'compareTotal' but compares the absolute value of the
 -- two arguments.
-compareTotalMag :: Quad -> Quad -> Ctx Quad
+compareTotalMag :: Quad -> Quad -> Env Quad
 compareTotalMag = binaryCtxFree c'decQuadCompareTotalMag
 
 -- | @copySign x y@ returns @z@, which is a copy of @x@ but has the
 -- sign of @y@.  Unlike @decQuadCopySign@, the result is always
 -- canonical.  This function never raises any signals.
-copySign :: Quad -> Quad -> Ctx Quad
-copySign fr to = Ctx $ \_ ->
+copySign :: Quad -> Quad -> Env Quad
+copySign fr to = Env $
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec fr) $ \pF ->
@@ -680,7 +727,7 @@ copySign fr to = Ctx $ \_ ->
   c'decQuadCanonical pR pR >>
   return r
 
-digits :: Quad -> Ctx Int
+digits :: Quad -> Env Int
 digits = fmap fromIntegral . unaryGet c'decQuadDigits
 
 divide :: Quad -> Quad -> Ctx Quad
@@ -693,23 +740,31 @@ divideInteger = binary c'decQuadDivideInteger
 fma :: Quad -> Quad -> Quad -> Ctx Quad
 fma = ternary c'decQuadFMA
 
-fromInt32 :: C'int32_t -> Ctx Quad
-fromInt32 i = Ctx $ \_ ->
+fromInt32 :: C'int32_t -> Env Quad
+fromInt32 i = Env $
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   c'decQuadFromInt32 pR i
   >> return r
 
-fromString :: BS8.ByteString -> Ctx Quad
-fromString s = Ctx $ \pC ->
+-- | Reads a ByteString, which can be in scientific, engineering, or
+-- \"regular\" decimal notation.  Also reads NaN, Infinity, etc.
+-- Will return a signaling NaN and set the Invalid flag if the
+-- string given is invalid.
+--
+-- In the decNumber C library, this function was called
+-- @fromString@; the name was changed here because it doesn't take a
+-- regular Haskell 'String'.
+fromByteString :: BS8.ByteString -> Ctx Quad
+fromByteString s = Ctx $ \pC ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   BS8.useAsCString s $ \pS ->
   c'decQuadFromString pR pS pC >>
   return r
 
-fromUInt32 :: C'uint32_t -> Ctx Quad
-fromUInt32 i = Ctx $ \_ ->
+fromUInt32 :: C'uint32_t -> Env Quad
+fromUInt32 i = Env $
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   c'decQuadFromUInt32 pR i >>
@@ -718,40 +773,40 @@ fromUInt32 i = Ctx $ \_ ->
 invert :: Quad -> Ctx Quad
 invert = unary c'decQuadInvert
 
-isFinite :: Quad -> Ctx Bool
+isFinite :: Quad -> Env Bool
 isFinite = boolean c'decQuadIsFinite
 
-isInfinite :: Quad -> Ctx Bool
+isInfinite :: Quad -> Env Bool
 isInfinite = boolean c'decQuadIsInfinite
 
-isInteger :: Quad -> Ctx Bool
+isInteger :: Quad -> Env Bool
 isInteger = boolean c'decQuadIsInteger
 
-isLogical :: Quad -> Ctx Bool
+isLogical :: Quad -> Env Bool
 isLogical = boolean c'decQuadIsLogical
 
-isNaN :: Quad -> Ctx Bool
+isNaN :: Quad -> Env Bool
 isNaN = boolean c'decQuadIsNaN
 
-isNegative :: Quad -> Ctx Bool
+isNegative :: Quad -> Env Bool
 isNegative = boolean c'decQuadIsNegative
 
-isNormal :: Quad -> Ctx Bool
+isNormal :: Quad -> Env Bool
 isNormal = boolean c'decQuadIsNormal
 
-isPositive :: Quad -> Ctx Bool
+isPositive :: Quad -> Env Bool
 isPositive = boolean c'decQuadIsPositive
 
-isSignaling :: Quad -> Ctx Bool
+isSignaling :: Quad -> Env Bool
 isSignaling = boolean c'decQuadIsSignaling
 
-isSigned :: Quad -> Ctx Bool
+isSigned :: Quad -> Env Bool
 isSigned = boolean c'decQuadIsSigned
 
-isSubnormal :: Quad -> Ctx Bool
+isSubnormal :: Quad -> Env Bool
 isSubnormal = boolean c'decQuadIsSubnormal
 
-isZero :: Quad -> Ctx Bool
+isZero :: Quad -> Env Bool
 isZero = boolean c'decQuadIsZero
 
 logB :: Quad -> Ctx Quad
@@ -819,14 +874,15 @@ remainderNear = binary c'decQuadRemainderNear
 rotate :: Quad -> Quad -> Ctx Quad
 rotate = binary c'decQuadRotate
 
-sameQuantum :: Quad -> Quad -> Ctx Bool
-sameQuantum x y = Ctx $ \_ ->
+sameQuantum :: Quad -> Quad -> Env Bool
+sameQuantum x y = Env $
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
   c'decQuadSameQuantum pX pY >>= \r ->
   return $ case r of
     1 -> True
-    _ -> False
+    0 -> False
+    _ -> error "sameQuantum: error: invalid result"
 
 scaleB :: Quad -> Quad -> Ctx Quad
 scaleB = binary c'decQuadScaleB
@@ -842,8 +898,13 @@ shift = binary c'decQuadShift
 subtract :: Quad -> Quad -> Ctx Quad
 subtract = binary c'decQuadSubtract
 
-toEngString :: Quad -> Ctx BS8.ByteString
-toEngString = mkString c'decQuadToEngString
+-- | Returns a string in engineering notation.
+--
+-- In the decNumber C library, this is called @toEngString@; the
+-- name is changed here because the function does not return a
+-- regular Haskell 'String'.
+toEngByteString :: Quad -> Env BS8.ByteString
+toEngByteString = mkString c'decQuadToEngString
 
 toInt32 :: Round -> Quad -> Ctx C'int32_t
 toInt32 = getRounded c'decQuadToInt32
@@ -862,8 +923,15 @@ toIntegralValue (Round rnd) d = Ctx $ \pC ->
   c'decQuadToIntegralValue pR pD pC rnd >>
   return r
 
-toString :: Quad -> Ctx BS8.ByteString
-toString = mkString c'decQuadToString
+-- | Converts a 'Quad' to a string.  May use non-scientific
+-- notation, but only if that's unambiguous; otherwise, uses
+-- scientific notation.
+--
+-- In the decNumber C library, this is called @toString@; the name
+-- was changed here because this function doesn't return a Haskell
+-- 'String'.
+toByteString :: Quad -> Env BS8.ByteString
+toByteString = mkString c'decQuadToString
 
 toUInt32 :: Round -> Quad -> Ctx C'uint32_t
 toUInt32 = getRounded c'decQuadToUInt32
@@ -871,15 +939,15 @@ toUInt32 = getRounded c'decQuadToUInt32
 toUInt32Exact :: Round -> Quad -> Ctx C'uint32_t
 toUInt32Exact = getRounded c'decQuadToUInt32Exact
 
-version :: Ctx BS8.ByteString
-version = Ctx $ \_ ->
+version :: Env BS8.ByteString
+version = Env $
   c'decQuadVersion >>= BS8.packCString
 
 xor :: Quad -> Quad -> Ctx Quad
 xor = binary c'decQuadXor
 
-zero :: Ctx Quad
-zero = Ctx $ \_ ->
+zero :: Env Quad
+zero = Env $
   newQuad >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
   c'decQuadZero pD >>
@@ -980,8 +1048,8 @@ finiteCoefficient d = case dValue d of
   _ -> Nothing
 
 
-decode :: Quad -> Ctx Decoded
-decode d = Ctx $ \_ ->
+decode :: Quad -> Env Decoded
+decode d = Env $
   withForeignPtr (unDec d) $ \pD ->
   allocaBytes c'DECQUAD_Pmax $ \pArr ->
   alloca $ \pExp ->
@@ -992,8 +1060,8 @@ decode d = Ctx $ \_ ->
 
 -- | Encodes a new 'Quad'.  The result is always canonical.  However,
 -- the function does not signal if the result is an sNaN.
-encode :: Decoded -> Ctx Quad
-encode dcd = Ctx $ \_ ->
+encode :: Decoded -> Env Quad
+encode dcd = Env $
   newQuad >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
   let (expn, arr) = packBCD dcd in

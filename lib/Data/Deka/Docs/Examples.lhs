@@ -16,6 +16,17 @@ Usually you will want to perform a qualified import, because
 Data.Deka.Pure exports a lot of functions that clash with Prelude
 names.
 
+> -- Examples will deliberately shadow some names
+> {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+>
+> -- | If you are viewing this module in Haddock and expecting to
+> -- see examples, you won't see anything.  The file is written in
+> -- literate Haskell, so the idea is that you will look at the
+> -- source itself.  You can look at the source in Haddock, but it
+> -- will probably be poorly formatted.  The easiest way to see it
+> -- is on Github:
+> --
+> -- <https://github.com/massysett/deka/blob/master/lib/Data/Deka/Docs/Examples.lhs>
 > module Data.Deka.Docs.Examples where
 
 > import Data.Deka
@@ -99,19 +110,19 @@ You get a Left with an error message if your Deka could not be
 created; otherwise, you get a Right with the Deka.  The input string
 can be in regular or scientific notation.
 
-The following function makes it easier to use strToDeka
-interactively:
+Lots of functions in the Deka module return an `Either String`,
+where the String is an error message if a computation failed.  For
+the purposes of this example, let's make a simple function that will
+extract successful values while giving an error message for failed
+ones:
 
-    crashy :: Either String a -> a
-
-It applies the "error" function to the error message if there is
-one; otherwise you get the result.
+> let { fromRight = either fail return };
 
 So, the following snippet will not give you incorrectly rounded
 results:
 
-> let oneTenth = crashy . strToDeka $ "0.1"
-> in print $ oneTenth + oneTenth + oneTenth;
+> oneTenth <- fromRight . strToDeka $ "0.1";
+> print $ oneTenth + oneTenth + oneTenth;
 
 Deka is not an instance of other numeric typeclasses, such as
 Real or Fractional.  That's because Deka never ever rounds, no
@@ -146,14 +157,48 @@ decimal arithmetic specification at
 
 http://speleotrove.com/decimal/decarith.html
 
+Context
+-------
+
+This specification provides that many computations occur within a
+so-called "context", which holds information that affects the
+computation, such as how to round inexact results.  The context also
+holds information about any errors that have happened so far, such
+as division by zero, and can tell you other information such as
+whether any computations performed so far have calculated an inexact
+result.
+
+The context of the decimal arithmetic specification is represented
+in Deka by the `Ctx` type.  `Ctx` provides computations with the
+context that they need, and it allows computations to record errors
+that may arise.  `Ctx` is a `Monad` so you can use the usual monad
+functions and `do` notation to combine your computations.  Deka has
+functions you can use to change the context's rounding, see what
+errors have been set, and clear errors.  Once an error flag is set,
+you have to clear it; Deka won't clear it for you.  However,
+computations can proceed normally even if an error flag was set in a
+previous computation.
+
+Not all computations need a context.  For example, `compareTotal`
+does not need a context, and it can never return an error.  These
+context-free computations are done in the `Env` type.  `Env` is also
+a monad.  `Env` computations never fail, unlike `Ctx` computations
+which sometimes may fail and set a flag.  You can turn any `Env`
+computation into a `Ctx` computation with the `liftEnv` function:
+
+    liftEnv :: Env a -> Ctx a
+
+Example - using `do` notation
+-----------------------------
+
 Following is an example of how you would add one tenth using the
 Quad type:
 
+> let { oneTenth = P.evalCtx . P.fromByteString . BS8.pack $ "0.1" };
 > BS8.putStrLn . P.evalCtx $ do
->   oneTenth <- P.fromString . BS8.pack $ "0.1"
 >   r1 <- P.add oneTenth oneTenth
 >   r2 <- P.add r1 oneTenth
->   P.toString r2; 
+>   P.liftEnv $ P.toByteString r2 
 > ;
 
 As you can see this is much more cumbersome.  But it does give you
@@ -168,14 +213,22 @@ available, which you can set.  This can be useful with division, for
 example, where you will not get exact results.  All results are
 computed to 34 digits of precision.
 
-> let { tenSixths = P.evalCtx $ do
->         ten <- P.fromString . BS8.pack $ "10"
->         three <- P.fromString . BS8.pack $ "6"
+> let tenSixths = P.evalCtx $ do
+>         ten <- P.fromByteString . BS8.pack $ "10"
+>         three <- P.fromByteString . BS8.pack $ "6"
 >         P.divide ten three
->     };
+> ;
+
+Now you want to see the result.  The above computation was in the
+`Ctx` type.  The type of `toByteString` is
+
+    toByteString :: Quad -> Env ByteString
+
+so it's in the `Env` type, not the `Ctx` type.  To run computations
+of this type, use `runEnv`:
 
 > putStrLn "This is the result of 10 / 6:";
-> BS8.putStrLn . P.evalCtx . P.toString $ tenSixths;
+> BS8.putStrLn . P.runEnv . P.toByteString $ tenSixths;
 
 Perhaps you want to round the result to a particular number of
 decimal places.  You do this with the "quantize" function.  It takes
@@ -184,21 +237,21 @@ number of decimal places you want to round to.
 
 > putStrLn "This is 10 / 6, rounded to two places:";
 > BS8.putStrLn . P.evalCtx $ do
->   twoPlaces <- P.fromString . BS8.pack $ "1e-2"
+>   twoPlaces <- P.fromByteString . BS8.pack $ "1e-2"
 >   r <- P.quantize tenSixths twoPlaces
->   P.toString r
+>   P.liftEnv $ P.toByteString r
 > ;
 
 By default, rounding is done using the "roundHalfEven" method.  You
 can set a different rounding method if you wish; the rounding
-methods are listed in the Haddock documentation for Data.Deka.IO.
+methods are listed in the Haddock documentation for `Data.Deka.IO`.
 
 > putStrLn "This is 10 / 6, rounded using the 'roundDown' method.";
 > BS8.putStrLn . P.evalCtx $ do
->   twoPlaces <- P.fromString . BS8.pack $ "1e-2"
+>   twoPlaces <- P.fromByteString . BS8.pack $ "1e-2"
 >   P.setRound P.roundDown
 >   r <- P.quantize tenSixths twoPlaces
->   P.toString r
+>   P.liftEnv $ P.toByteString r
 > ;
 
 
@@ -206,20 +259,22 @@ Flags
 -----
 
 A computation may set any number of flags.  These are listed in the
-Data.Deka.IO module.  Functions in Data.Deka.IO manipulate which
-flags are currently set.  Though computations set flags, they never
-clear them.  You have to clear them yourself.
+Data.Deka.IO module.  They indicate errors (like division by zero)
+or give information (such as the fact that a computation was
+inexact.)  Functions in Data.Deka.IO manipulate which flags are
+currently set.  Though computations set flags, they never clear
+them.  You have to clear them yourself.
 
 In addition to flags being available for inspection within the Ctx
 monad, you can get the final flags using runCtx.  FlagList gives you
 a list of flags that are set.
 
-> let { (r, fl) = P.runCtx $ do
->         big1 <- P.fromString . BS8.pack $ "987e3000"
->         big2 <- P.fromString . BS8.pack $ "322e6000"
->         rslt <- P.multiply big1 big2
->         P.toString rslt
->     };
+> let (r, fl) = P.runCtx $ do
+>       big1 <- P.fromByteString . BS8.pack $ "987e3000"
+>       big2 <- P.fromByteString . BS8.pack $ "322e6000"
+>       rslt <- P.multiply big1 big2
+>       P.liftEnv $ P.toByteString rslt
+> ; 
 > putStr "result: ";
 > BS8.putStrLn r;
 > putStr "flags set: ";

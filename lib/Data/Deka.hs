@@ -3,7 +3,6 @@
 module Data.Deka
   ( Deka(..)
   , DekaT(..)
-  , crashy
   , integralToDeka
   , strToDeka
   , checked
@@ -51,7 +50,7 @@ cmpDec x y = do
 
 cmpDecTotal :: Quad -> Quad -> EitherT String Ctx Ordering
 cmpDecTotal x y = do
-  r <- lift $ P.compareTotal x y
+  r <- lift . liftEnv $ P.compareTotal x y
   decToOrd r
 
 eqDecTotal :: Quad -> Quad -> EitherT String Ctx Bool
@@ -76,16 +75,17 @@ runIf dflt a rs = do
 
 decToOrd :: Quad -> EitherT String Ctx Ordering
 decToOrd d
-  = runIf (left "decToOrd: non-finite operand") (lift (isFinite d))
+  = runIf (left "decToOrd: non-finite operand")
+          (lift . liftEnv . isFinite $ d)
   .  successfulPair (left "decToOrd: nonsense result")
-  . map (first lift)
+  . map (first (lift . liftEnv))
   $ [ (isPositive d, GT)
     , (isZero d, EQ)
     , (isNegative d, LT)
     ]
 
 showDec :: Quad -> String
-showDec = BS8.unpack . eval . toString
+showDec = BS8.unpack . runEnv . toByteString
 
 newtype Deka = Deka { unDeka :: Quad }
 
@@ -113,7 +113,7 @@ instance Num Deka where
     | f isNegative = fromInteger (-1)
     | otherwise = fromInteger 1
     where
-      f g = eval . g $ x
+      f g = runEnv . g $ x
   fromInteger = either (error . ("Deka: fromInteger: error: " ++))
     id . integralToDeka
 
@@ -129,9 +129,6 @@ instance Eq DekaT where
 instance Ord DekaT where
   compare (DekaT (Deka x)) (DekaT (Deka y)) = evalEither $ cmpDecTotal x y
 
-crashy :: Either String a -> a
-crashy = either (error . ("Deka: error: " ++)) id
-
 
 integralToDeka :: Integral a => a -> Either String Deka
 integralToDeka i = do
@@ -139,16 +136,16 @@ integralToDeka i = do
   en <- P.exponent 0
   let d = Decoded sgn (Finite coe en)
       sgn = if i < 0 then Negative else Positive
-  fmap Deka . checked $ encode d
+  return . Deka . runEnv $ encode d
 
 strToDeka :: String -> Either String Deka
 strToDeka s =
   fmap Deka . fst . runCtx $ do
-    d <- fromString (BS8.pack s)
+    d <- fromByteString (BS8.pack s)
     fl <- getStatus
     case flagsErrorMessage fl of
       Left e -> return $ Left e
       Right _ -> do
-        fin <- isFinite d
+        fin <- liftEnv $ isFinite d
         return $ if not fin then (Left "result not finite")
           else Right d
