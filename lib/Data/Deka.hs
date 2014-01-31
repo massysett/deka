@@ -133,7 +133,7 @@ instance Ord DekaT where
 integralToDeka :: Integral a => a -> Either String Deka
 integralToDeka i = do
   coe <- coefficient . fromIntegral $ i
-  en <- P.exponent 0
+  en <- P.finiteExp 0
   let d = Decoded sgn (Finite coe en)
       sgn = if i < 0 then Sign1 else Sign0
   return . Deka . runEnv $ fromPackedChecked d

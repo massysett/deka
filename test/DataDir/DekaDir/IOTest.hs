@@ -79,10 +79,10 @@ genCoefficient = do
     Left _ -> error "genCoefficient failed"
     Right g -> return g
 
-genExp :: Gen E.Exponent
+genExp :: Gen E.FiniteExp
 genExp = fmap f (choose E.minMaxExp)
   where
-    f e = case E.exponent e of
+    f e = case E.finiteExp e of
       Left _ -> error "genExp failed"
       Right g -> g
 
@@ -121,7 +121,7 @@ genSmallFinite = do
         Left _ -> error "genSmallFinite: coefficient failed"
         Right g -> g
   e <- choose (-10, 10)
-  let en = case E.exponent e of
+  let en = case E.finiteExp e of
         Left _ -> error "genSmallFinite: coefficient failed"
         Right g -> g
   s <- genSign
@@ -150,7 +150,7 @@ instance Arbitrary NZSmallFin where
           Left _ -> error "genSmallFinite: coefficient failed"
           Right g -> g
     e <- choose (-10, 10)
-    let en = case E.exponent e of
+    let en = case E.finiteExp e of
           Left _ -> error "genSmallFinite: coefficient failed"
           Right g -> g
     s <- genSign
@@ -170,7 +170,7 @@ genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
                 id . E.coefficient $ c
               en = either
                 (const $ error "genOne: coeffExp failed")
-                id $ E.exponent expn
+                id $ E.finiteExp expn
               dcd = E.Decoded E.Sign0 (E.Finite coef en)
           in Visible . runEnv . E.fromPackedChecked $ dcd
               
@@ -179,7 +179,7 @@ genZero = fmap f $ choose E.minMaxExp
   where
     f e = let expn = either
                 (const $ error "genZero: exponent failed")
-                id . E.exponent $ e
+                id . E.finiteExp $ e
               coef = either
                 (const $ error "genZero: coefficient failed")
                 id . E.coefficient $ 0
@@ -576,24 +576,24 @@ tests = testGroup "IO"
     [ testProperty "fails when exponent is too small" $
       let (l, _) = E.minMaxExp in
       forAll (choose (minBound, l - 1)) $
-      isLeft . E.exponent
+      isLeft . E.finiteExp
 
     , testProperty "fails when exponent is too large" $
       let (_, h) = E.minMaxExp in
       forAll (choose (h + 1, maxBound)) $
-      isLeft . E.exponent
+      isLeft . E.finiteExp
 
     , testProperty "fails when exponent is < c'DECQUAD_Emin" $
       forAll (choose (minBound, c'DECQUAD_Emin - 1)) $
-      isLeft . E.exponent
+      isLeft . E.finiteExp
 
     , testProperty "fails when exponent is > c'DECQUAD_Emax" $
       forAll (choose (c'DECQUAD_Emax + 1, maxBound)) $
-      isLeft . E.exponent
+      isLeft . E.finiteExp
 
     , testProperty "succeeds when it should" $
       forAll (choose E.minMaxExp) $
-      isRight . E.exponent
+      isRight . E.finiteExp
 
     ]
 

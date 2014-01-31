@@ -102,9 +102,9 @@ module Data.Deka.IO
   , Coefficient
   , coefficient
   , unCoefficient
-  , Exponent
-  , exponent
-  , unExponent
+  , FiniteExp
+  , finiteExp
+  , unFiniteExp
   , minMaxExp
   , Payload
   , unPayload
@@ -997,15 +997,15 @@ minMaxExp = (l, h)
     x = c'DECQUAD_Emax
     c = c'DECQUAD_Pmax
 
-newtype Exponent = Exponent { unExponent :: Int }
+newtype FiniteExp = FiniteExp { unFiniteExp :: Int }
   deriving (Eq, Ord, Show)
 
 -- | Ensures the exponent falls within the correct range.
-exponent :: Int -> Either String Exponent
-exponent i
+finiteExp :: Int -> Either String FiniteExp
+finiteExp i
   | i < l = Left "exponent too small"
   | i > h = Left "exponent too large"
-  | otherwise = Right . Exponent $ i
+  | otherwise = Right . FiniteExp $ i
   where
     (l, h) = minMaxExp
 
@@ -1025,7 +1025,7 @@ zeroPayload :: Payload
 zeroPayload = Payload 0
 
 data Value
-  = Finite Coefficient Exponent
+  = Finite Coefficient FiniteExp
   | Infinite
   | NaN NaN Payload
   deriving (Eq, Ord, Show)
@@ -1038,7 +1038,7 @@ data Decoded = Decoded
 -- | Gets the exponent of a finite number, if the Decoded is finite.
 finiteExponent :: Decoded -> Maybe Int
 finiteExponent d = case dValue d of
-  Finite _ e -> Just $ unExponent e
+  Finite _ e -> Just $ unFiniteExp e
   _ -> Nothing
 
 -- | Gets the coefficient of a finite number, if the Decoded is
@@ -1125,7 +1125,7 @@ getDecoded sgn ex coef = Decoded s v
     v | ex == c'DECFLOAT_qNaN = NaN Quiet pld
       | ex == c'DECFLOAT_sNaN = NaN Signaling pld
       | ex == c'DECFLOAT_Inf = Infinite
-      | otherwise = Finite coe (Exponent $ fromIntegral ex)
+      | otherwise = Finite coe (FiniteExp $ fromIntegral ex)
       where
         pld = Payload $ fromBCD (c'DECQUAD_Pmax - 1) (tail coef)
         coe = Coefficient $ fromBCD c'DECQUAD_Pmax coef
@@ -1180,7 +1180,7 @@ packBCD (Decoded s v) = (expt, ls)
       NaN n _ -> case n of
         Signaling -> c'DECFLOAT_sNaN
         Quiet -> c'DECFLOAT_qNaN
-      Finite _ i -> fromIntegral . unExponent $ i
+      Finite _ i -> fromIntegral . unFiniteExp $ i
     ls = case v of
       Infinite -> packInfinite s
       NaN _ p -> packNaN s p
@@ -1191,22 +1191,44 @@ packBCD (Decoded s v) = (expt, ls)
 data Digit = D0 | D1 | D2 | D3 | D4 | D5 | D6 | D7 | D8 | D9
   deriving (Eq, Ord, Show, Enum, Bounded)
 
-digitToInt :: Digit -> Integer
+digitToInt :: Integral a => Digit -> a
 digitToInt d = case d of
   { D0 -> 0; D1 -> 1; D2 -> 2; D3 -> 3; D4 -> 4; D5 -> 5;
     D6 -> 6; D7 -> 7; D8 -> 8; D9 -> 9 }
 
--- | A list of digits, Pmax long.
-newtype DigitList = DigitList { unDigitList :: [Digit] }
+
+-- | A list of digits, Pmax long.  Could be either a payload or a
+-- finite coefficient.
+newtype CoeffDigits = CoeffDigits { unCoeffDigits :: [Digit] }
   deriving (Eq, Ord, Show)
 
-digitList :: [Digit] -> Maybe DigitList
-digitList ls
-  | length ls == c'DECQUAD_Pmax = Just . DigitList $ ls
+coeffDigits :: [Digit] -> Maybe CoeffDigits
+coeffDigits ds
+  | length ds == c'DECQUAD_Pmax = Just . CoeffDigits $ ds
   | otherwise = Nothing
 
-digitListToInteger :: DigitList -> Integer
-digitListToInteger (DigitList ls) = go (c'DECQUAD_Pmax - 1) 0 ls
+-- | A list of digits, Pmax long.  Corresponds only to finite
+-- numbers.
+newtype FiniteDigits = FiniteDigits { unFiniteDigits :: [Digit] }
+  deriving (Eq, Ord, Show)
+
+finiteDigits :: [Digit] -> Maybe FiniteDigits
+finiteDigits ls
+  | length ls == c'DECQUAD_Pmax = Just . FiniteDigits $ ls
+  | otherwise = Nothing
+
+-- | A list of digits, Pmax - 1 long.
+newtype PayloadDigits = PayloadDigits { unPayloadDigits :: [Digit] }
+  deriving (Eq, Ord, Show)
+
+payloadDigits :: [Digit] -> Maybe PayloadDigits
+payloadDigits ds
+  | length ds == c'DECQUAD_Pmax - 1 = Just . PayloadDigits $ ds
+  | otherwise = Nothing
+
+
+digitsToInteger :: [Digit] -> Integer
+digitsToInteger ls = go (length ls - 1) 0 ls
   where
     go c t ds = case ds of
       [] -> t
@@ -1215,6 +1237,21 @@ digitListToInteger (DigitList ls) = go (c'DECQUAD_Pmax - 1) 0 ls
                   c' = c - 1
                   _types = c :: Int
               in t' `seq` c' `seq` go c' t' xs
+
+integerToDigits :: Integer -> [Digit]
+integerToDigits = reverse . go
+  where
+    go i
+      | i == 0 = []
+      | otherwise =
+          let (d, m) = i `divMod` 10
+          in intToDigit m : go d
+
+intToDigit :: Integral a => a -> Digit
+intToDigit i = case i of
+  { 0 -> D0; 1 -> D1; 2 -> D2; 3 -> D3; 4 -> D4;
+    5 -> D5; 6 -> D6; 7 -> D7; 8 -> D8; 9 -> D9;
+    _ -> error "intToDigit: integer out of range" }
 
 -- decQuad functions not recreated here:
 
