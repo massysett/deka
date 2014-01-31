@@ -23,7 +23,8 @@ names.
 > -- see examples, you won't see anything.  The file is written in
 > -- literate Haskell, so the idea is that you will look at the
 > -- source itself.  You can look at the source in Haddock, but it
-> -- will probably be poorly formatted.  The easiest way to see it
+> -- will probably be poorly formatted because HsColour formats it
+> -- rather oddly by default.  The easiest way to see it
 > -- is on Github:
 > --
 > -- <https://github.com/massysett/deka/blob/master/lib/Data/Deka/Docs/Examples.lhs>
