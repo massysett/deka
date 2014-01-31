@@ -415,6 +415,26 @@ decodedSameQuantum x y = case (E.dValue x, E.dValue y) of
   (E.NaN _ _, E.NaN _ _) -> True
   _ -> False
 
+-- | Tests that a boolean function succeeds and fails as it should.
+
+testBoolean
+  :: String
+  -- ^ Name
+  -> Gen Visible
+  -- ^ Generates values that should succeed
+  -> Gen Visible
+  -- ^ Generates values that should fail
+  -> (E.Quad -> E.Env Bool)
+  -- ^ Function to test
+  -> TestTree
+testBoolean n genP genF f = testGroup n
+  [ testProperty "succeeds when it should"
+    $ forAll genP $ runEnv . f . unVisible
+
+  , testProperty "fails when it should"
+    $ forAll genF $ not . runEnv . f . unVisible
+  ]
+
 -- # Tests
 
 tests = testGroup "IO"
@@ -552,196 +572,200 @@ tests = testGroup "IO"
         isRight . E.coefficient
       ]
 
-    , testGroup "exponent"
-      [ testProperty "fails when exponent is too small" $
-        let (l, _) = E.minMaxExp in
-        forAll (choose (minBound, l - 1)) $
-        isLeft . E.exponent
+  , testGroup "exponent"
+    [ testProperty "fails when exponent is too small" $
+      let (l, _) = E.minMaxExp in
+      forAll (choose (minBound, l - 1)) $
+      isLeft . E.exponent
 
-      , testProperty "fails when exponent is too large" $
-        let (_, h) = E.minMaxExp in
-        forAll (choose (h + 1, maxBound)) $
-        isLeft . E.exponent
+    , testProperty "fails when exponent is too large" $
+      let (_, h) = E.minMaxExp in
+      forAll (choose (h + 1, maxBound)) $
+      isLeft . E.exponent
 
-      , testProperty "fails when exponent is < c'DECQUAD_Emin" $
-        forAll (choose (minBound, c'DECQUAD_Emin - 1)) $
-        isLeft . E.exponent
+    , testProperty "fails when exponent is < c'DECQUAD_Emin" $
+      forAll (choose (minBound, c'DECQUAD_Emin - 1)) $
+      isLeft . E.exponent
 
-      , testProperty "fails when exponent is > c'DECQUAD_Emax" $
-        forAll (choose (c'DECQUAD_Emax + 1, maxBound)) $
-        isLeft . E.exponent
+    , testProperty "fails when exponent is > c'DECQUAD_Emax" $
+      forAll (choose (c'DECQUAD_Emax + 1, maxBound)) $
+      isLeft . E.exponent
 
-      , testProperty "succeeds when it should" $
-        forAll (choose E.minMaxExp) $
-        isRight . E.exponent
+    , testProperty "succeeds when it should" $
+      forAll (choose E.minMaxExp) $
+      isRight . E.exponent
 
+    ]
+
+  , testGroup "payload"
+    [ testProperty "fails on negative numbers" $
+      isNothing . E.payload . negate . getPositive
+
+    , testProperty "succeeds when number of digits <= Pmax - 1" $
+      isJust . E.payload . smallestDigs $ c'DECQUAD_Pmax - 1
+
+    , testProperty "fails when number of digits > Pmax - 1" $
+      forAll (choose (smallestDigs (c'DECQUAD_Pmax - 1), maxInteger)) $
+      isNothing . E.payload
+    ]
+
+  , testGroup "decode and encode"
+    [ testProperty "round trip from Quad" $
+      forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
+      runEnv $ do
+        dcd <- E.decode d
+        ecd <- E.encode dcd
+        r <- E.compareTotal ecd d
+        E.isZero r
+
+    , testProperty "round trip from Decoded" $
+      forAll genDecoded $ \d ->
+      let r = runEnv $ do
+            ecd <- E.encode d
+            E.decode ecd
+      in printTestCase ("result: " ++ show r) (r == d)
+    ]
+  ]
+
+  , testGroup "arithmetic"
+    [ testGroup "add"
+      [ associativity "add" E.add
+      , commutativity "add" E.add
+      , identity "zero" genZero E.add
       ]
 
-      , testGroup "payload"
-        [ testProperty "fails on negative numbers" $
-          isNothing . E.payload . negate . getPositive
-
-        , testProperty "succeeds when number of digits <= Pmax - 1" $
-          isJust . E.payload . smallestDigs $ c'DECQUAD_Pmax - 1
-
-        , testProperty "fails when number of digits > Pmax - 1" $
-          forAll (choose (smallestDigs (c'DECQUAD_Pmax - 1), maxInteger)) $
-          isNothing . E.payload
-        ]
-
-      , testGroup "decode and encode"
-        [ testProperty "round trip from Quad" $
-          forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
-          runEnv $ do
-            dcd <- E.decode d
-            ecd <- E.encode dcd
-            r <- E.compareTotal ecd d
-            E.isZero r
-
-        , testProperty "round trip from Decoded" $
-          forAll genDecoded $ \d ->
-          let r = runEnv $ do
-                ecd <- E.encode d
-                E.decode ecd
-          in printTestCase ("result: " ++ show r) (r == d)
-        ]
+    , testGroup "multiply"
+      [ associativity "multiply" E.multiply
+      , commutativity "multiply" E.multiply
+      , identity "one" genOne E.multiply
       ]
 
-    , testGroup "arithmetic"
-      [ testGroup "add"
-        [ associativity "add" E.add
-        , commutativity "add" E.add
-        , identity "zero" genZero E.add
+    , testGroup "subtract"
+      [ testProperty "is the inverse of add" $
+        forAll genSmallFinite $ \(Visible a) ->
+        forAll genSmallFinite $ \(Visible b) ->
+        let (r, fl) = runCtx $ do
+              r1 <- E.add a b
+              r2 <- E.subtract r1 b
+              c <- E.compare r2 a
+              liftEnv $ E.isZero c
+        in fl == E.emptyFlags ==> r
+
+      , identity "zero" genZero E.subtract
+      ]
+
+    , testGroup "fused multiply add"
+      [ testProperty "is same as multiply and add" $
+        forAll genSmallFinite $ \(Visible a) ->
+        forAll genSmallFinite $ \(Visible b) ->
+        forAll genSmallFinite $ \(Visible c) ->
+        let (r, fl) = runCtx $ do
+              r1 <- E.multiply a b
+              r2 <- E.add r1 c
+              r2' <- E.fma a b c
+              cm <- E.compare r2 r2'
+              liftEnv $ E.isZero cm
+        in fl == E.emptyFlags ==> r
+
+      , testGroup "divide"
+        [ identity "one" genOne E.divide ]
+
+      , testGroup "divideInteger"
+        [ testProperty "result has exponent 0" $
+          \(SmallFin a) (SmallFin b) ->
+          let (e, fl) = runCtx $ do
+                c <- E.divideInteger a b
+                liftEnv $ E.decode c
+          in fl == E.emptyFlags ==> E.finiteExponent e == Just 0
         ]
 
-      , testGroup "multiply"
-        [ associativity "multiply" E.multiply
-        , commutativity "multiply" E.multiply
-        , identity "one" genOne E.multiply
-        ]
-
-      , testGroup "subtract"
-        [ testProperty "is the inverse of add" $
-          forAll genSmallFinite $ \(Visible a) ->
-          forAll genSmallFinite $ \(Visible b) ->
+      , testGroup "remainder"
+        [ testProperty "x = int * y + rem" $
+          \(SmallFin x) (SmallFin y) ->
           let (r, fl) = runCtx $ do
-                r1 <- E.add a b
-                r2 <- E.subtract r1 b
-                c <- E.compare r2 a
+                it <- E.divideInteger x y
+                rm <- E.remainder x y
+                i1 <- E.multiply it y
+                i2 <- E.add i1 rm
+                c <- E.compare i2 x
                 liftEnv $ E.isZero c
           in fl == E.emptyFlags ==> r
-
-        , identity "zero" genZero E.subtract
         ]
 
-      , testGroup "fused multiply add"
-        [ testProperty "is same as multiply and add" $
-          forAll genSmallFinite $ \(Visible a) ->
-          forAll genSmallFinite $ \(Visible b) ->
-          forAll genSmallFinite $ \(Visible c) ->
-          let (r, fl) = runCtx $ do
-                r1 <- E.multiply a b
-                r2 <- E.add r1 c
-                r2' <- E.fma a b c
-                cm <- E.compare r2 r2'
-                liftEnv $ E.isZero cm
-          in fl == E.emptyFlags ==> r
+      -- remainderNear - no test - not sure I understand the
+      -- semantics
 
-        , testGroup "divide"
-          [ identity "one" genOne E.divide ]
+      ]
+    ]
 
-        , testGroup "divideInteger"
-          [ testProperty "result has exponent 0" $
-            \(SmallFin a) (SmallFin b) ->
-            let (e, fl) = runCtx $ do
-                  c <- E.divideInteger a b
-                  liftEnv $ E.decode c
-            in fl == E.emptyFlags ==> E.finiteExponent e == Just 0
-          ]
-
-        , testGroup "remainder"
-          [ testProperty "x = int * y + rem" $
-            \(SmallFin x) (SmallFin y) ->
-            let (r, fl) = runCtx $ do
-                  it <- E.divideInteger x y
-                  rm <- E.remainder x y
-                  i1 <- E.multiply it y
-                  i2 <- E.add i1 rm
-                  c <- E.compare i2 x
-                  liftEnv $ E.isZero c
-            in fl == E.emptyFlags ==> r
-          ]
-
-        -- remainderNear - no test - not sure I understand the
-        -- semantics
-
-        ]
+  , testGroup "exponent and coefficient adjustment"
+    [ testGroup "quantize"
+      [ testProperty "result has same quantum" $
+        \(SmallFin x) (SmallFin y) ->
+        let (r, fl) = runCtx $ do
+              c <- E.quantize x y
+              dc <- liftEnv $ E.decode c
+              dy <- liftEnv $ E.decode y
+              return $ E.finiteExponent dc == E.finiteExponent dy
+        in fl == E.emptyFlags ==> r
       ]
 
-      , testGroup "exponent and coefficient adjustment"
-        [ testGroup "quantize"
-          [ testProperty "result has same quantum" $
-            \(SmallFin x) (SmallFin y) ->
-            let (r, fl) = runCtx $ do
-                  c <- E.quantize x y
-                  dc <- liftEnv $ E.decode c
-                  dy <- liftEnv $ E.decode y
-                  return $ E.finiteExponent dc == E.finiteExponent dy
-            in fl == E.emptyFlags ==> r
-          ]
+    , testGroup "reduce"
+      [ testProperty "result is equivalent" $
+        \(SmallFin x) -> evalCtx $ do
+            r <- E.reduce x
+            c <- E.compare r x
+            liftEnv $ E.isZero c
 
-        , testGroup "reduce"
-          [ testProperty "result is equivalent" $
-            \(SmallFin x) -> evalCtx $ do
-                r <- E.reduce x
-                c <- E.compare r x
-                liftEnv $ E.isZero c
-
-          , testProperty "result has no trailing zeroes" $
-            \(SmallFin x) -> evalCtx $ do
-                r <- E.reduce x
-                dx <- liftEnv $ E.decode x
-                dr <- liftEnv $ E.decode r
-                let cr = E.finiteCoefficient dr
-                return $ case E.finiteCoefficient dx of
-                  Just i
-                    | i == 0 -> E.finiteCoefficient dr == Just 0
-                    | otherwise -> case cr of
-                        Nothing -> False
-                        Just i' -> i' `mod` 10 /= 0
-                  _ -> False
-          ]
-        ]
-
-      , testGroup "comparisons"
-        [ comparison "compare" E.nextPlus E.nextMinus E.compare
-        , comparison "compareSignal" E.nextPlus
-            E.nextMinus E.compare
-
-        , comparison "compareTotal" E.nextPlus E.nextMinus
-            (fmap (fmap liftEnv) E.compareTotal)
-
-        , comparison "compareTotalMag" increaseAbs decreaseAbs
-              (fmap (fmap liftEnv) E.compareTotalMag)
-
-        , testMinMax "min" False E.min
-        , testMinMax "max" False E.max
-        , testMinMax "maxMag" True E.maxMag
-        , testMinMax "minMag" True E.minMag
-
-        , testGroup "sameQuantum"
-          [ testProperty "is true for same Decoded" $
-            forAll genDecoded $ \d -> runEnv $ do
-              x <- E.encode d
-              E.sameQuantum x x
-
-          , testProperty "is false for different Decoded" $
-            forAll ( liftM2 (,) genDecoded genDecoded
-                      `suchThat` (not . uncurry decodedSameQuantum))
-            $ \p -> runEnv $ do
-                      qx <- E.encode . fst $ p
-                      qy <- E.encode . snd $ p
-                      fmap not $ E.sameQuantum qx qy
-           ]
-        ]
+      , testProperty "result has no trailing zeroes" $
+        \(SmallFin x) -> evalCtx $ do
+            r <- E.reduce x
+            dx <- liftEnv $ E.decode x
+            dr <- liftEnv $ E.decode r
+            let cr = E.finiteCoefficient dr
+            return $ case E.finiteCoefficient dx of
+              Just i
+                | i == 0 -> E.finiteCoefficient dr == Just 0
+                | otherwise -> case cr of
+                    Nothing -> False
+                    Just i' -> i' `mod` 10 /= 0
+              _ -> False
       ]
+    ]
+
+  , testGroup "comparisons"
+    [ comparison "compare" E.nextPlus E.nextMinus E.compare
+    , comparison "compareSignal" E.nextPlus
+        E.nextMinus E.compare
+
+    , comparison "compareTotal" E.nextPlus E.nextMinus
+        (fmap (fmap liftEnv) E.compareTotal)
+
+    , comparison "compareTotalMag" increaseAbs decreaseAbs
+          (fmap (fmap liftEnv) E.compareTotalMag)
+
+    , testMinMax "min" False E.min
+    , testMinMax "max" False E.max
+    , testMinMax "maxMag" True E.maxMag
+    , testMinMax "minMag" True E.minMag
+
+    , testGroup "sameQuantum"
+      [ testProperty "is true for same Decoded" $
+        forAll genDecoded $ \d -> runEnv $ do
+          x <- E.encode d
+          E.sameQuantum x x
+
+      , testProperty "is false for different Decoded" $
+        forAll ( liftM2 (,) genDecoded genDecoded
+                  `suchThat` (not . uncurry decodedSameQuantum))
+        $ \p -> runEnv $ do
+                  qx <- E.encode . fst $ p
+                  qy <- E.encode . snd $ p
+                  fmap not $ E.sameQuantum qx qy
+      ]
+    ]
+
+  , "tests"
+    [
+    ]
+  ]

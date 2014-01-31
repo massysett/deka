@@ -236,6 +236,7 @@ import Prelude hiding
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (foldl', unfoldr, genericLength)
 import Control.Monad.Trans.Writer
+import Data.Maybe
 
 -- # Rounding
 
@@ -1180,6 +1181,65 @@ packBCD (Decoded s v) = (expt, ls)
       Infinite -> packInfinite s
       NaN _ p -> packNaN s p
       Finite c _ -> packFinite s c
+
+-- ## Decoded predicates
+
+dIsFinite :: Decoded -> Bool
+dIsFinite (Decoded _ v) = case v of
+  Finite _ _ -> True
+  _ -> False
+
+dIsInfinite :: Decoded -> Bool
+dIsInfinite (Decoded _ v) = case v of
+  Infinite -> True
+  _ -> False
+
+dIsInteger :: Decoded -> Bool
+dIsInteger (Decoded _ v) = case v of
+  Finite _ e -> unExponent e == 0
+  _ -> False
+
+dIsLogical :: Decoded -> Bool
+dIsLogical (Decoded s v) = fromMaybe False $ do
+  guard $ s == Positive
+  (c, e) <- case v of
+    Finite co ex -> return (co, ex)
+    _ -> Nothing
+  guard $ unExponent e == 0
+  return . all isZeroOrOne . show . unCoefficient $ c
+  where
+    isZeroOrOne c = c == '0' || c == '1'
+
+dIsNaN :: Decoded -> Bool
+dIsNaN (Decoded _ v) = case v of
+  NaN _ _ -> True
+  _ -> False
+
+-- | True if @x@ is less than zero and is not an NaN.  Returns False
+-- for the negative zero.
+dIsNegative :: Decoded -> Bool
+dIsNegative (Decoded s v)
+  | s == Positive = False
+  | otherwise = case v of
+      Finite c _ -> unCoefficient c /= 0
+      Infinite -> True
+      _ -> False
+
+dIsPositive :: Decoded -> Bool
+dIsPositive (Decoded s v)
+  | s == Negative = False
+  | otherwise = case v of
+      Finite c _ -> unCoefficient c /= 0
+      Infinite -> True
+      _ -> False
+
+dIsSignaling :: Decoded -> Bool
+dIsSignaling (Decoded _ v) = case v of
+  NaN n _ -> n == Signaling
+  _ -> False
+
+dIsSigned :: Decoded -> Bool
+dIsSigned (Decoded s _) = s == Negative
 
 -- decQuad functions not recreated here:
 
