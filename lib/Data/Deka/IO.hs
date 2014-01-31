@@ -99,25 +99,36 @@ module Data.Deka.IO
 
   -- * Conversions
   -- ** Complete encoding and decoding
-  , Coefficient
-  , coefficient
-  , unCoefficient
+  , Digit(..)
+  , FiniteDigits
+  , finiteDigits
+  , unFiniteDigits
   , FiniteExp
   , finiteExp
   , unFiniteExp
+  , zeroFiniteExp
   , minMaxExp
-  , Payload
-  , unPayload
-  , payload
-  , zeroPayload
   , Sign(..)
   , NaN(..)
   , Value(..)
   , Decoded(..)
-  , finiteExponent
-  , finiteCoefficient
-  , decode
-  , fromPackedChecked
+  , fromBCD
+  , toBCD
+  , PayloadDigits
+  , payloadDigits
+  , unPayloadDigits
+  , digitsToInteger
+  , integerToDigits
+  , coefficientDigitsLen
+  , payloadDigitsLen
+
+  -- ** Partial decoding and encoding
+  , CoeffDigits
+  , unCoeffDigits
+  , coeffDigits
+  , getCoefficient
+  , getExponent
+  , setCoefficient
 
   -- ** Strings
   , fromByteString
@@ -149,6 +160,7 @@ module Data.Deka.IO
   -- * Exponent and coefficient adjustment
   , quantize
   , reduce
+  , setExponent
 
   -- * Comparisons
   , compare
@@ -234,7 +246,6 @@ import Prelude hiding
   , exponent
   )
 import qualified Data.ByteString.Char8 as BS8
-import Data.List (foldl', unfoldr, genericLength)
 import Control.Monad.Trans.Writer
 
 -- # Rounding
@@ -770,6 +781,28 @@ fromUInt32 i = Env $
   c'decQuadFromUInt32 pR i >>
   return r
 
+getCoefficient :: Quad -> Env (Sign, CoeffDigits)
+getCoefficient q = Env $
+  withForeignPtr (unDec q) $ \pQ ->
+  allocaArray c'DECQUAD_Pmax $ \pArr ->
+  c'decQuadGetCoefficient pQ pArr >>= \sgn ->
+  peekArray c'DECQUAD_Pmax pArr >>= \ds ->
+  let s | sgn == c'DECFLOAT_Sign = Sign1
+        | sgn == 0 = Sign0
+        | otherwise = error "getCoefficient: unknown sign"
+      rs = map intToDigit ds
+  in return (s, CoeffDigits rs)
+
+getExponent :: Quad -> Env Exponent
+getExponent q = Env $
+  withForeignPtr (unDec q) $ \pQ ->
+  c'decQuadGetExponent pQ >>= \i ->
+  let r | i == c'DECFLOAT_qNaN = EqNaN
+        | i == c'DECFLOAT_sNaN = EsNaN
+        | i == c'DECFLOAT_Inf = EInf
+        | otherwise = EFinite . FiniteExp . fromIntegral $ i
+  in return r
+
 invert :: Quad -> Ctx Quad
 invert = unary c'decQuadInvert
 
@@ -888,8 +921,32 @@ sameQuantum x y = Env $
 scaleB :: Quad -> Quad -> Ctx Quad
 scaleB = binary c'decQuadScaleB
 
--- skipped: SetCoefficient
--- skipped : SetExponent
+
+setCoefficient :: CoeffDigits -> Sign -> Quad -> Env Quad
+setCoefficient (CoeffDigits ds) s q = Env $
+  withForeignPtr (unDec q) $ \pQ ->
+  newQuad >>= \r ->
+  withForeignPtr (unDec r) $ \pR ->
+  c'decQuadCopy pR pQ >>= \_ ->
+  allocaArray c'DECQUAD_Pmax $ \pArr ->
+  pokeArray pArr (map digitToInt ds) >>
+  let sgn = case s of { Sign0 -> 0; Sign1 -> c'DECFLOAT_Sign } in
+  c'decQuadSetCoefficient pR pArr sgn >>
+  return r
+
+setExponent :: Exponent -> Quad -> Ctx Quad
+setExponent e q = Ctx $ \pC ->
+  withForeignPtr (unDec q) $ \pQ ->
+  newQuad >>= \r ->
+  withForeignPtr (unDec r) $ \pR ->
+  c'decQuadCopy pR pQ >>= \_ ->
+  let n = case e of
+            EqNaN -> c'DECFLOAT_qNaN
+            EsNaN -> c'DECFLOAT_sNaN
+            EInf -> c'DECFLOAT_Inf
+            EFinite ex -> fromIntegral . unFiniteExp $ ex in
+  c'decQuadSetExponent pR pC n >>
+  return r
 
 shift :: Quad -> Quad -> Ctx Quad
 shift = binary c'decQuadShift
@@ -968,20 +1025,6 @@ data NaN
   | Signaling
   deriving (Eq, Ord, Show, Enum, Bounded)
 
-data Coefficient = Coefficient { unCoefficient :: Integer }
-  deriving (Eq, Ord, Show)
-
--- | Coefficients must be zero or positive, and the number of digits
--- must be less than or equal to c'DECQUAD_Pmax
-coefficient :: Integer -> Either String Coefficient
-coefficient i
-  | i < 0 = Left "coefficient cannot be negative"
-  | len > c'DECQUAD_Pmax = Left "coefficient has too many digits"
-  | otherwise = Right . Coefficient $ i
-  where
-    len = genericLength . show $ i
-    _types = len :: Integer
-
 -- | The minimum and maximum possible exponent.
 -- If the coefficient has c digits, and Emax is x, the exponent e
 -- is within the closed-ended range
@@ -1000,6 +1043,10 @@ minMaxExp = (l, h)
 newtype FiniteExp = FiniteExp { unFiniteExp :: Int }
   deriving (Eq, Ord, Show)
 
+instance Bounded FiniteExp where
+  minBound = FiniteExp . fst $ minMaxExp
+  maxBound = FiniteExp . snd $ minMaxExp
+
 -- | Ensures the exponent falls within the correct range.
 finiteExp :: Int -> Either String FiniteExp
 finiteExp i
@@ -1009,25 +1056,13 @@ finiteExp i
   where
     (l, h) = minMaxExp
 
--- | A Payload is associated with an NaN.  It is always zero or
--- positive.  The number of digits is always less than or equal to
--- Pmax - 1 (33 digits).
-data Payload = Payload { unPayload :: Integer }
-  deriving (Eq, Ord, Show)
-
-payload :: Integer -> Maybe Payload
-payload i
-  | i < 0 = Nothing
-  | length (show i) > c'DECQUAD_Pmax - 1 = Nothing
-  | otherwise = Just . Payload $ i
-
-zeroPayload :: Payload
-zeroPayload = Payload 0
+zeroFiniteExp :: FiniteExp
+zeroFiniteExp = FiniteExp 0
 
 data Value
-  = Finite Coefficient FiniteExp
+  = Finite FiniteDigits FiniteExp
   | Infinite
-  | NaN NaN Payload
+  | NaN NaN PayloadDigits
   deriving (Eq, Ord, Show)
 
 data Decoded = Decoded
@@ -1035,22 +1070,9 @@ data Decoded = Decoded
   , dValue :: Value
   } deriving (Eq, Ord, Show)
 
--- | Gets the exponent of a finite number, if the Decoded is finite.
-finiteExponent :: Decoded -> Maybe Int
-finiteExponent d = case dValue d of
-  Finite _ e -> Just $ unFiniteExp e
-  _ -> Nothing
 
--- | Gets the coefficient of a finite number, if the Decoded is
--- finite.
-finiteCoefficient :: Decoded -> Maybe Integer
-finiteCoefficient d = case dValue d of
-  Finite c _ -> Just $ unCoefficient c
-  _ -> Nothing
-
-
-decode :: Quad -> Env Decoded
-decode d = Env $
+toBCD :: Quad -> Env Decoded
+toBCD d = Env $
   withForeignPtr (unDec d) $ \pD ->
   allocaBytes c'DECQUAD_Pmax $ \pArr ->
   alloca $ \pExp ->
@@ -1061,54 +1083,30 @@ decode d = Env $
 
 -- | Encodes a new 'Quad'.  The result is always canonical.  However,
 -- the function does not signal if the result is an sNaN.
---
--- decNumber checks the arguments to this function.  If decNumber's
--- check fails, this function will apply 'error'.  This function has
--- been throughly tested and should never fail; however, this extra
--- safety belt ensures that the library does not start wandering
--- about in the land of undefined behavior.
-fromPackedChecked :: Decoded -> Env Quad
-fromPackedChecked dcd = Env $
+fromBCD :: Decoded -> Env Quad
+fromBCD dcd = Env $
   newQuad >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
-  let (expn, arr) = packBCD dcd in
-  withArray arr $ \pArr ->
-  c'decQuadFromPackedChecked pD expn pArr >>= \r ->
-  let ip = ptrToIntPtr r
-  in if ip == 0
-      then error "fromPacked: error: check failed"
-      else return d
+  let (expn, digs, sgn) = toDecNumberBCD dcd in
+  withArray digs $ \pArr ->
+  c'decQuadFromBCD pD expn pArr sgn >>
+  return d
 
--- Converts a BCD to an Integer.
-fromBCD
-  :: Int
-  -- ^ List length
-  -> [C'uint8_t]
-  -> Integer
-fromBCD len = snd . foldl' f (len, 0)
+
+toDecNumberBCD :: Decoded -> (C'int32_t, [C'uint8_t], C'int32_t)
+toDecNumberBCD (Decoded s v) = (e, ds, sgn)
   where
-    f (c, t) i =
-      let c' = c - 1
-          t' = t + fromIntegral i * 10 ^ e
-          e = fromIntegral c'
-          _types = e :: Int
-      in c' `seq` t' `seq` (c', t')
-
-toBCD
-  :: Int
-  -- ^ BCD will be this long
-  -> Integer
-  -> [C'uint8_t]
-toBCD len start = unfoldr f (len, start)
-  where
-    f (c, r) =
-      let c' = c - 1
-          (q, r') = r `quotRem` (10 ^ c')
-          g | c == 0 = Nothing
-            | q > 9 = error "toBCD: number out of range"
-            | otherwise = Just (fromIntegral q, (c', r'))
-      in g
-
+    sgn = case s of { Sign0 -> 0; Sign1 -> c'DECFLOAT_Sign }
+    (e, ds) = case v of
+      Infinite -> (c'DECFLOAT_Inf, replicate c'DECQUAD_Pmax 0)
+      NaN n (PayloadDigits ps) -> (ns, np)
+        where
+          ns = case n of
+            Quiet -> c'DECFLOAT_qNaN
+            Signaling -> c'DECFLOAT_sNaN
+          np = 0 : map digitToInt ps
+      Finite (FiniteDigits digs) (FiniteExp ex) ->
+        ( fromIntegral ex, map digitToInt digs )
 
 getDecoded
   :: C'int32_t
@@ -1127,64 +1125,9 @@ getDecoded sgn ex coef = Decoded s v
       | ex == c'DECFLOAT_Inf = Infinite
       | otherwise = Finite coe (FiniteExp $ fromIntegral ex)
       where
-        pld = Payload $ fromBCD (c'DECQUAD_Pmax - 1) (tail coef)
-        coe = Coefficient $ fromBCD c'DECQUAD_Pmax coef
+        pld = PayloadDigits $ map intToDigit (tail coef)
+        coe = FiniteDigits $ map intToDigit coef
 
-packNibbles
-  :: C'uint8_t
-  -> C'uint8_t
-  -> C'uint8_t
-packNibbles a b =
-  let r = a
-      r' = shiftL r 4
-  in r' + b
-
-lastByte :: Sign -> C'uint8_t -> C'uint8_t
-lastByte s u =
-  shiftL u 4 .|. case s of
-    Sign0 -> c'DECPPLUS
-    Sign1 -> c'DECPMINUS
-
-firstByte :: C'uint8_t -> C'uint8_t
-firstByte = id
-
--- | List must be DECQUAD_Pmax long
-packList :: Sign -> [C'uint8_t] -> [C'uint8_t]
-packList s ls = case ls of
-  x:xs ->
-    firstByte x : packRest xs
-  [] -> error "packList: empty list"
-  where
-    packRest rs = case rs of
-      x:y:xs -> packNibbles x y : packRest xs
-      x:[] -> [lastByte s x]
-      [] -> error "packRest: empty list"
-
-packInfinite :: Sign -> [C'uint8_t]
-packInfinite s = packList s (replicate c'DECQUAD_Pmax 0)
-
-packNaN :: Sign -> Payload -> [C'uint8_t]
-packNaN s p =
-  packList s (0 : toBCD (c'DECQUAD_Pmax - 1) (unPayload p))
-
-packFinite :: Sign -> Coefficient -> [C'uint8_t]
-packFinite s c =
-  packList s (toBCD c'DECQUAD_Pmax (unCoefficient c))
-
-
-packBCD :: Decoded -> (C'int32_t, [C'uint8_t])
-packBCD (Decoded s v) = (expt, ls)
-  where
-    expt = case v of
-      Infinite -> c'DECFLOAT_Inf
-      NaN n _ -> case n of
-        Signaling -> c'DECFLOAT_sNaN
-        Quiet -> c'DECFLOAT_qNaN
-      Finite _ i -> fromIntegral . unFiniteExp $ i
-    ls = case v of
-      Infinite -> packInfinite s
-      NaN _ p -> packNaN s p
-      Finite c _ -> packFinite s c
 
 -- ## Digits
 
@@ -1238,8 +1181,10 @@ digitsToInteger ls = go (length ls - 1) 0 ls
                   _types = c :: Int
               in t' `seq` c' `seq` go c' t' xs
 
-integerToDigits :: Integer -> [Digit]
-integerToDigits = reverse . go
+integerToDigits :: Integral a => a -> Maybe [Digit]
+integerToDigits a
+  | a < 0 = Nothing
+  | otherwise = Just . reverse . go $ a
   where
     go i
       | i == 0 = []
@@ -1247,11 +1192,26 @@ integerToDigits = reverse . go
           let (d, m) = i `divMod` 10
           in intToDigit m : go d
 
+coefficientDigitsLen :: Int
+coefficientDigitsLen = c'DECQUAD_Pmax
+
+payloadDigitsLen :: Int
+payloadDigitsLen = c'DECQUAD_Pmax - 1
+
 intToDigit :: Integral a => a -> Digit
 intToDigit i = case i of
   { 0 -> D0; 1 -> D1; 2 -> D2; 3 -> D3; 4 -> D4;
     5 -> D5; 6 -> D6; 7 -> D7; 8 -> D8; 9 -> D9;
     _ -> error "intToDigit: integer out of range" }
+
+-- | No separate code for NaN; in the header, NaN and qNaN are the
+-- same value.
+data Exponent
+  = EqNaN
+  | EsNaN
+  | EInf
+  | EFinite FiniteExp
+  deriving (Eq, Ord, Show)
 
 -- decQuad functions not recreated here:
 
@@ -1259,16 +1219,11 @@ intToDigit i = case i of
 -- skipped: copy - not needed
 -- skipped: copyAbs - use abs instead
 -- skipped: copyNegate - use negate instead
--- skipped: fromBCD - use fromPacked function instead
 -- skipped: fromNumber - not needed
 -- skipped: fromPacked - use fromPackedChecked instead
 -- skipped: fromWider - not needed
--- skipped: getCoefficient - use decode function instead
--- skipped: getExponent - use decode function instead
 -- skipped: isCanonical - not needed
 -- skipped: radix - not needed
--- skipped: setCoefficient - use encode function instead
--- skipped: setExponent - use encode function instead
 -- skipped: toBCD - use decode function instead
 -- skipped: toNumber - not needed
 -- skipped: toPacked - use decode function instead
