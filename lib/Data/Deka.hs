@@ -135,7 +135,7 @@ integralToDeka i = do
   coe <- coefficient . fromIntegral $ i
   en <- P.exponent 0
   let d = Decoded sgn (Finite coe en)
-      sgn = if i < 0 then Negative else Positive
+      sgn = if i < 0 then Sign1 else Sign0
   return . Deka . runEnv $ encode d
 
 strToDeka :: String -> Either String Deka

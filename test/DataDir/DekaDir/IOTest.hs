@@ -67,7 +67,7 @@ decreaseAbs q = do
 -- # Generators
 
 genSign :: Gen E.Sign
-genSign = elements [ E.Positive, E.Negative ]
+genSign = elements [ E.Sign0, E.Sign1 ]
 
 genNaN :: Gen E.NaN
 genNaN = elements [ E.Quiet, E.Signaling ]
@@ -171,7 +171,7 @@ genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
               en = either
                 (const $ error "genOne: coeffExp failed")
                 id $ E.exponent expn
-              dcd = E.Decoded E.Positive (E.Finite coef en)
+              dcd = E.Decoded E.Sign0 (E.Finite coef en)
           in Visible . runEnv . E.encode $ dcd
               
 genZero :: Gen Visible
@@ -183,7 +183,7 @@ genZero = fmap f $ choose E.minMaxExp
               coef = either
                 (const $ error "genZero: coefficient failed")
                 id . E.coefficient $ 0
-              dcd = E.Decoded E.Positive (E.Finite coef expn)
+              dcd = E.Decoded E.Sign0 (E.Finite coef expn)
           in Visible . runEnv . E.encode $ dcd
 
 
@@ -765,7 +765,7 @@ tests = testGroup "IO"
       ]
     ]
 
-  , "tests"
+  , testGroup "tests"
     [
     ]
   ]

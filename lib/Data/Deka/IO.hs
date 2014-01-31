@@ -236,7 +236,6 @@ import Prelude hiding
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (foldl', unfoldr, genericLength)
 import Control.Monad.Trans.Writer
-import Data.Maybe
 
 -- # Rounding
 
@@ -958,9 +957,9 @@ zero = Env $
 -- # Conversions
 
 data Sign
-  = Positive
+  = Sign0
   -- ^ The number is positive or is zero
-  | Negative
+  | Sign1
   -- ^ The number is negative or the negative zero
   deriving (Eq, Ord, Show, Enum, Bounded)
 
@@ -1117,7 +1116,7 @@ getDecoded
   -> Decoded
 getDecoded sgn ex coef = Decoded s v
   where
-    s = if sgn == 0 then Positive else Negative
+    s = if sgn == 0 then Sign0 else Sign1
     v | ex == c'DECFLOAT_qNaN = NaN Quiet pld
       | ex == c'DECFLOAT_sNaN = NaN Signaling pld
       | ex == c'DECFLOAT_Inf = Infinite
@@ -1138,8 +1137,8 @@ packNibbles a b =
 lastByte :: Sign -> C'uint8_t -> C'uint8_t
 lastByte s u =
   shiftL u 4 .|. case s of
-    Positive -> c'DECPPLUS
-    Negative -> c'DECPMINUS
+    Sign0 -> c'DECPPLUS
+    Sign1 -> c'DECPMINUS
 
 firstByte :: C'uint8_t -> C'uint8_t
 firstByte = id
@@ -1181,65 +1180,6 @@ packBCD (Decoded s v) = (expt, ls)
       Infinite -> packInfinite s
       NaN _ p -> packNaN s p
       Finite c _ -> packFinite s c
-
--- ## Decoded predicates
-
-dIsFinite :: Decoded -> Bool
-dIsFinite (Decoded _ v) = case v of
-  Finite _ _ -> True
-  _ -> False
-
-dIsInfinite :: Decoded -> Bool
-dIsInfinite (Decoded _ v) = case v of
-  Infinite -> True
-  _ -> False
-
-dIsInteger :: Decoded -> Bool
-dIsInteger (Decoded _ v) = case v of
-  Finite _ e -> unExponent e == 0
-  _ -> False
-
-dIsLogical :: Decoded -> Bool
-dIsLogical (Decoded s v) = fromMaybe False $ do
-  guard $ s == Positive
-  (c, e) <- case v of
-    Finite co ex -> return (co, ex)
-    _ -> Nothing
-  guard $ unExponent e == 0
-  return . all isZeroOrOne . show . unCoefficient $ c
-  where
-    isZeroOrOne c = c == '0' || c == '1'
-
-dIsNaN :: Decoded -> Bool
-dIsNaN (Decoded _ v) = case v of
-  NaN _ _ -> True
-  _ -> False
-
--- | True if @x@ is less than zero and is not an NaN.  Returns False
--- for the negative zero.
-dIsNegative :: Decoded -> Bool
-dIsNegative (Decoded s v)
-  | s == Positive = False
-  | otherwise = case v of
-      Finite c _ -> unCoefficient c /= 0
-      Infinite -> True
-      _ -> False
-
-dIsPositive :: Decoded -> Bool
-dIsPositive (Decoded s v)
-  | s == Negative = False
-  | otherwise = case v of
-      Finite c _ -> unCoefficient c /= 0
-      Infinite -> True
-      _ -> False
-
-dIsSignaling :: Decoded -> Bool
-dIsSignaling (Decoded _ v) = case v of
-  NaN n _ -> n == Signaling
-  _ -> False
-
-dIsSigned :: Decoded -> Bool
-dIsSigned (Decoded s _) = s == Negative
 
 -- decQuad functions not recreated here:
 
