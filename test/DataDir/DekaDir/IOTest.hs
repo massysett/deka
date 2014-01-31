@@ -415,22 +415,6 @@ decodedSameQuantum x y = case (E.dValue x, E.dValue y) of
   (E.NaN _ _, E.NaN _ _) -> True
   _ -> False
 
-matchClass
-  :: String
-  -> (E.Quad -> E.Env Bool)
-  -> [E.DecClass]
-  -- ^ If the function returns True, then the Quad is a member of
-  -- one of these classes; otherwise, it is not a member of one of
-  -- these classes.
-  -> TestTree
-matchClass n f ls = testProperty n $ \(Visible a) ->
-  let r = runEnv $ do
-        b <- f a
-        c <- E.decClass a
-        let isElem = c `elem` ls
-        return $ if b then (isElem, (b, c)) else (not isElem, (b, c))
-  in printTestCase (show . snd $ r) (fst r)
-
 -- # Tests
 
 tests = testGroup "IO"
@@ -759,18 +743,5 @@ tests = testGroup "IO"
                       qy <- E.encode . snd $ p
                       fmap not $ E.sameQuantum qx qy
            ]
-        ]
-
-      , testGroup "tests"
-        [ matchClass "isFinite" E.isFinite
-          [ E.negNormal, E.negSubnormal, E.negZero,
-            E.posZero, E.posSubnormal, E.posNormal ]
-
-        , matchClass "isInfinite" E.isInfinite
-            [ E.negInf, E.posInf ]
-
-        , matchClass "isInteger" E.isInteger
-            [ E.negNormal, E.negZero, E.posZero, E.posNormal,
-              E.negSubnormal, E.posSubnormal ]
         ]
       ]

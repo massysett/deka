@@ -779,6 +779,7 @@ isFinite = boolean c'decQuadIsFinite
 isInfinite :: Quad -> Env Bool
 isInfinite = boolean c'decQuadIsInfinite
 
+-- | True if @x@ is finite and has exponent of @0@; False otherwise.
 isInteger :: Quad -> Env Bool
 isInteger = boolean c'decQuadIsInteger
 
