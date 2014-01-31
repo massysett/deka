@@ -17,7 +17,7 @@ import Control.Monad
 import Test.Tasty
 import Data.Maybe
 import qualified Data.Deka.IO as E
-import Data.Deka.Pure (runCtx, evalCtx)
+import Data.Deka.Pure (runCtx, evalCtx, liftEnv, runEnv)
 import Data.Deka.Decnumber
 import Test.Tasty.QuickCheck
 import Test.QuickCheck.Gen
@@ -52,14 +52,14 @@ numDigits = length . show . abs
 
 increaseAbs :: E.Quad -> E.Ctx E.Quad
 increaseAbs q = do
-    neg <- E.isNegative q
+    neg <- liftEnv $ E.isNegative q
     if neg
       then E.nextMinus q
       else E.nextPlus q
 
 decreaseAbs :: E.Quad -> E.Ctx E.Quad
 decreaseAbs q = do
-  neg <- E.isNegative q
+  neg <- liftEnv $ E.isNegative q
   if neg
     then E.nextPlus q
     else E.nextMinus q
@@ -106,13 +106,13 @@ genDecoded = liftM2 E.Decoded genSign genValue
 genFromDecoded :: Gen E.Quad
 genFromDecoded = do
   d <- genDecoded
-  return . fst . runCtx . E.encode $ d
+  return . fst . runCtx . liftEnv . E.encode $ d
 
 genFinite :: Gen Visible
 genFinite = do
   v <- liftM2 E.Finite genCoefficient genExp
   s <- genSign
-  return . Visible . evalCtx . E.encode $ E.Decoded s v
+  return . Visible . evalCtx . liftEnv . E.encode $ E.Decoded s v
 
 genSmallFinite :: Gen Visible
 genSmallFinite = do
@@ -126,7 +126,7 @@ genSmallFinite = do
         Right g -> g
   s <- genSign
   let d = E.Decoded s (E.Finite co en)
-      dec = evalCtx (E.encode d)
+      dec = runEnv (E.encode d)
   return . Visible $ dec
 
 newtype SmallFin = SmallFin { unSmallFin :: E.Quad }
@@ -135,13 +135,13 @@ instance Arbitrary SmallFin where
   arbitrary = fmap (SmallFin . unVisible) genSmallFinite
 
 instance Show SmallFin where
-  show = BS8.unpack . evalCtx . E.toString . unSmallFin
+  show = BS8.unpack . runEnv . E.toByteString . unSmallFin
 
 -- | Non zero small finite number.
 newtype NZSmallFin = NZSmallFin { unNZSmallFin :: E.Quad }
 
 instance Show NZSmallFin where
-  show = BS8.unpack . evalCtx . E.toString . unNZSmallFin
+  show = BS8.unpack . runEnv . E.toByteString . unNZSmallFin
 
 instance Arbitrary NZSmallFin where
   arbitrary = do
@@ -155,7 +155,7 @@ instance Arbitrary NZSmallFin where
           Right g -> g
     s <- genSign
     let d = E.Decoded s (E.Finite co en)
-        dec = evalCtx (E.encode d)
+        dec = runEnv (E.encode d)
     return . NZSmallFin $ dec
 
 
@@ -172,7 +172,7 @@ genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
                 (const $ error "genOne: coeffExp failed")
                 id $ E.exponent expn
               dcd = E.Decoded E.Positive (E.Finite coef en)
-          in Visible . evalCtx . E.encode $ dcd
+          in Visible . runEnv . E.encode $ dcd
               
 genZero :: Gen Visible
 genZero = fmap f $ choose E.minMaxExp
@@ -184,7 +184,7 @@ genZero = fmap f $ choose E.minMaxExp
                 (const $ error "genZero: coefficient failed")
                 id . E.coefficient $ 0
               dcd = E.Decoded E.Positive (E.Finite coef expn)
-          in Visible . evalCtx . E.encode $ dcd
+          in Visible . runEnv . E.encode $ dcd
 
 
 genRound :: Gen E.Round
@@ -195,7 +195,7 @@ genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
 newtype Visible = Visible { unVisible :: E.Quad }
 
 instance Show Visible where
-  show = BS8.unpack . evalCtx . E.toString . unVisible
+  show = BS8.unpack . runEnv . E.toByteString . unVisible
 
 instance Arbitrary Visible where
   arbitrary = fmap Visible genFromDecoded
@@ -214,8 +214,8 @@ associativity n f = testProperty desc $
   let (noFlags, resIsZero) = evalCtx $ do
         r1 <- f x y >>= f z
         r2 <- f y z >>= f x
-        c <- E.compareTotal r1 r2
-        isZ <- E.isZero c
+        c <- liftEnv $ E.compareTotal r1 r2
+        isZ <- liftEnv $ E.isZero c
         fl <- E.getStatus
         return (fl == E.emptyFlags, isZ)
   in noFlags ==> resIsZero
@@ -233,8 +233,8 @@ commutativity n f = testProperty desc $
   let (noFlags, resIsZero) = evalCtx $ do
         r1 <- f x y
         r2 <- f y x
-        c <- E.compareTotal r1 r2
-        isZ <- E.isZero c
+        c <- liftEnv $ E.compareTotal r1 r2
+        isZ <- liftEnv $ E.isZero c
         fl <- E.getStatus
         return (fl == E.emptyFlags, isZ)
   in noFlags ==> resIsZero
@@ -247,9 +247,9 @@ imuUni
   -> (E.Quad -> E.Ctx a)
   -> TestTree
 imuUni n f = testProperty desc $ \(Visible d) -> evalCtx $ do
-  dcd1 <- E.decode d
+  dcd1 <- liftEnv $ E.decode d
   _ <- f d
-  dcd2 <- E.decode d
+  dcd2 <- liftEnv $ E.decode d
   return $ dcd1 == dcd2
   where
     desc = n ++ " (unary function) does not mutate only argument"
@@ -273,9 +273,9 @@ imuBinary1st
 imuBinary1st n (genA, getC) f = testProperty desc $
   forAll arbitrary $ \(Visible d) ->
   forAll genA $ \a -> evalCtx $ do
-    dcd1 <- E.decode d
+    dcd1 <- liftEnv $ E.decode d
     _ <- f d (getC a)
-    dcd2 <- E.decode d
+    dcd2 <- liftEnv $ E.decode d
     return $ dcd1 == dcd2
   where
     desc = n ++ " (binary function) does not mutate first argument"
@@ -290,9 +290,9 @@ imuBinary2nd
 imuBinary2nd n (genA, getC) f = testProperty desc $
   forAll arbitrary $ \(Visible d) ->
   forAll genA $ \a -> evalCtx $ do
-    dcd1 <- E.decode d
+    dcd1 <- liftEnv $ E.decode d
     _ <- f (getC a) d
-    dcd2 <- E.decode d
+    dcd2 <- liftEnv $ E.decode d
     return $ dcd1 == dcd2
   where
     desc = n ++ " (binary function) does not mutate second argument"
@@ -304,23 +304,23 @@ imuTernary
 imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
   [ testProperty "first argument" $
     \(Visible a) (Visible b) (Visible c) -> evalCtx $ do
-      dcd1 <- E.decode a
+      dcd1 <- liftEnv $ E.decode a
       _ <- f a b c
-      dcd2 <- E.decode a
+      dcd2 <- liftEnv $ E.decode a
       return $ dcd1 == dcd2
 
   , testProperty "second argument" $
     \(Visible a) (Visible b) (Visible c) -> evalCtx $ do
-      dcd1 <- E.decode b
+      dcd1 <- liftEnv $ E.decode b
       _ <- f a b c
-      dcd2 <- E.decode b
+      dcd2 <- liftEnv $ E.decode b
       return $ dcd1 == dcd2
 
   , testProperty "third argument" $
     \(Visible a) (Visible b) (Visible c) -> evalCtx $ do
-      dcd1 <- E.decode c
+      dcd1 <- liftEnv $ E.decode c
       _ <- f a b c
-      dcd2 <- E.decode c
+      dcd2 <- liftEnv $ E.decode c
       return $ dcd1 == dcd2
   ]
 
@@ -335,7 +335,7 @@ identity n g f = testProperty name $
   forAll genFinite $ \(Visible b) -> evalCtx $ do
     r <- f b a
     c <- E.compare b r
-    E.isZero c
+    liftEnv $ E.isZero c
   where
     name = n ++ " is the identity for finite numbers"
 
@@ -353,30 +353,30 @@ comparison n fB fS fC = testGroup (n ++ " comparisons")
   [ testProperty "x > y" $ \(NZSmallFin a) -> evalCtx $ do
       b <- fB a
       c <- fC b a
-      E.isPositive c
+      liftEnv $ E.isPositive c
 
   , testProperty "x < y" $ \(NZSmallFin a) -> evalCtx $ do
       b <- fS a
       c <- fC b a
-      E.isNegative c
+      liftEnv $ E.isNegative c
 
   , testProperty "x == x" $ \(NZSmallFin a) -> evalCtx $ do
       c <- fC a a
-      E.isZero c
+      liftEnv $ E.isZero c
 
   , testProperty "transitive"
     $ \(NZSmallFin a) (NZSmallFin b) -> evalCtx $ do
       c <- fC a b
-      z <- E.isZero c
+      z <- liftEnv $ E.isZero c
       if z
         then do
           c' <- fC b a
-          E.isZero c'
+          liftEnv $ E.isZero c'
         else do
           c' <- fC b a
           newSign <- E.minus c
           cmpResults <- E.compare c' newSign
-          E.isZero cmpResults
+          liftEnv $ E.isZero cmpResults
   ]
 
 testMinMax
@@ -395,18 +395,18 @@ testMinMax n ab f = testProperty (n ++ " and compare")
       else return (aa, bb)
     r <- E.compare a b
     m <- f a b
-    z <- E.isZero r
+    z <- liftEnv $ E.isZero r
     if z
       then do
         r' <- E.compare m a
         r'' <- E.compare m b
-        zr' <- E.isZero r'
-        zr'' <- E.isZero r''
+        zr' <- liftEnv $ E.isZero r'
+        zr'' <- liftEnv $ E.isZero r''
         return $ zr' && zr''
       else do
         new <- f b a
         r' <- E.compare new m
-        E.isZero r' 
+        liftEnv $ E.isZero r' 
 
 decodedSameQuantum :: E.Decoded -> E.Decoded -> Bool
 decodedSameQuantum x y = case (E.dValue x, E.dValue y) of
@@ -417,18 +417,18 @@ decodedSameQuantum x y = case (E.dValue x, E.dValue y) of
 
 matchClass
   :: String
-  -> (E.Quad -> E.Ctx Bool)
+  -> (E.Quad -> E.Env Bool)
   -> [E.DecClass]
   -- ^ If the function returns True, then the Quad is a member of
   -- one of these classes; otherwise, it is not a member of one of
   -- these classes.
   -> TestTree
 matchClass n f ls = testProperty n $ \(Visible a) ->
-  let r = evalCtx $ do
+  let r = runEnv $ do
         b <- f a
         c <- E.decClass a
         let isElem = c `elem` ls
-        return $ if b then (isElem, c) else (not isElem, c)
+        return $ if b then (isElem, (b, c)) else (not isElem, (b, c))
   in printTestCase (show . snd $ r) (fst r)
 
 -- # Tests
@@ -462,10 +462,10 @@ tests = testGroup "IO"
 
   , testGroup "immutability"
     [ testGroup "conversions"
-      [ imuUni "decClass" E.decClass
-      , imuUni "decode" E.decode
-      , imuUni "toString" E.toString
-      , imuUni "toEngString" E.toEngString
+      [ imuUni "decClass" (fmap liftEnv E.decClass)
+      , imuUni "decode" (fmap liftEnv E.decode)
+      , imuUni "toByteString" (fmap liftEnv E.toByteString)
+      , imuUni "toEngByteString" (fmap liftEnv E.toEngByteString)
       , imuBinary2nd "toInt32" (genRound, id) E.toInt32
       , imuBinary2nd "toInt32Exact" (genRound, id) E.toInt32Exact
       , imuBinary2nd "toUInt32" (genRound, id) E.toUInt32
@@ -493,16 +493,19 @@ tests = testGroup "IO"
     , testGroup "comparisons"
       [ imuBinary "compare" E.compare
       , imuBinary "compareSignal" E.compareSignal
-      , imuBinary "compareTotal" E.compareTotal
-      , imuBinary "compareTotalMag" E.compareTotalMag
+      , imuBinary "compareTotal"
+        (fmap (fmap liftEnv) E.compareTotal)
+      , imuBinary "compareTotalMag"
+        (fmap (fmap liftEnv) E.compareTotalMag)
       , imuBinary "max" E.max
       , imuBinary "maxMag" E.maxMag
       , imuBinary "min" E.min
       , imuBinary "minMag" E.minMag
-      , imuBinary "sameQuantum" E.sameQuantum
+      , imuBinary "sameQuantum"
+        (fmap (fmap liftEnv) E.sameQuantum)
       ]
 
-    , let f = imuUni in
+    , let f s k = imuUni s (fmap liftEnv k) in
       testGroup "tests"
       [ f "isFinite" E.isFinite
       , f "isInfinite" E.isInfinite
@@ -522,7 +525,7 @@ tests = testGroup "IO"
       [ imuUni "plus" E.plus
       , imuUni "minus" E.minus
       , imuUni "abs" E.abs
-      , imuBinary "copySign" E.copySign
+      , imuBinary "copySign" (fmap (fmap liftEnv) E.copySign)
       ]
 
     , testGroup "increment and decrement"
@@ -546,7 +549,7 @@ tests = testGroup "IO"
       ]
 
     , testGroup "attributes"
-      [ imuUni "digits" E.digits
+      [ imuUni "digits" (fmap liftEnv E.digits)
       ]
     ]
 
@@ -605,7 +608,7 @@ tests = testGroup "IO"
       , testGroup "decode and encode"
         [ testProperty "round trip from Quad" $
           forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
-          evalCtx $ do
+          runEnv $ do
             dcd <- E.decode d
             ecd <- E.encode dcd
             r <- E.compareTotal ecd d
@@ -613,7 +616,7 @@ tests = testGroup "IO"
 
         , testProperty "round trip from Decoded" $
           forAll genDecoded $ \d ->
-          let r = evalCtx $ do
+          let r = runEnv $ do
                 ecd <- E.encode d
                 E.decode ecd
           in printTestCase ("result: " ++ show r) (r == d)
@@ -641,7 +644,7 @@ tests = testGroup "IO"
                 r1 <- E.add a b
                 r2 <- E.subtract r1 b
                 c <- E.compare r2 a
-                E.isZero c
+                liftEnv $ E.isZero c
           in fl == E.emptyFlags ==> r
 
         , identity "zero" genZero E.subtract
@@ -657,7 +660,7 @@ tests = testGroup "IO"
                 r2 <- E.add r1 c
                 r2' <- E.fma a b c
                 cm <- E.compare r2 r2'
-                E.isZero cm
+                liftEnv $ E.isZero cm
           in fl == E.emptyFlags ==> r
 
         , testGroup "divide"
@@ -668,7 +671,7 @@ tests = testGroup "IO"
             \(SmallFin a) (SmallFin b) ->
             let (e, fl) = runCtx $ do
                   c <- E.divideInteger a b
-                  E.decode c
+                  liftEnv $ E.decode c
             in fl == E.emptyFlags ==> E.finiteExponent e == Just 0
           ]
 
@@ -681,7 +684,7 @@ tests = testGroup "IO"
                   i1 <- E.multiply it y
                   i2 <- E.add i1 rm
                   c <- E.compare i2 x
-                  E.isZero c
+                  liftEnv $ E.isZero c
             in fl == E.emptyFlags ==> r
           ]
 
@@ -697,8 +700,8 @@ tests = testGroup "IO"
             \(SmallFin x) (SmallFin y) ->
             let (r, fl) = runCtx $ do
                   c <- E.quantize x y
-                  dc <- E.decode c
-                  dy <- E.decode y
+                  dc <- liftEnv $ E.decode c
+                  dy <- liftEnv $ E.decode y
                   return $ E.finiteExponent dc == E.finiteExponent dy
             in fl == E.emptyFlags ==> r
           ]
@@ -708,13 +711,13 @@ tests = testGroup "IO"
             \(SmallFin x) -> evalCtx $ do
                 r <- E.reduce x
                 c <- E.compare r x
-                E.isZero c
+                liftEnv $ E.isZero c
 
           , testProperty "result has no trailing zeroes" $
             \(SmallFin x) -> evalCtx $ do
                 r <- E.reduce x
-                dx <- E.decode x
-                dr <- E.decode r
+                dx <- liftEnv $ E.decode x
+                dr <- liftEnv $ E.decode r
                 let cr = E.finiteCoefficient dr
                 return $ case E.finiteCoefficient dx of
                   Just i
@@ -732,10 +735,10 @@ tests = testGroup "IO"
             E.nextMinus E.compare
 
         , comparison "compareTotal" E.nextPlus E.nextMinus
-            E.compareTotal
+            (fmap (fmap liftEnv) E.compareTotal)
 
         , comparison "compareTotalMag" increaseAbs decreaseAbs
-              E.compareTotalMag
+              (fmap (fmap liftEnv) E.compareTotalMag)
 
         , testMinMax "min" False E.min
         , testMinMax "max" False E.max
@@ -744,17 +747,17 @@ tests = testGroup "IO"
 
         , testGroup "sameQuantum"
           [ testProperty "is true for same Decoded" $
-            forAll genDecoded $ \d -> evalCtx $ do
+            forAll genDecoded $ \d -> runEnv $ do
               x <- E.encode d
               E.sameQuantum x x
 
           , testProperty "is false for different Decoded" $
             forAll ( liftM2 (,) genDecoded genDecoded
                       `suchThat` (not . uncurry decodedSameQuantum))
-            $ \p -> evalCtx $ do
-              qx <- E.encode . fst $ p
-              qy <- E.encode . snd $ p
-              fmap not $ E.sameQuantum qx qy
+            $ \p -> runEnv $ do
+                      qx <- E.encode . fst $ p
+                      qy <- E.encode . snd $ p
+                      fmap not $ E.sameQuantum qx qy
            ]
         ]
 
