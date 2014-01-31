@@ -66,38 +66,41 @@ decreaseAbs q = do
 
 -- # Generators
 
-genSign :: Gen E.Sign
-genSign = elements [ E.Sign0, E.Sign1 ]
-
 genNaN :: Gen E.NaN
 genNaN = elements [ E.Quiet, E.Signaling ]
 
-genCoefficient :: Gen E.Coefficient
-genCoefficient = do
-  i <- choose (0, biggestDigs c'DECQUAD_Pmax)
-  case E.coefficient i of
-    Left _ -> error "genCoefficient failed"
-    Right g -> return g
+genDigit :: Gen E.Digit
+genDigit = elements [minBound..maxBound]
 
-genExp :: Gen E.FiniteExp
-genExp = fmap f (choose E.minMaxExp)
-  where
-    f e = case E.finiteExp e of
-      Left _ -> error "genExp failed"
-      Right g -> g
-
-genPayload :: Gen E.Payload
-genPayload = do
-  i <- choose (0, biggestDigs (c'DECQUAD_Pmax - 1))
-  case E.payload i of
-    Nothing -> error "genPayload failed"
+genFiniteDigits :: Gen E.FiniteDigits
+genFiniteDigits = do
+  ds <- vectorOf E.finiteDigitsLen genDigit
+  case E.finiteDigits ds of
+    Nothing -> error "genFiniteDigits failed"
     Just r -> return r
+
+genPayloadDigits :: Gen E.PayloadDigits
+genPayloadDigits = do
+  ds <- vectorOf E.payloadDigitsLen genDigit
+  case E.finiteDigits ds of
+    Nothing -> error "genPayloadDigits failed"
+    Just r -> return r
+
+genFiniteExp :: Gen E.FiniteExp
+genFiniteExp = do
+  i <- choose E.minMaxExp
+  case E.finiteExp i of
+    Left _ -> error "genFiniteExp failed"
+    Just r -> return r
+
+genSign :: Gen E.Sign
+genSign = elements [ minBound..maxBound ]
 
 genValue :: Gen E.Value
 genValue = oneof
-  [ liftM2 E.Finite genCoefficient genExp
+  [ liftM2 E.Finite genFiniteDigits genFiniteExp
   , return E.Infinite
-  , liftM2 E.NaN genNaN genPayload
+  , liftM2 E.NaN genNaN genPayloadDigits
   ]
 
 genDecoded :: Gen E.Decoded
@@ -106,18 +109,43 @@ genDecoded = liftM2 E.Decoded genSign genValue
 genFromDecoded :: Gen E.Quad
 genFromDecoded = do
   d <- genDecoded
-  return . fst . runCtx . liftEnv . E.fromPackedChecked $ d
+  return . fst . runCtx . liftEnv . E.fromBCD $ d
 
 genFinite :: Gen Visible
 genFinite = do
-  v <- liftM2 E.Finite genCoefficient genExp
+  v <- liftM2 E.Finite genFiniteDigits genFiniteExp
   s <- genSign
-  return . Visible . evalCtx . liftEnv . E.fromPackedChecked $ E.Decoded s v
+  return . Visible . evalCtx . liftEnv . E.fromBCD $ E.Decoded s v
+
+genDigitRange :: (Integer, Integer) -> Gen [E.Digit]
+genDigitRange p = do
+  c <- choose p
+  return $ E.integralToDigits c
+
+genFiniteRange
+  :: (Integer, Integer)
+  -- ^ Range for coefficient.  Can be negative or positive.
+  -> (Int, Int)
+  -- ^ Range for exponent
+  -> Gen Visible
+genFiniteRange cr er = do
+  ds <- genDigitRange cr
+  let co = case E.finiteDigits ds of
+        Left _ -> error "genFiniteRange: coefficient failed"
+        Right g -> g
+  e <- choose er
+  let en = case E.finiteExp e of
+        Left _ -> error "genFiniteRange: coefficient failed"
+        Right g -> g
+  s <- genSign
+  let d = E.Decoded s (E.Finite co en)
+      dec = runEnv (E.fromBCD d)
+  return . Visible $ dec
 
 genSmallFinite :: Gen Visible
 genSmallFinite = do
-  c <- choose (0, biggestDigs 5)
-  let co = case E.coefficient c of
+  ds <- genDigitRange (0, biggestDigs 5)
+  let co = case E.finiteDigits ds of
         Left _ -> error "genSmallFinite: coefficient failed"
         Right g -> g
   e <- choose (-10, 10)
@@ -126,7 +154,7 @@ genSmallFinite = do
         Right g -> g
   s <- genSign
   let d = E.Decoded s (E.Finite co en)
-      dec = runEnv (E.fromPackedChecked d)
+      dec = runEnv (E.fromBCD d)
   return . Visible $ dec
 
 newtype SmallFin = SmallFin { unSmallFin :: E.Quad }
@@ -146,7 +174,7 @@ instance Show NZSmallFin where
 instance Arbitrary NZSmallFin where
   arbitrary = do
     c <- choose (1, biggestDigs 5)
-    let co = case E.coefficient c of
+    let co = case E.finiteDigits c of
           Left _ -> error "genSmallFinite: coefficient failed"
           Right g -> g
     e <- choose (-10, 10)
