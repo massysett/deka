@@ -11,7 +11,6 @@ module Data.Deka
 import Control.Arrow hiding (left)
 import Control.Monad.Trans.Class
 import Data.Deka.Pure
-import Data.Maybe
 import Data.List (intersperse)
 import qualified Data.Deka.Pure as P
 import qualified Data.ByteString.Char8 as BS8
@@ -133,19 +132,11 @@ instance Ord DekaT where
 
 integralToDeka :: Integral a => a -> Either String Deka
 integralToDeka i = do
-  let coDigs = fromMaybe (error "Deka: integralToDeka failed")
-        . integralToDigits $ i
-      padLen = P.finiteDigitsLen - length coDigs
-      notTooManyDigs
-        | padLen < 0 =
-            Left "Deka: integralToDeka: too many digits"
-        | otherwise = return ()
-  notTooManyDigs
-  let pad = replicate padLen P.D0 ++ coDigs
-      coe = fromMaybe (error "integralToDeka: coeffDigits failed")
-            . P.finiteDigits $ pad
-  let en = P.zeroFiniteExp
-      d = Decoded sgn (Finite coe en)
+  coe <- maybe (Left "coefficient too long") Right
+      . P.coefficient . P.integralToDigits $ i
+  let ce = either (const (error "integralToDeka: coeffExp failed"))
+        id $ P.coeffExp coe 0
+      d = Decoded sgn (Finite ce)
       sgn = if i < 0 then Sign1 else Sign0
   return . Deka . runEnv $ fromBCD d
 

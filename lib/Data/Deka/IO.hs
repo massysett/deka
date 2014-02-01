@@ -106,18 +106,17 @@ module Data.Deka.IO
   -- ** Complete encoding and decoding
 
   -- *** Coefficients
-  , finiteDigitsLen
+  , coefficientLen
   , payloadDigitsLen
-  , FiniteDigits
-  , finiteDigits
-  , unFiniteDigits
-  , PayloadDigits
+  , Coefficient
+  , coefficient
+  , unCoefficient
+  , Payload
   , payloadDigits
-  , unPayloadDigits
+  , unPayload
 
   -- *** Exponents
   , FiniteExp
-  , finiteExp
   , unFiniteExp
   , zeroFiniteExp
   , minMaxExp
@@ -126,6 +125,10 @@ module Data.Deka.IO
   , unAdjustedExp
   , minNormal
   , adjustedToFinite
+  , CoeffExp
+  , ceCoeff
+  , ceExp
+  , coeffExp
 
   -- *** Sign, NaN, Value, Decoded
   , Sign(..)
@@ -281,6 +284,7 @@ import Prelude hiding
   , significand
   , exponent
   )
+import qualified Prelude
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad.Trans.Writer
 
@@ -1081,42 +1085,50 @@ data NaN
 -- @-x - (c - 1) + 1@ and @x - (c - 1)@
 --
 -- See Decimal Arithmetic Specification version 1.70, page 10.
-minMaxExp :: (Int, Int)
-minMaxExp = (l, h)
+minMaxExp :: Coefficient -> (FiniteExp, FiniteExp)
+minMaxExp d = (FiniteExp l, FiniteExp h)
   where
     l = negate x - (c - 1) + 1
     h = x - (c - 1)
     x = c'DECQUAD_Emax
-    c = c'DECQUAD_Pmax
+    c = length . unCoefficient $ d
 
 -- | The smallest possible exponent that is still normal.  Exponents
 -- smaller than this are subnormal.
 minNormal :: AdjustedExp
 minNormal = AdjustedExp c'DECQUAD_Emin
 
+-- | The signed integer which indicates the power of ten by which
+-- the coefficient is multiplied.
 newtype FiniteExp = FiniteExp { unFiniteExp :: Int }
   deriving (Eq, Ord, Show)
 
-instance Bounded FiniteExp where
-  minBound = FiniteExp . fst $ minMaxExp
-  maxBound = FiniteExp . snd $ minMaxExp
+-- | For a particular coefficient, the exponent must be in a
+-- particular range; 'coeffExp' ensures this relationship is
+-- enforced.
+data CoeffExp = CoeffExp
+  { ceCoeff :: Coefficient
+  , ceExp :: FiniteExp
+  } deriving (Eq, Ord, Show)
+
 
 -- | Ensures the exponent falls within the correct range.
-finiteExp :: Int -> Either String FiniteExp
-finiteExp i
-  | i < l = Left "exponent too small"
-  | i > h = Left "exponent too large"
-  | otherwise = Right . FiniteExp $ i
+coeffExp :: Coefficient -> Int -> Either String CoeffExp
+coeffExp ds e
+  | r < l = Left "exponent too small"
+  | r > h = Left "exponent too large"
+  | otherwise = Right $ CoeffExp ds r
   where
-    (l, h) = minMaxExp
+    (l, h) = minMaxExp ds
+    r = FiniteExp e
 
 zeroFiniteExp :: FiniteExp
 zeroFiniteExp = FiniteExp 0
 
 data Value
-  = Finite FiniteDigits FiniteExp
+  = Finite CoeffExp
   | Infinite
-  | NaN NaN PayloadDigits
+  | NaN NaN Payload
   deriving (Eq, Ord, Show)
 
 data Decoded = Decoded
@@ -1153,14 +1165,17 @@ toDecNumberBCD (Decoded s v) = (e, ds, sgn)
     sgn = case s of { Sign0 -> 0; Sign1 -> c'DECFLOAT_Sign }
     (e, ds) = case v of
       Infinite -> (c'DECFLOAT_Inf, replicate c'DECQUAD_Pmax 0)
-      NaN n (PayloadDigits ps) -> (ns, np)
+      NaN n (Payload ps) -> (ns, np)
         where
           ns = case n of
             Quiet -> c'DECFLOAT_qNaN
             Signaling -> c'DECFLOAT_sNaN
-          np = 0 : map digitToInt ps
-      Finite (FiniteDigits digs) (FiniteExp ex) ->
-        ( fromIntegral ex, map digitToInt digs )
+          np = pad ++ map digitToInt ps
+          pad = replicate (c'DECQUAD_Pmax - length ps) 0
+      Finite (CoeffExp (Coefficient digs) (FiniteExp ex)) ->
+        ( fromIntegral ex, pad ++ map digitToInt digs )
+        where
+          pad = replicate (c'DECQUAD_Pmax - length digs) 0
 
 getDecoded
   :: C'int32_t
@@ -1177,10 +1192,13 @@ getDecoded sgn ex coef = Decoded s v
     v | ex == c'DECFLOAT_qNaN = NaN Quiet pld
       | ex == c'DECFLOAT_sNaN = NaN Signaling pld
       | ex == c'DECFLOAT_Inf = Infinite
-      | otherwise = Finite coe (FiniteExp $ fromIntegral ex)
+      | otherwise = Finite (CoeffExp coe (FiniteExp $ fromIntegral ex))
       where
-        pld = PayloadDigits $ map intToDigit (tail coef)
-        coe = FiniteDigits $ map intToDigit coef
+        pld = Payload . toDigs . tail $ coef
+        coe = Coefficient . toDigs $ coef
+        toDigs c = case dropWhile (== D0) . map intToDigit $ c of
+          [] -> [D0]
+          xs -> xs
 
 
 -- ## Digits
@@ -1201,37 +1219,44 @@ intToDigit i = case i of
     _ -> error "intToDigit: integer out of range" }
 
 
--- | A list of digits, Pmax long.  Could be either a payload or a
--- finite coefficient.
+-- | A list of digits, less than or equal to coeffDigitsLen long.
+-- Could be either a payload or a finite coefficient.
 newtype CoeffDigits = CoeffDigits { unCoeffDigits :: [Digit] }
   deriving (Eq, Ord, Show)
 
 coeffDigits :: [Digit] -> Maybe CoeffDigits
 coeffDigits ds
-  | length ds == c'DECQUAD_Pmax = Just . CoeffDigits $ ds
-  | otherwise = Nothing
+  | null ds = Nothing
+  | length ds > 1 && head ds == D0 = Nothing
+  | length ds > coeffDigitsLen = Nothing
+  | otherwise = Just . CoeffDigits $ ds
 
 coeffDigitsLen :: Int
 coeffDigitsLen = c'DECQUAD_Pmax
 
--- | A list of digits, Pmax long.  Corresponds only to finite
--- numbers.
-newtype FiniteDigits = FiniteDigits { unFiniteDigits :: [Digit] }
+-- | A list of digits, less than or equal to 'coefficientLen' long.
+-- Corresponds only to finite numbers.
+newtype Coefficient = Coefficient { unCoefficient :: [Digit] }
   deriving (Eq, Ord, Show)
 
-finiteDigits :: [Digit] -> Maybe FiniteDigits
-finiteDigits ls
-  | length ls == c'DECQUAD_Pmax = Just . FiniteDigits $ ls
-  | otherwise = Nothing
+coefficient :: [Digit] -> Maybe Coefficient
+coefficient ls
+  | null ls = Nothing
+  | length ls > 1 && head ls == D0 = Nothing
+  | length ls > coefficientLen = Nothing
+  | otherwise = Just . Coefficient $ ls
 
--- | A list of digits, Pmax - 1 long.
-newtype PayloadDigits = PayloadDigits { unPayloadDigits :: [Digit] }
+-- | A list of digits, less than or equal to 'payloadDigitsLen'
+-- long.
+newtype Payload = Payload { unPayload :: [Digit] }
   deriving (Eq, Ord, Show)
 
-payloadDigits :: [Digit] -> Maybe PayloadDigits
+payloadDigits :: [Digit] -> Maybe Payload
 payloadDigits ds
-  | length ds == c'DECQUAD_Pmax - 1 = Just . PayloadDigits $ ds
-  | otherwise = Nothing
+  | null ds = Nothing
+  | length ds > 1 && head ds == D0 = Nothing
+  | length ds > payloadDigitsLen = Nothing
+  | otherwise = Just . Payload $ ds
 
 
 -- | The most significant digit is at the head of the list.
@@ -1246,12 +1271,10 @@ digitsToIntegral ls = go (length ls - 1) 0 ls
                   _types = c :: Int
               in t' `seq` c' `seq` go c' t' xs
 
--- | Fails on negative numbers.  The most significant digit is at
--- the head of the list.
-integralToDigits :: Integral a => a -> Maybe [Digit]
-integralToDigits a
-  | a < 0 = Nothing
-  | otherwise = Just . reverse . go $ a
+-- | The most significant digit is at
+-- the head of the list.  Sign of number is not relevant.
+integralToDigits :: Integral a => a -> [Digit]
+integralToDigits = reverse . go . Prelude.abs
   where
     go i
       | i == 0 = []
@@ -1259,8 +1282,8 @@ integralToDigits a
           let (d, m) = i `divMod` 10
           in intToDigit m : go d
 
-finiteDigitsLen :: Int
-finiteDigitsLen = c'DECQUAD_Pmax
+coefficientLen :: Int
+coefficientLen = c'DECQUAD_Pmax
 
 payloadDigitsLen :: Int
 payloadDigitsLen = c'DECQUAD_Pmax - 1
@@ -1278,7 +1301,7 @@ data Exponent
 
 dIsFinite :: Decoded -> Bool
 dIsFinite (Decoded _ v) = case v of
-  Finite _ _ -> True
+  Finite _ -> True
   _ -> False
 
 dIsInfinite :: Decoded -> Bool
@@ -1288,7 +1311,7 @@ dIsInfinite (Decoded _ v) = case v of
 
 dIsInteger :: Decoded -> Bool
 dIsInteger (Decoded _ v) = case v of
-  Finite _ e -> unFiniteExp e == 0
+  Finite c -> unFiniteExp (ceExp c) == 0
   _ -> False
 
 -- | True only if @x@ is zero or positive, an integer (finite with
@@ -1299,12 +1322,12 @@ dIsLogical :: Decoded -> Bool
 dIsLogical (Decoded s v) = fromMaybe False $ do
   guard $ s == Sign0
   (d, e) <- case v of
-    Finite ds ex -> return (ds, ex)
+    Finite (CoeffExp ds ex) -> return (ds, ex)
     _ -> Nothing
   guard $ e == zeroFiniteExp
   return
     . all (\x -> x == D0 || x == D1)
-    . unFiniteDigits $ d
+    . unCoefficient $ d
 
 dIsNaN :: Decoded -> Bool
 dIsNaN (Decoded _ v) = case v of
@@ -1318,22 +1341,22 @@ dIsNegative :: Decoded -> Bool
 dIsNegative (Decoded s v) = fromMaybe False $ do
   guard $ s == Sign1
   return $ case v of
-    Finite d _ -> any (/= D0) . unFiniteDigits $ d
+    Finite (CoeffExp d _) -> any (/= D0) . unCoefficient $ d
     Infinite -> True
     _ -> False
 
 dIsNormal :: Decoded -> Bool
 dIsNormal (Decoded _ v) = case v of
-  Finite d e
+  Finite (CoeffExp d e)
     | adjustedExp d e < minNormal -> False
-    | otherwise -> any (/= D0) . unFiniteDigits $ d
+    | otherwise -> any (/= D0) . unCoefficient $ d
   _ -> False
 
 dIsPositive :: Decoded -> Bool
 dIsPositive (Decoded s v)
   | s == Sign1 = False
   | otherwise = case v of
-      Finite d _ -> any (/= D0) . unFiniteDigits $ d
+      Finite (CoeffExp d _) -> any (/= D0) . unCoefficient $ d
       Infinite -> True
       _ -> False
 
@@ -1348,18 +1371,18 @@ dIsSigned (Decoded s _) = s == Sign1
 
 dIsSubnormal :: Decoded -> Bool
 dIsSubnormal (Decoded _ v) = case v of
-  Finite d e -> adjustedExp d e < minNormal
+  Finite (CoeffExp d e) -> adjustedExp d e < minNormal
   _ -> False
 
 -- | True for any zero (negative or positive zero).
 dIsZero :: Decoded -> Bool
 dIsZero (Decoded _ v) = case v of
-  Finite d _ -> all (== D0) . unFiniteDigits $ d
+  Finite (CoeffExp d _) -> all (== D0) . unCoefficient $ d
   _ -> False
 
 -- | The number of significant digits. Zero returns 1.
-dDigits :: FiniteDigits -> Int
-dDigits (FiniteDigits ds) = case dropWhile (== D0) ds of
+dDigits :: Coefficient -> Int
+dDigits (Coefficient ds) = case dropWhile (== D0) ds of
   [] -> 1
   rs -> length rs
 
@@ -1370,11 +1393,11 @@ dDigits (FiniteDigits ds) = case dropWhile (== D0) ds of
 data AdjustedExp = AdjustedExp { unAdjustedExp :: Int }
   deriving (Eq, Show, Ord)
 
-adjustedExp :: FiniteDigits -> FiniteExp -> AdjustedExp
+adjustedExp :: Coefficient -> FiniteExp -> AdjustedExp
 adjustedExp ds e = AdjustedExp $ unFiniteExp e
   + dDigits ds - 1
 
-adjustedToFinite :: FiniteDigits -> AdjustedExp -> FiniteExp
+adjustedToFinite :: Coefficient -> AdjustedExp -> FiniteExp
 adjustedToFinite ds e = FiniteExp $ unAdjustedExp e -
   dDigits ds + 1
 
@@ -1389,7 +1412,6 @@ adjustedToFinite ds e = FiniteExp $ unAdjustedExp e -
 -- skipped: fromWider - not needed
 -- skipped: isCanonical - not needed
 -- skipped: radix - not needed
--- skipped: toBCD - use decode function instead
 -- skipped: toNumber - not needed
 -- skipped: toPacked - use decode function instead
 -- skipped: toWider - not needed
