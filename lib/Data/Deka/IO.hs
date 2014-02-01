@@ -104,6 +104,8 @@ module Data.Deka.IO
   , integralToDigits
 
   -- ** Complete encoding and decoding
+
+  -- *** Coefficients
   , finiteDigitsLen
   , payloadDigitsLen
   , FiniteDigits
@@ -112,16 +114,26 @@ module Data.Deka.IO
   , PayloadDigits
   , payloadDigits
   , unPayloadDigits
+
+  -- *** Exponents
   , FiniteExp
   , finiteExp
   , unFiniteExp
   , zeroFiniteExp
   , minMaxExp
+  , AdjustedExp
+  , adjustedExp
+  , unAdjustedExp
   , minNormal
+  , adjustedToFinite
+
+  -- *** Sign, NaN, Value, Decoded
   , Sign(..)
   , NaN(..)
   , Value(..)
   , Decoded(..)
+
+  --- *** Conversion functions
   , fromBCD
   , toBCD
 
@@ -238,8 +250,11 @@ module Data.Deka.IO
   , dIsSigned
   , dIsSubnormal
   , dIsZero
+  , dDigits
 
   ) where
+
+-- # Imports
 
 import Data.Maybe
 import Control.Applicative
@@ -1076,8 +1091,8 @@ minMaxExp = (l, h)
 
 -- | The smallest possible exponent that is still normal.  Exponents
 -- smaller than this are subnormal.
-minNormal :: Int
-minNormal = c'DECQUAD_Emin
+minNormal :: AdjustedExp
+minNormal = AdjustedExp c'DECQUAD_Emin
 
 newtype FiniteExp = FiniteExp { unFiniteExp :: Int }
   deriving (Eq, Ord, Show)
@@ -1310,7 +1325,7 @@ dIsNegative (Decoded s v) = fromMaybe False $ do
 dIsNormal :: Decoded -> Bool
 dIsNormal (Decoded _ v) = case v of
   Finite d e
-    | unFiniteExp e < minNormal -> False
+    | adjustedExp d e < minNormal -> False
     | otherwise -> any (/= D0) . unFiniteDigits $ d
   _ -> False
 
@@ -1333,8 +1348,7 @@ dIsSigned (Decoded s _) = s == Sign1
 
 dIsSubnormal :: Decoded -> Bool
 dIsSubnormal (Decoded _ v) = case v of
-  Finite d e -> (unFiniteExp e < minNormal)
-    && (any (/= D0) . unFiniteDigits $ d)
+  Finite d e -> adjustedExp d e < minNormal
   _ -> False
 
 -- | True for any zero (negative or positive zero).
@@ -1342,6 +1356,27 @@ dIsZero :: Decoded -> Bool
 dIsZero (Decoded _ v) = case v of
   Finite d _ -> all (== D0) . unFiniteDigits $ d
   _ -> False
+
+-- | The number of significant digits. Zero returns 1.
+dDigits :: FiniteDigits -> Int
+dDigits (FiniteDigits ds) = case dropWhile (== D0) ds of
+  [] -> 1
+  rs -> length rs
+
+-- | An adjusted exponent is the value of an exponent of a number
+-- when that number is expressed as though in scientific notation
+-- with one digit before any decimal point.  This is the finite
+-- exponent + (number of significant digits - 1).
+data AdjustedExp = AdjustedExp { unAdjustedExp :: Int }
+  deriving (Eq, Show, Ord)
+
+adjustedExp :: FiniteDigits -> FiniteExp -> AdjustedExp
+adjustedExp ds e = AdjustedExp $ unFiniteExp e
+  + dDigits ds - 1
+
+adjustedToFinite :: FiniteDigits -> AdjustedExp -> FiniteExp
+adjustedToFinite ds e = FiniteExp $ unAdjustedExp e -
+  dDigits ds + 1
 
 -- # decQuad functions not recreated here:
 

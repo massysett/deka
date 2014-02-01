@@ -553,11 +553,13 @@ testBoolean n g pd f = testGroup n
   [ testProperty "predicate returns true on generated decodes" $
     forAll g $ \d -> pd d
   
-  , testProperty "succeeds when it should"
-    $ forAll genP $ runEnv . f . unVisible
+  , testProperty "succeeds when it should" $
+    forAll genP $
+    runEnv . f . unVisible . fst
 
-  , testProperty "fails when it should"
-    $ forAll genF $ not . runEnv . f . unVisible
+  , testProperty "fails when it should" $
+    forAll genF $
+    not . runEnv . f . unVisible . fst
 
   , testProperty "decNumber and Deka predicate return same result"
     $ \(Visible q) -> runEnv $ do
@@ -566,10 +568,12 @@ testBoolean n g pd f = testGroup n
         return $ b == pd d
   ]
   where
-    genP = g >>= return . Visible . runEnv . E.fromBCD
+    genP = do
+      d <- g
+      return (Visible . runEnv . E.fromBCD $ d, d)
     genF = do
       d <- genDecoded `suchThat` (not . pd)
-      return . Visible . runEnv . E.fromBCD $ d
+      return (Visible . runEnv . E.fromBCD $ d, d)
 
 -- # Tests
 
@@ -754,6 +758,28 @@ tests = testGroup "IO"
               ecd <- E.fromBCD d
               E.toBCD ecd
         in printTestCase ("result: " ++ show r) (r == d)
+
+      , testProperty "round trip from subnormal Decoded" $
+        forAll genDcdSubnormal $ \d ->
+        let r = runEnv $ do
+              ecd <- E.fromBCD d
+              E.toBCD ecd
+        in r == d
+      ]
+
+    , testGroup "strings"
+      [ testProperty ("Decoded -> Quad -> ByteString"
+          ++ " -> Quad -> Decoded") $
+        forAll (oneof [genDecoded, genDcdSubnormal]) $ \d ->
+          let r = evalCtx $ do
+                q <- liftEnv $ E.fromBCD d
+                bs <- liftEnv $ E.toByteString q
+                q' <- E.fromByteString bs
+                d' <- liftEnv $ E.toBCD q'
+                return (d', bs)
+              desc = "toByteString: " ++ BS8.unpack (snd r)
+                ++ " toBCD: " ++ show (fst r)
+          in printTestCase desc $ fst r == d
       ]
     ]
 
