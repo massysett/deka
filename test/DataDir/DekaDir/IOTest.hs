@@ -544,15 +544,32 @@ testBoolean
   -- ^ Name
   -> Gen E.Decoded
   -- ^ Generates decodes that should succeed
+  -> (E.Decoded -> Bool)
+  -- ^ This predicate returns True on successful decodes
   -> (E.Quad -> E.Env Bool)
   -- ^ Function to test
   -> TestTree
-testBoolean n g f = testGroup n
-  [ testProperty "succeeds when it should"
+testBoolean n g pd f = testGroup n
+  [ testProperty "predicate returns true on generated decodes" $
+    forAll g $ \d -> pd d
+  
+  , testProperty "succeeds when it should"
     $ forAll genP $ runEnv . f . unVisible
+
+  , testProperty "fails when it should"
+    $ forAll genF $ not . runEnv . f . unVisible
+
+  , testProperty "decNumber and Deka predicate return same result"
+    $ \(Visible q) -> runEnv $ do
+        d <- E.toBCD q
+        b <- f q
+        return $ b == pd d
   ]
   where
     genP = g >>= return . Visible . runEnv . E.fromBCD
+    genF = do
+      d <- genDecoded `suchThat` (not . pd)
+      return . Visible . runEnv . E.fromBCD $ d
 
 -- # Tests
 

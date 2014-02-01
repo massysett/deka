@@ -222,8 +222,26 @@ module Data.Deka.IO
   -- * Library info
   , version
 
+  -- * Decoded predicates
+
+  -- | These duplicate the tests that are available in the Env
+  -- monad.
+  , dIsFinite
+  , dIsInfinite
+  , dIsInteger
+  , dIsLogical
+  , dIsNaN
+  , dIsNegative
+  , dIsNormal
+  , dIsPositive
+  , dIsSignaling
+  , dIsSigned
+  , dIsSubnormal
+  , dIsZero
+
   ) where
 
+import Data.Maybe
 import Control.Applicative
 import Control.Monad
 import Foreign.Safe hiding
@@ -816,6 +834,8 @@ isInfinite :: Quad -> Env Bool
 isInfinite = boolean c'decQuadIsInfinite
 
 -- | True if @x@ is finite and has exponent of @0@; False otherwise.
+-- This can lead to unexpected results; for instance, 3 x 10 ^ 2 is
+-- 300, but this function will return False.
 isInteger :: Quad -> Env Bool
 isInteger = boolean c'decQuadIsInteger
 
@@ -1239,7 +1259,92 @@ data Exponent
   | EFinite FiniteExp
   deriving (Eq, Ord, Show)
 
--- decQuad functions not recreated here:
+-- # Decoded predicates
+
+dIsFinite :: Decoded -> Bool
+dIsFinite (Decoded _ v) = case v of
+  Finite _ _ -> True
+  _ -> False
+
+dIsInfinite :: Decoded -> Bool
+dIsInfinite (Decoded _ v) = case v of
+  Infinite -> True
+  _ -> False
+
+dIsInteger :: Decoded -> Bool
+dIsInteger (Decoded _ v) = case v of
+  Finite _ e -> unFiniteExp e == 0
+  _ -> False
+
+-- | True only if @x@ is zero or positive, an integer (finite with
+-- exponent of 0), and the coefficient is only zeroes and/or ones.
+-- The sign must be Sign0 (that is, you cannot have a negative
+-- zero.)
+dIsLogical :: Decoded -> Bool
+dIsLogical (Decoded s v) = fromMaybe False $ do
+  guard $ s == Sign0
+  (d, e) <- case v of
+    Finite ds ex -> return (ds, ex)
+    _ -> Nothing
+  guard $ e == zeroFiniteExp
+  return
+    . all (\x -> x == D0 || x == D1)
+    . unFiniteDigits $ d
+
+dIsNaN :: Decoded -> Bool
+dIsNaN (Decoded _ v) = case v of
+  NaN _ _ -> True
+  _ -> False
+
+-- | True only if @x@ is less than zero and is not an NaN.  It's not
+-- enough for the sign to be Sign1; the coefficient (if finite) must
+-- be greater than zero.
+dIsNegative :: Decoded -> Bool
+dIsNegative (Decoded s v) = fromMaybe False $ do
+  guard $ s == Sign1
+  return $ case v of
+    Finite d _ -> all (== D0) . unFiniteDigits $ d
+    Infinite -> True
+    _ -> False
+
+dIsNormal :: Decoded -> Bool
+dIsNormal (Decoded _ v) = case v of
+  Finite d e
+    | unFiniteExp e < minNormal -> False
+    | otherwise -> any (/= D0) . unFiniteDigits $ d
+  Infinite -> True
+  _ -> False
+
+dIsPositive :: Decoded -> Bool
+dIsPositive (Decoded s v)
+  | s == Sign1 = False
+  | otherwise = case v of
+      Finite d _ -> any (/= D0) . unFiniteDigits $ d
+      Infinite -> True
+      _ -> False
+
+dIsSignaling :: Decoded -> Bool
+dIsSignaling (Decoded _ v) = case v of
+  NaN Signaling _ -> True
+  _ -> False
+
+
+dIsSigned :: Decoded -> Bool
+dIsSigned (Decoded s _) = s == Sign1
+
+dIsSubnormal :: Decoded -> Bool
+dIsSubnormal (Decoded _ v) = case v of
+  Finite d e -> (unFiniteExp e < minNormal)
+    && (any (/= D0) . unFiniteDigits $ d)
+  _ -> False
+
+-- | True for any zero (negative or positive zero).
+dIsZero :: Decoded -> Bool
+dIsZero (Decoded _ v) = case v of
+  Finite d _ -> all (== D0) . unFiniteDigits $ d
+  _ -> False
+
+-- # decQuad functions not recreated here:
 
 -- skipped: classString - not needed
 -- skipped: copy - not needed
