@@ -15,7 +15,6 @@ module DataDir.DekaDir.IOTest where
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad
 import Test.Tasty
-import Data.Maybe
 import qualified Data.Deka.IO as E
 import Data.Deka.Pure (runCtx, evalCtx, liftEnv, runEnv)
 import Data.Deka.Decnumber
@@ -82,7 +81,7 @@ genFiniteDigits = do
 genPayloadDigits :: Gen E.PayloadDigits
 genPayloadDigits = do
   ds <- vectorOf E.payloadDigitsLen genDigit
-  case E.finiteDigits ds of
+  case E.payloadDigits ds of
     Nothing -> error "genPayloadDigits failed"
     Just r -> return r
 
@@ -91,7 +90,7 @@ genFiniteExp = do
   i <- choose E.minMaxExp
   case E.finiteExp i of
     Left _ -> error "genFiniteExp failed"
-    Just r -> return r
+    Right r -> return r
 
 genSign :: Gen E.Sign
 genSign = elements [ minBound..maxBound ]
@@ -117,45 +116,39 @@ genFinite = do
   s <- genSign
   return . Visible . evalCtx . liftEnv . E.fromBCD $ E.Decoded s v
 
-genDigitRange :: (Integer, Integer) -> Gen [E.Digit]
-genDigitRange p = do
-  c <- choose p
-  return $ E.integralToDigits c
+mkDigits :: Integer -> (E.Sign, [E.Digit])
+mkDigits p = (s, ds)
+  where
+    s = if p < 0 then E.Sign1 else E.Sign0
+    ds = case E.integralToDigits (abs p) of
+      Nothing -> error "digitRange failed"
+      Just r -> r
 
-genFiniteRange
-  :: (Integer, Integer)
-  -- ^ Range for coefficient.  Can be negative or positive.
-  -> (Int, Int)
-  -- ^ Range for exponent
-  -> Gen Visible
-genFiniteRange cr er = do
-  ds <- genDigitRange cr
-  let co = case E.finiteDigits ds of
-        Left _ -> error "genFiniteRange: coefficient failed"
-        Right g -> g
-  e <- choose er
-  let en = case E.finiteExp e of
-        Left _ -> error "genFiniteRange: coefficient failed"
-        Right g -> g
-  s <- genSign
-  let d = E.Decoded s (E.Finite co en)
+mkFinite
+  :: Integer
+  -- ^ Coefficient
+  -> Int
+  -- ^ Exponent
+  -> Visible
+mkFinite co ex =
+  let (s, ds) = mkDigits co
+      en = case E.finiteExp ex of
+        Left _ -> error "mkFinite: exponent failed"
+        Right r -> r
+      pad = replicate (E.finiteDigitsLen - length ds) E.D0
+      digs = case E.finiteDigits (pad ++ ds) of
+        Nothing -> error "genFiniteRange: coefficient failed"
+        Just g -> g
+      d = E.Decoded s (E.Finite digs en)
       dec = runEnv (E.fromBCD d)
-  return . Visible $ dec
+  in Visible dec
 
 genSmallFinite :: Gen Visible
-genSmallFinite = do
-  ds <- genDigitRange (0, biggestDigs 5)
-  let co = case E.finiteDigits ds of
-        Left _ -> error "genSmallFinite: coefficient failed"
-        Right g -> g
-  e <- choose (-10, 10)
-  let en = case E.finiteExp e of
-        Left _ -> error "genSmallFinite: coefficient failed"
-        Right g -> g
-  s <- genSign
-  let d = E.Decoded s (E.Finite co en)
-      dec = runEnv (E.fromBCD d)
-  return . Visible $ dec
+genSmallFinite = liftM2 mkFinite genC genR
+  where
+    n = biggestDigs 5
+    genC = choose (negate n, n)
+    genR = choose (-10, 10)
 
 newtype SmallFin = SmallFin { unSmallFin :: E.Quad }
 
@@ -172,48 +165,25 @@ instance Show NZSmallFin where
   show = BS8.unpack . runEnv . E.toByteString . unNZSmallFin
 
 instance Arbitrary NZSmallFin where
-  arbitrary = do
-    c <- choose (1, biggestDigs 5)
-    let co = case E.finiteDigits c of
-          Left _ -> error "genSmallFinite: coefficient failed"
-          Right g -> g
-    e <- choose (-10, 10)
-    let en = case E.finiteExp e of
-          Left _ -> error "genSmallFinite: coefficient failed"
-          Right g -> g
-    s <- genSign
-    let d = E.Decoded s (E.Finite co en)
-        dec = runEnv (E.fromPackedChecked d)
-    return . NZSmallFin $ dec
-
+  arbitrary = fmap (NZSmallFin . unVisible)
+    $ liftM2 mkFinite genC genR
+    where
+      genC = oneof [ choose (negate n, (-1))
+                   , choose (1, n) ]
+      n = biggestDigs 5
+      genR = choose (-10, 10)
 
 genOne :: Gen Visible
-genOne = fmap f $ choose (0, c'DECQUAD_Pmax - 1)
-  where
-    f e = let expn = negate e
-              c = 1 * 10 ^ e
-              _types = e :: Int
-              coef = either
-                (const $ error "genOne: coefficient failed")
-                id . E.coefficient $ c
-              en = either
-                (const $ error "genOne: coeffExp failed")
-                id $ E.finiteExp expn
-              dcd = E.Decoded E.Sign0 (E.Finite coef en)
-          in Visible . runEnv . E.fromPackedChecked $ dcd
-              
-genZero :: Gen Visible
-genZero = fmap f $ choose E.minMaxExp
-  where
-    f e = let expn = either
-                (const $ error "genZero: exponent failed")
-                id . E.finiteExp $ e
-              coef = either
-                (const $ error "genZero: coefficient failed")
-                id . E.coefficient $ 0
-              dcd = E.Decoded E.Sign0 (E.Finite coef expn)
-          in Visible . runEnv . E.fromPackedChecked $ dcd
+genOne = do
+  e <- choose (0, c'DECQUAD_Pmax - 1)
+  let expn = negate e
+      c = 10 ^ e
+  return $ mkFinite c expn
 
+genZero :: Gen Visible
+genZero = do
+  e <- choose E.minMaxExp
+  return $ mkFinite 0 e
 
 genRound :: Gen E.Round
 genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
@@ -275,9 +245,9 @@ imuUni
   -> (E.Quad -> E.Ctx a)
   -> TestTree
 imuUni n f = testProperty desc $ \(Visible d) -> evalCtx $ do
-  dcd1 <- liftEnv $ E.decode d
+  dcd1 <- liftEnv $ E.toBCD d
   _ <- f d
-  dcd2 <- liftEnv $ E.decode d
+  dcd2 <- liftEnv $ E.toBCD d
   return $ dcd1 == dcd2
   where
     desc = n ++ " (unary function) does not mutate only argument"
@@ -301,9 +271,9 @@ imuBinary1st
 imuBinary1st n (genA, getC) f = testProperty desc $
   forAll arbitrary $ \(Visible d) ->
   forAll genA $ \a -> evalCtx $ do
-    dcd1 <- liftEnv $ E.decode d
+    dcd1 <- liftEnv $ E.toBCD d
     _ <- f d (getC a)
-    dcd2 <- liftEnv $ E.decode d
+    dcd2 <- liftEnv $ E.toBCD d
     return $ dcd1 == dcd2
   where
     desc = n ++ " (binary function) does not mutate first argument"
@@ -318,9 +288,9 @@ imuBinary2nd
 imuBinary2nd n (genA, getC) f = testProperty desc $
   forAll arbitrary $ \(Visible d) ->
   forAll genA $ \a -> evalCtx $ do
-    dcd1 <- liftEnv $ E.decode d
+    dcd1 <- liftEnv $ E.toBCD d
     _ <- f (getC a) d
-    dcd2 <- liftEnv $ E.decode d
+    dcd2 <- liftEnv $ E.toBCD d
     return $ dcd1 == dcd2
   where
     desc = n ++ " (binary function) does not mutate second argument"
@@ -332,23 +302,23 @@ imuTernary
 imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
   [ testProperty "first argument" $
     \(Visible a) (Visible b) (Visible c) -> evalCtx $ do
-      dcd1 <- liftEnv $ E.decode a
+      dcd1 <- liftEnv $ E.toBCD a
       _ <- f a b c
-      dcd2 <- liftEnv $ E.decode a
+      dcd2 <- liftEnv $ E.toBCD a
       return $ dcd1 == dcd2
 
   , testProperty "second argument" $
     \(Visible a) (Visible b) (Visible c) -> evalCtx $ do
-      dcd1 <- liftEnv $ E.decode b
+      dcd1 <- liftEnv $ E.toBCD b
       _ <- f a b c
-      dcd2 <- liftEnv $ E.decode b
+      dcd2 <- liftEnv $ E.toBCD b
       return $ dcd1 == dcd2
 
   , testProperty "third argument" $
     \(Visible a) (Visible b) (Visible c) -> evalCtx $ do
-      dcd1 <- liftEnv $ E.decode c
+      dcd1 <- liftEnv $ E.toBCD c
       _ <- f a b c
-      dcd2 <- liftEnv $ E.decode c
+      dcd2 <- liftEnv $ E.toBCD c
       return $ dcd1 == dcd2
   ]
 
@@ -495,7 +465,7 @@ tests = testGroup "IO"
   , testGroup "immutability"
     [ testGroup "conversions"
       [ imuUni "decClass" (fmap liftEnv E.decClass)
-      , imuUni "decode" (fmap liftEnv E.decode)
+      , imuUni "decode" (fmap liftEnv E.toBCD)
       , imuUni "toByteString" (fmap liftEnv E.toByteString)
       , imuUni "toEngByteString" (fmap liftEnv E.toEngByteString)
       , imuBinary2nd "toInt32" (genRound, id) E.toInt32
@@ -586,74 +556,48 @@ tests = testGroup "IO"
     ]
 
   , testGroup "conversions"
-    [ testGroup "coefficient"
-      [ testProperty "fails on negative integers" $
-        forAll (choose (minInteger, (-1))) $
-        isLeft . E.coefficient
+    [ testGroup "exponent"
+      [ testProperty "fails when exponent is too small" $
+        let (l, _) = E.minMaxExp in
+        forAll (choose (minBound, l - 1)) $
+        isLeft . E.finiteExp
 
-      , testProperty "fails when num digits > Pmax" $
-        forAll (choose (smallestDigs c'DECQUAD_Pmax, maxInteger)) $
-        isLeft . E.coefficient
+      , testProperty "fails when exponent is too large" $
+        let (_, h) = E.minMaxExp in
+        forAll (choose (h + 1, maxBound)) $
+        isLeft . E.finiteExp
+
+      , testProperty "fails when exponent is < c'DECQUAD_Emin" $
+        forAll (choose (minBound, c'DECQUAD_Emin - 1)) $
+        isLeft . E.finiteExp
+
+      , testProperty "fails when exponent is > c'DECQUAD_Emax" $
+        forAll (choose (c'DECQUAD_Emax + 1, maxBound)) $
+        isLeft . E.finiteExp
 
       , testProperty "succeeds when it should" $
-        forAll (choose (0, smallestDigs c'DECQUAD_Pmax - 1)) $
-        isRight . E.coefficient
+        forAll (choose E.minMaxExp) $
+        isRight . E.finiteExp
+
       ]
 
-  , testGroup "exponent"
-    [ testProperty "fails when exponent is too small" $
-      let (l, _) = E.minMaxExp in
-      forAll (choose (minBound, l - 1)) $
-      isLeft . E.finiteExp
+    , testGroup "decode and encode"
+      [ testProperty "round trip from Quad" $
+        forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
+        runEnv $ do
+          dcd <- E.toBCD d
+          ecd <- E.fromBCD dcd
+          r <- E.compareTotal ecd d
+          E.isZero r
 
-    , testProperty "fails when exponent is too large" $
-      let (_, h) = E.minMaxExp in
-      forAll (choose (h + 1, maxBound)) $
-      isLeft . E.finiteExp
-
-    , testProperty "fails when exponent is < c'DECQUAD_Emin" $
-      forAll (choose (minBound, c'DECQUAD_Emin - 1)) $
-      isLeft . E.finiteExp
-
-    , testProperty "fails when exponent is > c'DECQUAD_Emax" $
-      forAll (choose (c'DECQUAD_Emax + 1, maxBound)) $
-      isLeft . E.finiteExp
-
-    , testProperty "succeeds when it should" $
-      forAll (choose E.minMaxExp) $
-      isRight . E.finiteExp
-
+      , testProperty "round trip from Decoded" $
+        forAll genDecoded $ \d ->
+        let r = runEnv $ do
+              ecd <- E.fromBCD d
+              E.toBCD ecd
+        in printTestCase ("result: " ++ show r) (r == d)
+      ]
     ]
-
-  , testGroup "payload"
-    [ testProperty "fails on negative numbers" $
-      isNothing . E.payload . negate . getPositive
-
-    , testProperty "succeeds when number of digits <= Pmax - 1" $
-      isJust . E.payload . smallestDigs $ c'DECQUAD_Pmax - 1
-
-    , testProperty "fails when number of digits > Pmax - 1" $
-      forAll (choose (smallestDigs (c'DECQUAD_Pmax - 1), maxInteger)) $
-      isNothing . E.payload
-    ]
-
-  , testGroup "decode and encode"
-    [ testProperty "round trip from Quad" $
-      forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
-      runEnv $ do
-        dcd <- E.decode d
-        ecd <- E.fromPackedChecked dcd
-        r <- E.compareTotal ecd d
-        E.isZero r
-
-    , testProperty "round trip from Decoded" $
-      forAll genDecoded $ \d ->
-      let r = runEnv $ do
-            ecd <- E.fromPackedChecked d
-            E.decode ecd
-      in printTestCase ("result: " ++ show r) (r == d)
-    ]
-  ]
 
   , testGroup "arithmetic"
     [ testGroup "add"
@@ -703,8 +647,8 @@ tests = testGroup "IO"
           \(SmallFin a) (SmallFin b) ->
           let (e, fl) = runCtx $ do
                 c <- E.divideInteger a b
-                liftEnv $ E.decode c
-          in fl == E.emptyFlags ==> E.finiteExponent e == Just 0
+                liftEnv $ E.isInteger c
+          in fl == E.emptyFlags ==> e
         ]
 
       , testGroup "remainder"
@@ -732,9 +676,10 @@ tests = testGroup "IO"
         \(SmallFin x) (SmallFin y) ->
         let (r, fl) = runCtx $ do
               c <- E.quantize x y
-              dc <- liftEnv $ E.decode c
-              dy <- liftEnv $ E.decode y
-              return $ E.finiteExponent dc == E.finiteExponent dy
+              exC <- liftEnv $ E.getExponent c
+              exY <- liftEnv $ E.getExponent y
+              fin <- liftEnv $ E.isFinite c
+              return $ fin && exC == exY
         in fl == E.emptyFlags ==> r
       ]
 
@@ -748,16 +693,13 @@ tests = testGroup "IO"
       , testProperty "result has no trailing zeroes" $
         \(SmallFin x) -> evalCtx $ do
             r <- E.reduce x
-            dx <- liftEnv $ E.decode x
-            dr <- liftEnv $ E.decode r
-            let cr = E.finiteCoefficient dr
-            return $ case E.finiteCoefficient dx of
-              Just i
-                | i == 0 -> E.finiteCoefficient dr == Just 0
-                | otherwise -> case cr of
-                    Nothing -> False
-                    Just i' -> i' `mod` 10 /= 0
-              _ -> False
+            dcd <- liftEnv $ E.toBCD r
+            return $ case E.dValue dcd of
+              E.Infinite -> False
+              E.NaN _ _ -> False
+              E.Finite ds _ ->
+                let digs = E.unFiniteDigits ds
+                in all (== E.D0) digs || last digs /= E.D0
       ]
     ]
 
@@ -780,15 +722,15 @@ tests = testGroup "IO"
     , testGroup "sameQuantum"
       [ testProperty "is true for same Decoded" $
         forAll genDecoded $ \d -> runEnv $ do
-          x <- E.fromPackedChecked d
+          x <- E.fromBCD d
           E.sameQuantum x x
 
       , testProperty "is false for different Decoded" $
         forAll ( liftM2 (,) genDecoded genDecoded
                   `suchThat` (not . uncurry decodedSameQuantum))
         $ \p -> runEnv $ do
-                  qx <- E.fromPackedChecked . fst $ p
-                  qy <- E.fromPackedChecked . snd $ p
+                  qx <- E.fromBCD . fst $ p
+                  qy <- E.fromBCD . snd $ p
                   fmap not $ E.sameQuantum qx qy
       ]
     ]
