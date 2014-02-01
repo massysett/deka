@@ -1303,7 +1303,7 @@ dIsNegative :: Decoded -> Bool
 dIsNegative (Decoded s v) = fromMaybe False $ do
   guard $ s == Sign1
   return $ case v of
-    Finite d _ -> all (== D0) . unFiniteDigits $ d
+    Finite d _ -> any (/= D0) . unFiniteDigits $ d
     Infinite -> True
     _ -> False
 
@@ -1312,7 +1312,6 @@ dIsNormal (Decoded _ v) = case v of
   Finite d e
     | unFiniteExp e < minNormal -> False
     | otherwise -> any (/= D0) . unFiniteDigits $ d
-  Infinite -> True
   _ -> False
 
 dIsPositive :: Decoded -> Bool

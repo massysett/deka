@@ -245,7 +245,7 @@ genDcdInteger
 genDcdLogical :: Gen E.Decoded
 genDcdLogical
   = E.Decoded
-  <$> genSign
+  <$> pure E.Sign0
   <*> (E.Finite <$> genLogicalFiniteDigits <*> pure E.zeroFiniteExp)
 
 genDcdNaN :: Gen E.Decoded
@@ -894,6 +894,28 @@ tests = testGroup "IO"
     ]
 
   , testGroup "tests"
-    [
+    [ testBoolean "isFinite" genDcdFinite E.dIsFinite E.isFinite
+    , testBoolean "isInfinite" genDcdInfinite
+        E.dIsInfinite E.isInfinite
+    , testBoolean "isInteger" genDcdInteger
+        E.dIsInteger E.isInteger
+    , testBoolean "isLogical" genDcdLogical
+        E.dIsLogical E.isLogical
+    , testBoolean "isNaN" genDcdNaN
+        E.dIsNaN E.isNaN
+    , testBoolean "isNegative" genDcdNegative
+        E.dIsNegative E.isNegative
+    , testBoolean "isNormal" genDcdNormal
+        E.dIsNormal E.isNormal
+    , testBoolean "isPositive" genDcdPositive
+        E.dIsPositive E.isPositive
+    , testBoolean "isSignaling" genDcdSignaling
+        E.dIsSignaling E.isSignaling
+    , testBoolean "isSigned" genDcdSigned
+        E.dIsSigned E.isSigned
+    , testBoolean "isSubnormal" genDcdSubnormal
+        E.dIsSubnormal E.isSubnormal
+    , testBoolean "isZero" genDcdZero
+        E.dIsZero E.isZero
     ]
   ]
