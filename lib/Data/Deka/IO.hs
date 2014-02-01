@@ -160,6 +160,7 @@ module Data.Deka.IO
   , CoeffDigits
   , unCoeffDigits
   , coeffDigits
+  , coeffDigitsLen
   , getCoefficient
   , setCoefficient
 
@@ -519,8 +520,8 @@ instance Show DecClass where
 -- | Decimal number.  This is immutable, like any Haskell value you
 -- would ordinarily work with.  (Actually, that is a bit of a lie.
 -- Under the covers it is a pointer to a C struct, which is in fact
--- mutable like anything in C.  However, the API exposed in this
--- module does not mutate a Quad after a function returns one.)
+-- mutable like anything in C.  However, no function exposed in this
+-- API mutates a Quad's pointee after the Quad is created.)
 --
 -- As indicated in the General Decimal Arithmetic specification,
 -- a 'Quad' might be a finite number (perhaps the most common type)
@@ -1157,6 +1158,9 @@ coeffDigits :: [Digit] -> Maybe CoeffDigits
 coeffDigits ds
   | length ds == c'DECQUAD_Pmax = Just . CoeffDigits $ ds
   | otherwise = Nothing
+
+coeffDigitsLen :: Int
+coeffDigitsLen = c'DECQUAD_Pmax
 
 -- | A list of digits, Pmax long.  Corresponds only to finite
 -- numbers.

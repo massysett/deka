@@ -78,6 +78,13 @@ genFiniteDigits = do
     Nothing -> error "genFiniteDigits failed"
     Just r -> return r
 
+genCoeffDigits :: Gen E.CoeffDigits
+genCoeffDigits = do
+  ds <- vectorOf E.coeffDigitsLen genDigit
+  case E.coeffDigits ds of
+    Nothing -> error "genCoeffDigits failed"
+    Just r -> return r
+
 genPayloadDigits :: Gen E.PayloadDigits
 genPayloadDigits = do
   ds <- vectorOf E.payloadDigitsLen genDigit
@@ -197,6 +204,14 @@ instance Show Visible where
 
 instance Arbitrary Visible where
   arbitrary = fmap Visible genFromDecoded
+
+genExponent :: Gen E.Exponent
+genExponent = oneof
+  [ return E.EQuiet
+  , return E.ESignaling
+  , return E.EInf
+  , liftM E.EFinite genFiniteExp
+  ]
 
 -- # Test builders
 
@@ -465,7 +480,7 @@ tests = testGroup "IO"
   , testGroup "immutability"
     [ testGroup "conversions"
       [ imuUni "decClass" (fmap liftEnv E.decClass)
-      , imuUni "decode" (fmap liftEnv E.toBCD)
+      , imuUni "toBCD" (fmap liftEnv E.toBCD)
       , imuUni "toByteString" (fmap liftEnv E.toByteString)
       , imuUni "toEngByteString" (fmap liftEnv E.toEngByteString)
       , imuBinary2nd "toInt32" (genRound, id) E.toInt32
@@ -490,6 +505,26 @@ tests = testGroup "IO"
     , testGroup "exponent and coefficient adjustment"
       [ imuBinary "quantize" E.quantize
       , imuUni "reduce" E.reduce
+      , imuUni "getExponent" (fmap liftEnv E.getExponent)
+
+      , testProperty "setExponent" $
+        forAll genExponent $ \ex ->
+        \(Visible q) -> evalCtx $ do
+          b1 <- liftEnv $ E.toBCD q
+          _ <- E.setExponent ex q
+          b2 <- liftEnv $ E.toBCD q
+          return $ b1 == b2
+
+      , imuUni "getCoefficient" (fmap liftEnv E.getCoefficient)
+
+      , testProperty "setCoefficient" $
+        forAll genCoeffDigits $ \ds ->
+        forAll genSign $ \sn ->
+        \(Visible q) -> runEnv $ do
+          b1 <- E.toBCD q
+          _ <- E.setCoefficient ds sn q
+          b2 <- E.toBCD q
+          return $ b1 == b2
       ]
 
     , testGroup "comparisons"
