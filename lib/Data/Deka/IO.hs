@@ -117,6 +117,7 @@ module Data.Deka.IO
   , unFiniteExp
   , zeroFiniteExp
   , minMaxExp
+  , minNormal
   , Sign(..)
   , NaN(..)
   , Value(..)
@@ -818,30 +819,41 @@ isInfinite = boolean c'decQuadIsInfinite
 isInteger :: Quad -> Env Bool
 isInteger = boolean c'decQuadIsInteger
 
+-- | True only if @x@ is zero or positive, an integer (finite with
+-- exponent of 0), and the coefficient is only zeroes and/or ones.
 isLogical :: Quad -> Env Bool
 isLogical = boolean c'decQuadIsLogical
 
 isNaN :: Quad -> Env Bool
 isNaN = boolean c'decQuadIsNaN
 
+-- | True only if @x@ is less than zero and is not an NaN.
 isNegative :: Quad -> Env Bool
 isNegative = boolean c'decQuadIsNegative
 
+-- | True only if @x@ is finite, non-zero, and not subnormal.
 isNormal :: Quad -> Env Bool
 isNormal = boolean c'decQuadIsNormal
 
+-- | True only if @x@ is greater than zero and is not an NaN.
 isPositive :: Quad -> Env Bool
 isPositive = boolean c'decQuadIsPositive
 
+-- | True only if @x@ is a signaling NaN.
 isSignaling :: Quad -> Env Bool
 isSignaling = boolean c'decQuadIsSignaling
 
+-- | True only if @x@ has a sign of 1.  Note that zeroes and NaNs
+-- may have sign of 1.
 isSigned :: Quad -> Env Bool
 isSigned = boolean c'decQuadIsSigned
 
+-- | True only if @x@ is subnormal - that is, finite, non-zero, and
+-- with a magnitude less than 10 ^ emin.
 isSubnormal :: Quad -> Env Bool
 isSubnormal = boolean c'decQuadIsSubnormal
 
+-- | True only if @x@ is a zero.
 isZero :: Quad -> Env Bool
 isZero = boolean c'decQuadIsZero
 
@@ -1041,6 +1053,11 @@ minMaxExp = (l, h)
     h = x - (c - 1)
     x = c'DECQUAD_Emax
     c = c'DECQUAD_Pmax
+
+-- | The smallest possible exponent that is still normal.  Exponents
+-- smaller than this are subnormal.
+minNormal :: Int
+minNormal = c'DECQUAD_Emin
 
 newtype FiniteExp = FiniteExp { unFiniteExp :: Int }
   deriving (Eq, Ord, Show)

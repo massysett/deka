@@ -12,6 +12,7 @@
 -- be quite error prone.
 module DataDir.DekaDir.IOTest where
 
+import Control.Applicative
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad
 import Test.Tasty
@@ -76,6 +77,14 @@ genFiniteDigits = do
   ds <- vectorOf E.finiteDigitsLen genDigit
   case E.finiteDigits ds of
     Nothing -> error "genFiniteDigits failed"
+    Just r -> return r
+
+genLogicalFiniteDigits :: Gen E.FiniteDigits
+genLogicalFiniteDigits = do
+  let g = elements [ E.D0, E.D1 ]
+  ds <- vectorOf E.finiteDigitsLen g
+  case E.finiteDigits ds of
+    Nothing -> error "genLogicalFiniteDigits failed"
     Just r -> return r
 
 genCoeffDigits :: Gen E.CoeffDigits
@@ -212,6 +221,106 @@ genExponent = oneof
   , return E.EInf
   , liftM E.EFinite genFiniteExp
   ]
+
+-- # Decoded generators
+
+genDcdFinite :: Gen E.Decoded
+genDcdFinite
+  = E.Decoded
+  <$> genSign
+  <*> (E.Finite <$> genFiniteDigits <*> genFiniteExp)
+
+genDcdInfinite :: Gen E.Decoded
+genDcdInfinite
+  = E.Decoded
+  <$> genSign
+  <*> pure E.Infinite
+
+genDcdInteger :: Gen E.Decoded
+genDcdInteger
+  = E.Decoded
+  <$> genSign
+  <*> (E.Finite <$> genFiniteDigits <*> pure E.zeroFiniteExp)
+
+genDcdLogical :: Gen E.Decoded
+genDcdLogical
+  = E.Decoded
+  <$> genSign
+  <*> (E.Finite <$> genLogicalFiniteDigits <*> pure E.zeroFiniteExp)
+
+genDcdNaN :: Gen E.Decoded
+genDcdNaN
+  = E.Decoded
+  <$> genSign
+  <*> (E.NaN <$> genNaN <*> genPayloadDigits)
+
+genDcdNegative :: Gen E.Decoded
+genDcdNegative
+  = E.Decoded
+  <$> pure E.Sign1
+  <*> (oneof [ E.Finite <$> genFiniteDigits <*> genFiniteExp
+             , pure E.Infinite ]
+      )
+
+isNonZeroFiniteDigits :: E.FiniteDigits -> Bool
+isNonZeroFiniteDigits = any (/= E.D0) . E.unFiniteDigits
+
+genDcdNormal :: Gen E.Decoded
+genDcdNormal = do
+  s <- genSign
+  ds <- genFiniteDigits `suchThat` isNonZeroFiniteDigits
+  ex <- choose (E.minNormal, snd E.minMaxExp)
+  let finExp = case E.finiteExp ex of
+        Left _ -> error "genDcdNormal: exponent failed"
+        Right r -> r
+  return $ E.Decoded s (E.Finite ds finExp)
+
+genDcdPositive :: Gen E.Decoded
+genDcdPositive
+  = E.Decoded
+  <$> pure E.Sign0
+  <*> oneof [ finite, pure E.Infinite ]
+  where
+    finite = E.Finite <$>
+      genFiniteDigits `suchThat` isNonZeroFiniteDigits
+      <*> genFiniteExp
+
+genDcdSignaling :: Gen E.Decoded
+genDcdSignaling
+  = E.Decoded
+  <$> genSign
+  <*> (E.NaN <$> pure E.Signaling <*> genPayloadDigits)
+
+genDcdSigned :: Gen E.Decoded
+genDcdSigned
+  = E.Decoded
+  <$> pure E.Sign1
+  <*> oneof [ E.Finite <$> genFiniteDigits <*> genFiniteExp
+            , pure E.Infinite
+            , E.NaN <$> genNaN <*> genPayloadDigits
+            ]
+
+genDcdSubnormal :: Gen E.Decoded
+genDcdSubnormal
+  = E.Decoded
+  <$> genSign
+  <*> liftM2 E.Finite
+             (genFiniteDigits `suchThat` isNonZeroFiniteDigits)
+             genExp
+  where
+    genExp = do
+      e <- choose (fst E.minMaxExp, E.minNormal - 1)
+      case E.finiteExp e of
+        Left _ -> error "genDcdSubnormal: exponent failed"
+        Right g -> return g
+
+genDcdZero :: Gen E.Decoded
+genDcdZero = E.Decoded <$> genSign <*> liftM2 E.Finite (return gD) gE
+  where
+    gD = case E.finiteDigits (replicate E.finiteDigitsLen E.D0) of
+      Nothing -> error "genDcdZero: finiteDigits failed"
+      Just r -> r
+    gE = genFiniteExp
 
 -- # Test builders
 
@@ -433,20 +542,17 @@ decodedSameQuantum x y = case (E.dValue x, E.dValue y) of
 testBoolean
   :: String
   -- ^ Name
-  -> Gen Visible
-  -- ^ Generates values that should succeed
-  -> Gen Visible
-  -- ^ Generates values that should fail
+  -> Gen E.Decoded
+  -- ^ Generates decodes that should succeed
   -> (E.Quad -> E.Env Bool)
   -- ^ Function to test
   -> TestTree
-testBoolean n genP genF f = testGroup n
+testBoolean n g f = testGroup n
   [ testProperty "succeeds when it should"
     $ forAll genP $ runEnv . f . unVisible
-
-  , testProperty "fails when it should"
-    $ forAll genF $ not . runEnv . f . unVisible
   ]
+  where
+    genP = g >>= return . Visible . runEnv . E.fromBCD
 
 -- # Tests
 
