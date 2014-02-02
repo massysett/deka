@@ -20,7 +20,7 @@ import qualified Data.Deka.IO as E
 import Data.Deka.Pure (runCtx, evalCtx, liftEnv, runEnv)
 import Data.Deka.Decnumber
 import Test.Tasty.QuickCheck
-import Test.QuickCheck
+import Test.QuickCheck hiding (maxSize)
 
 isLeft :: Either a b -> Bool
 isLeft e = case e of { Left _ -> True; _ -> False }
@@ -90,7 +90,8 @@ genDecimalNonMSD = elements
 decimalDigs :: (Gen E.Digit, Gen E.Digit)
 decimalDigs = (genDecimalMSD, genDecimalNonMSD)
 
--- | Given a length, generate a list of digits.
+-- | Given a length, generate a list of digits.  All lists generated
+-- will be exactly the length given.
 genDigits
   :: Int
   -- ^ Length
@@ -102,6 +103,12 @@ genDigits l (gm, gr) = do
   rs <- vectorOf (l - 1) gr
   return $ msd : rs
 
+-- | Given a maximum length, generate lists of digits that are no
+-- longer than the length given.  The list will be of a random
+-- length, but it will be no longer than the larger of the size
+-- parameter and the given maximum length.  The list will always be
+-- at least one element long regardless of the maximum length passed
+-- in.
 sizedDigits
   :: Int
   -- ^ Maximum length. (Size parameter determines the maximum
@@ -109,16 +116,19 @@ sizedDigits
   -> (Gen E.Digit, Gen E.Digit)
   -- ^ Generate MSD, remaining digits
   -> Gen [E.Digit]
-sizedDigits m (gm, gr) = sized $ \s ->
+sizedDigits m (gm, gr) = sized $ \s -> do
   let sz = max 1 s
       maxLen = min sz m
-  len <- choose (1, m)
+  len <- choose (1, maxLen)
   genDigits len (gm, gr)
 
 -- ## Finite number generators
 
 coeffDigits :: (Gen E.Digit, Gen E.Digit) -> Gen [E.Digit]
-coeffDigits = sizedDigits E.coefficientLen
+coeffDigits p = sized f
+  where
+    f x | x == 0 = oneof [ sizedDigits 0 p, return [E.D0] ]
+        | otherwise = sizedDigits E.coefficientLen p
 
 genFiniteDcd
   :: Gen E.Sign
@@ -143,30 +153,31 @@ rangedExponent
   :: (Int, Int)
   -- ^ Minimum and maximum exponent.  Exponent will never exceed
   -- allowable values.
-  -> a
   -> E.Coefficient
   -> Gen Int
-rangedExponent (em, ex) _ c = do
+rangedExponent (em, ex) c = do
   let (mPE, xPE) = E.minMaxExp c
       (mP, xP) = (E.unExponent mPE, E.unExponent xPE)
       (mR, xR) = (max em mP, min ex xP)
   choose (mR, xR)
 
-sizedExponent :: a -> E.Coefficient -> Gen Int
-sizedExponent = sized $ \s ->
-  let x = s ^ 2
-  in rangedExponent (negate x, x)
+sizedExponent :: E.Coefficient -> Gen Int
+sizedExponent co = sized $ \s ->
+  let x = s ^ (2 :: Int)
+  in rangedExponent (negate x, x) co
 
-fullExpRange :: a -> E.Coefficient -> Gen Int
-fullExpRange _ c =
-  let (m, x) = E.minMaxExp
+fullExpRange :: E.Coefficient -> Gen Int
+fullExpRange c =
+  let (m, x) = E.minMaxExp c
       (mi, xi) = (E.unExponent m, E.unExponent x)
   in choose (mi, xi)
 
 -- ## Infinite number generators
 
-genInfinite :: Gen E.Decoded
-genInfinite = return E.Infinite
+genInfinite :: Gen E.Sign -> Gen E.Decoded
+genInfinite gs = do
+  s <- gs
+  return $ E.Decoded s E.Infinite
 
 -- ## NaN number generators
 
@@ -193,196 +204,56 @@ genNaNDcd gs gn gd = do
 
 -- ## Decoded generators
 
+-- | Most general Decoded generator.  Generates throughout the
+-- possible range of Decoded.  Depends on the size parameter.
 genDecoded :: Gen E.Decoded
-genDecoded = frequency [(4, fin), (1, inf), (1, nan)]
+genDecoded = frequency [(4, genFinite), (1, inf), (1, nan)]
   where
-    fin = genFiniteDcd genSign (coeffDigits decimalDigs)
-            sizedExponent
-    inf = genInfinite
+    inf = genInfinite genSign
     nan = genNaNDcd genSign genNaN (payloadDigits decimalDigs)
 
--- ## Visible
-
-newtype Visible = Visible { unVisible :: E.Quad }
-
-instance Show Visible where
-  show = BS8.unpack . runEnv . E.toByteString . unVisible
+-- | Generates finite decoded numbers.
+genFinite :: Gen E.Decoded
+genFinite = genFiniteDcd genSign (coeffDigits decimalDigs)
+            (const sizedExponent)
+ 
 
 -- ## Specialized finite generators
 
-newtype Finite = Finite { unFinite :: Visible }
-  deriving Show
+-- | Generates positive and negative zeroes.
+genZero :: Gen E.Decoded
+genZero = genFiniteDcd genSign (return [E.D0])
+            (const fullExpRange)
 
-instance Arbitrary Finite where
-  arbitrary = fmap f g
-    where
-      f = Finite . Visible . runEnv . E.fromBCD
-      g = genFiniteDcd genSign (coeffDigits decimalDigs) sizedExponent
+-- | Generates positive one.
+genOne :: Gen E.Decoded
+genOne = genFiniteDcd (return E.Sign0) gDigs gExp
+  where
+    gDigs = sizedDigits E.coefficientLen (return E.D1, return E.D0)
+    gExp _ co = return $ 10 ^ (length (E.unCoefficient co) - 1)
 
-newtype Binary = Binary { unBinary :: Visible }
-  deriving Show
+genSmallFinite :: Gen E.Decoded
+genSmallFinite = maxSize 10 genFinite
 
-instance Arbitrary Binary where
-  arbitrary = fmap f genLogicalDCD
-    where
-      f = Binary . Visible . runEnv . E.fromBCD
-      g = genFiniteDcd (return E.Sign0) (coeffDigits binaryDigs)
-            (\_ _ -> return 0)
+genNonZeroSmallFinite :: Gen E.Decoded
+genNonZeroSmallFinite = genSmallFinite `suchThat` notZero
+  where
+    notZero (E.Decoded _ v) = case v of
+      E.Finite ce -> (E.unCoefficient . E.ceCoeff $ ce) /= [E.D0]
+      _ -> error "genNonZeroSmallFinite: should never happen"
 
-newtype SmallFin = SmallFin { unSmallFin :: Visible }
-  deriving Show
-
-instance Arbitrary SmallFin where
-  arbitrary = fmap (SmallFin . unFinite) $ maxSize 10 arbitrary
-
--- | Non zero small finite number.
-newtype NZSmallFin = NZSmallFin { unNZSmallFin :: Visible }
-  deriving Show
-
-instance Arbitrary NZSmallFin where
-  arbitrary = fmap f g
-    where
-      f = NZSmallFin . Visible
-      g = genFiniteDcd genSign
-        (
-    where
-      notZero 
-    v <- arbitrary `suchThat` notZero
-    return . NZSmallFin $ v
-    where
-      notZero x = case bcd of
-        E.Finite ce -> E.unCoefficient (E.ceCoeff ce) /= [E.D0]
-        _ -> error "NZSmallFin: finite not generated"
-        where
-          bcd = runEnv . E.fromBCD . unVisible $ x
-
-genOne :: Gen Visible
-genOne = do
-  s <- genSign
-  e <- choose (0, E.coefficientLen - 1)
-  let i = 10 ^ e
-      expn = negate e
-      ds = E.integralToDigits i
-      
-  return $ mkFinite s ce
-
-genZero :: Gen Visible
-genZero = do
-  e <- choose E.minMaxExp
-  return $ mkFinite 0 e
+-- ## Other generators
 
 genRound :: Gen E.Round
 genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
   E.roundHalfEven, E.roundHalfDown, E.roundDown, E.roundFloor,
   E.round05Up, E.roundMax ]
 
-genExponent :: Gen E.Exponent
-genExponent = oneof
-  [ return E.EQuiet
-  , return E.ESignaling
-  , return E.EInf
-  , liftM E.EFinite genFiniteExp
-  ]
+-- # Helpers
+mkQuad :: E.Decoded -> E.Quad
+mkQuad = runEnv . E.fromBCD
 
--- # Decoded generators
-
-genDcdFinite :: Gen E.Decoded
-genDcdFinite
-  = E.Decoded
-  <$> genSign
-  <*> (E.Finite <$> genFiniteDigits <*> genFiniteExp)
-
-genDcdInfinite :: Gen E.Decoded
-genDcdInfinite
-  = E.Decoded
-  <$> genSign
-  <*> pure E.Infinite
-
-genDcdInteger :: Gen E.Decoded
-genDcdInteger
-  = E.Decoded
-  <$> genSign
-  <*> (E.Finite <$> genFiniteDigits <*> pure E.zeroFiniteExp)
-
-genDcdLogical :: Gen E.Decoded
-genDcdLogical
-  = E.Decoded
-  <$> pure E.Sign0
-  <*> (E.Finite <$> genLogicalFiniteDigits <*> pure E.zeroFiniteExp)
-
-genDcdNaN :: Gen E.Decoded
-genDcdNaN
-  = E.Decoded
-  <$> genSign
-  <*> (E.NaN <$> genNaN <*> genPayloadDigits)
-
-genDcdNegative :: Gen E.Decoded
-genDcdNegative
-  = E.Decoded
-  <$> pure E.Sign1
-  <*> (oneof [ E.Finite <$> genFiniteDigits <*> genFiniteExp
-             , pure E.Infinite ]
-      )
-
-isNonZeroFiniteDigits :: E.FiniteDigits -> Bool
-isNonZeroFiniteDigits = any (/= E.D0) . E.unFiniteDigits
-
-genDcdNormal :: Gen E.Decoded
-genDcdNormal = do
-  s <- genSign
-  ds <- genFiniteDigits `suchThat` isNonZeroFiniteDigits
-  ex <- choose (E.minNormal, snd E.minMaxExp)
-  let finExp = case E.finiteExp ex of
-        Left _ -> error "genDcdNormal: exponent failed"
-        Right r -> r
-  return $ E.Decoded s (E.Finite ds finExp)
-
-genDcdPositive :: Gen E.Decoded
-genDcdPositive
-  = E.Decoded
-  <$> pure E.Sign0
-  <*> oneof [ finite, pure E.Infinite ]
-  where
-    finite = E.Finite <$>
-      genFiniteDigits `suchThat` isNonZeroFiniteDigits
-      <*> genFiniteExp
-
-genDcdSignaling :: Gen E.Decoded
-genDcdSignaling
-  = E.Decoded
-  <$> genSign
-  <*> (E.NaN <$> pure E.Signaling <*> genPayloadDigits)
-
-genDcdSigned :: Gen E.Decoded
-genDcdSigned
-  = E.Decoded
-  <$> pure E.Sign1
-  <*> oneof [ E.Finite <$> genFiniteDigits <*> genFiniteExp
-            , pure E.Infinite
-            , E.NaN <$> genNaN <*> genPayloadDigits
-            ]
-
-genDcdSubnormal :: Gen E.Decoded
-genDcdSubnormal
-  = E.Decoded
-  <$> genSign
-  <*> liftM2 E.Finite
-             (genFiniteDigits `suchThat` isNonZeroFiniteDigits)
-             genExp
-  where
-    genExp = do
-      e <- choose (fst E.minMaxExp, E.minNormal - 1)
-      case E.finiteExp e of
-        Left _ -> error "genDcdSubnormal: exponent failed"
-        Right g -> return g
-
-genDcdZero :: Gen E.Decoded
-genDcdZero = E.Decoded <$> genSign <*> liftM2 E.Finite (return gD) gE
-  where
-    gD = case E.finiteDigits (replicate E.finiteDigitsLen E.D0) of
-      Nothing -> error "genDcdZero: finiteDigits failed"
-      Just r -> r
-    gE = genFiniteExp
+tests = undefined
 
 -- # Test builders
 
@@ -392,10 +263,13 @@ associativity
   -> (E.Quad -> E.Quad -> E.Ctx E.Quad)
   -> TestTree
 associativity n f = testProperty desc $
-  forAll genSmallFinite $ \(Visible x) ->
-  forAll genSmallFinite $ \(Visible y) ->
-  forAll genSmallFinite $ \(Visible z) ->
+  forAll genSmallFinite $ \ dx ->
+  forAll genSmallFinite $ \ dy ->
+  forAll genSmallFinite $ \ dz ->
   let (noFlags, resIsZero) = evalCtx $ do
+        x <- liftEnv $ E.fromBCD dx
+        y <- liftEnv $ E.fromBCD dy
+        z <- liftEnv $ E.fromBCD dz
         r1 <- f x y >>= f z
         r2 <- f y z >>= f x
         c <- liftEnv $ E.compareTotal r1 r2
@@ -412,9 +286,11 @@ commutativity
   -> (E.Quad -> E.Quad -> E.Ctx E.Quad)
   -> TestTree
 commutativity n f = testProperty desc $
-  forAll genSmallFinite $ \(Visible x) ->
-  forAll genSmallFinite $ \(Visible y) ->
+  forAll genSmallFinite $ \dx ->
+  forAll genSmallFinite $ \dy ->
   let (noFlags, resIsZero) = evalCtx $ do
+        x <- liftEnv $ E.fromBCD dx
+        y <- liftEnv $ E.fromBCD dy
         r1 <- f x y
         r2 <- f y x
         c <- liftEnv $ E.compareTotal r1 r2
@@ -430,22 +306,15 @@ imuUni
   -- ^ Name
   -> (E.Quad -> E.Ctx a)
   -> TestTree
-imuUni n f = testProperty desc $ \(Visible d) -> evalCtx $ do
-  dcd1 <- liftEnv $ E.toBCD d
-  _ <- f d
-  dcd2 <- liftEnv $ E.toBCD d
-  return $ dcd1 == dcd2
-  where
-    desc = n ++ " (unary function) does not mutate only argument"
-
-imuBinary
-  :: String
-  -> (E.Quad -> E.Quad -> E.Ctx a)
-  -> TestTree
-imuBinary n f = testGroup ("immutability - " ++ n)
-  [ imuBinary1st n (arbitrary, unVisible) f
-  , imuBinary2nd n (arbitrary, unVisible) f
-  ]
+imuUni n f = testProperty desc $ forAll genDecoded $
+  \dx -> evalCtx $ do
+    d <- liftEnv $ E.fromBCD dx
+    dcd1 <- liftEnv $ E.toBCD d
+    _ <- f d
+    dcd2 <- liftEnv $ E.toBCD d
+    return $ dcd1 == dcd2
+    where
+      desc = n ++ " (unary function) does not mutate only argument"
 
 imuBinary1st
   :: Show a
@@ -455,8 +324,9 @@ imuBinary1st
   -> (E.Quad -> c -> E.Ctx b)
   -> TestTree
 imuBinary1st n (genA, getC) f = testProperty desc $
-  forAll arbitrary $ \(Visible d) ->
+  forAll genDecoded $ \dx ->
   forAll genA $ \a -> evalCtx $ do
+    d <- liftEnv $ E.fromBCD dx
     dcd1 <- liftEnv $ E.toBCD d
     _ <- f d (getC a)
     dcd2 <- liftEnv $ E.toBCD d
@@ -472,8 +342,9 @@ imuBinary2nd
   -> (c -> E.Quad -> E.Ctx b)
   -> TestTree
 imuBinary2nd n (genA, getC) f = testProperty desc $
-  forAll arbitrary $ \(Visible d) ->
+  forAll genDecoded $ \dx ->
   forAll genA $ \a -> evalCtx $ do
+    d <- liftEnv $ E.fromBCD dx
     dcd1 <- liftEnv $ E.toBCD d
     _ <- f (getC a) d
     dcd2 <- liftEnv $ E.toBCD d
@@ -481,44 +352,65 @@ imuBinary2nd n (genA, getC) f = testProperty desc $
   where
     desc = n ++ " (binary function) does not mutate second argument"
 
+imuBinary
+  :: String
+  -> (E.Quad -> E.Quad -> E.Ctx a)
+  -> TestTree
+imuBinary n f = testGroup ("immutability - " ++ n)
+  [ imuBinary1st n (genDecoded, mkQuad) f
+  , imuBinary2nd n (genDecoded, mkQuad) f
+  ]
+
 imuTernary
   :: String
   -> (E.Quad -> E.Quad -> E.Quad -> E.Ctx a)
   -> TestTree
 imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
   [ testProperty "first argument" $
-    \(Visible a) (Visible b) (Visible c) -> evalCtx $ do
+    forAll gen3 $ \t -> evalCtx $ do
+      (a, b, c) <- get3 t
       dcd1 <- liftEnv $ E.toBCD a
       _ <- f a b c
       dcd2 <- liftEnv $ E.toBCD a
       return $ dcd1 == dcd2
 
   , testProperty "second argument" $
-    \(Visible a) (Visible b) (Visible c) -> evalCtx $ do
+    forAll gen3 $ \t -> evalCtx $ do
+      (a, b, c) <- get3 t
       dcd1 <- liftEnv $ E.toBCD b
       _ <- f a b c
       dcd2 <- liftEnv $ E.toBCD b
       return $ dcd1 == dcd2
 
   , testProperty "third argument" $
-    \(Visible a) (Visible b) (Visible c) -> evalCtx $ do
+    forAll gen3 $ \t -> evalCtx $ do
+      (a, b, c) <- get3 t
       dcd1 <- liftEnv $ E.toBCD c
       _ <- f a b c
       dcd2 <- liftEnv $ E.toBCD c
       return $ dcd1 == dcd2
   ]
+  where
+    gen3 = (,,) <$> genDecoded <*> genDecoded <*> genDecoded
+    get3 (da, db, dc) = do
+      a <- liftEnv $ E.fromBCD da
+      b <- liftEnv $ E.fromBCD db
+      c <- liftEnv $ E.fromBCD dc
+      return (a, b, c)
 
 identity
   :: String
   -- ^ Name of thing that is identity (e.g. zero)
-  -> Gen Visible
+  -> Gen E.Decoded
   -> (E.Quad -> E.Quad -> E.Ctx E.Quad)
   -> TestTree
 identity n g f = testProperty name $
-  forAll g $ \(Visible a) ->
-  forAll genFinite $ \(Visible b) -> evalCtx $ do
-    r <- f b a
-    c <- E.compare b r
+  forAll genFinite $ \ad ->
+  forAll g $ \bd -> evalCtx $ do
+    a <- liftEnv $ E.fromBCD ad
+    b <- liftEnv $ E.fromBCD bd
+    r <- f a b
+    c <- E.compare a r
     liftEnv $ E.isZero c
   where
     name = n ++ " is the identity for finite numbers"
@@ -534,22 +426,31 @@ comparison
   -> TestTree
 
 comparison n fB fS fC = testGroup (n ++ " comparisons")
-  [ testProperty "x > y" $ \(NZSmallFin a) -> evalCtx $ do
+  [ testProperty "x > y" $ forAll genNonZeroSmallFinite $
+    \da -> evalCtx $ do
+      a <- liftEnv $ E.fromBCD da
       b <- fB a
       c <- fC b a
       liftEnv $ E.isPositive c
 
-  , testProperty "x < y" $ \(NZSmallFin a) -> evalCtx $ do
+  , testProperty "x < y" $ forAll genNonZeroSmallFinite $
+    \da -> evalCtx $ do
+      a <- liftEnv $ E.fromBCD da
       b <- fS a
       c <- fC b a
       liftEnv $ E.isNegative c
 
-  , testProperty "x == x" $ \(NZSmallFin a) -> evalCtx $ do
+  , testProperty "x == x" $ forAll genNonZeroSmallFinite $
+    \da -> evalCtx $ do
+      a <- liftEnv $ E.fromBCD da
       c <- fC a a
       liftEnv $ E.isZero c
 
-  , testProperty "transitive"
-    $ \(NZSmallFin a) (NZSmallFin b) -> evalCtx $ do
+  , testProperty "transitive" $ forAll genNonZeroSmallFinite $
+    \da ->
+    forAll genNonZeroSmallFinite $ \db -> evalCtx $ do
+      a <- liftEnv $ E.fromBCD da
+      b <- liftEnv $ E.fromBCD db
       c <- fC a b
       z <- liftEnv $ E.isZero c
       if z
@@ -569,8 +470,11 @@ testMinMax
   -- ^ True if testing absolute values
   -> (E.Quad -> E.Quad -> E.Ctx E.Quad)
   -> TestTree
-testMinMax n ab f = testProperty (n ++ " and compare")
-  $ \(SmallFin aa) (SmallFin bb) -> evalCtx $ do
+testMinMax n ab f = testProperty (n ++ " and compare") $
+  forAll genSmallFinite $ \da ->
+  forAll genSmallFinite $ \db -> evalCtx $ do
+    aa <- liftEnv $ E.fromBCD da
+    bb <- liftEnv $ E.fromBCD db
     (a, b) <- if ab
       then do
         aaa <- E.abs aa
@@ -592,9 +496,10 @@ testMinMax n ab f = testProperty (n ++ " and compare")
         r' <- E.compare new m
         liftEnv $ E.isZero r' 
 
+
 decodedSameQuantum :: E.Decoded -> E.Decoded -> Bool
 decodedSameQuantum x y = case (E.dValue x, E.dValue y) of
-  (E.Finite _ e1, E.Finite _ e2) -> e1 == e2
+  (E.Finite e1, E.Finite e2) -> E.ceExp e1 == E.ceExp e2
   (E.Infinite, E.Infinite) -> True
   (E.NaN _ _, E.NaN _ _) -> True
   _ -> False
@@ -616,27 +521,23 @@ testBoolean n g pd f = testGroup n
     forAll g $ \d -> pd d
   
   , testProperty "succeeds when it should" $
-    forAll genP $
-    runEnv . f . unVisible . fst
+    forAll g $ \dcd -> runEnv $ do
+      q <- E.fromBCD dcd
+      f q
 
   , testProperty "fails when it should" $
-    forAll genF $
-    not . runEnv . f . unVisible . fst
+    forAll (g `suchThat` (not . pd)) $ \dcd -> runEnv $ do
+      q <- E.fromBCD dcd
+      fmap not $ f q
 
   , testProperty "decNumber and Deka predicate return same result"
-    $ \(Visible q) -> runEnv $ do
-        d <- E.toBCD q
+    $ forAll genDecoded $ \dcd -> runEnv $ do
+        q <- E.fromBCD dcd
         b <- f q
-        return $ b == pd d
+        return $ b == pd dcd
   ]
-  where
-    genP = do
-      d <- g
-      return (Visible . runEnv . E.fromBCD $ d, d)
-    genF = do
-      d <- genDecoded `suchThat` (not . pd)
-      return (Visible . runEnv . E.fromBCD $ d, d)
 
+{-
 -- # Tests
 
 tests = testGroup "IO"
@@ -1007,3 +908,4 @@ tests = testGroup "IO"
         E.dIsZero E.isZero
     ]
   ]
+-}
