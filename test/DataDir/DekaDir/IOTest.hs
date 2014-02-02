@@ -20,7 +20,7 @@ import qualified Data.Deka.IO as E
 import Data.Deka.Pure (runCtx, evalCtx, liftEnv, runEnv)
 import Data.Deka.Decnumber
 import Test.Tasty.QuickCheck
-import Test.QuickCheck.Gen
+import Test.QuickCheck
 
 isLeft :: Either a b -> Bool
 isLeft e = case e of { Left _ -> True; _ -> False }
@@ -71,6 +71,9 @@ genNaN = elements [ E.Quiet, E.Signaling ]
 
 genDigit :: Gen E.Digit
 genDigit = elements [minBound..maxBound]
+
+genCoefficient :: Gen E.Coefficient
+genCoefficient = sized
 
 genFiniteDigits :: Gen E.FiniteDigits
 genFiniteDigits = do
