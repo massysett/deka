@@ -61,13 +61,6 @@ decreaseAbs q = do
     then E.nextPlus q
     else E.nextMinus q
 
-tryAgain :: Gen (Maybe a) -> Gen a
-tryAgain g = sized $ \s -> do
-  r <- g
-  case r of
-    Nothing -> resize (s + 1) (tryAgain g)
-    Just r -> return r
-
 -- # Generators
 
 genSign :: Gen E.Sign
@@ -138,20 +131,25 @@ genFiniteDcd
   :: Gen E.Sign
   -> Gen [E.Digit]
   -- ^ Generate coefficient
-  -> (E.Sign -> E.Coefficient -> Gen Int)
+  -> (E.Sign -> E.Coefficient -> Gen (Maybe Int))
   -- ^ Generate exponent
   -> Gen E.Decoded
-genFiniteDcd gs gc ge = do
-  s <- gs
-  ds <- gc
-  let coe = case E.coefficient ds of
-        Nothing -> error "genFinite: coefficient failed"
-        Just r -> r
-  i <- ge s coe
-  let ce = case E.coeffExp coe i of
-        Left _ -> error "genFinite: coeffExp failed"
-        Right g -> g 
-  return $ E.Decoded s (E.Finite ce)
+genFiniteDcd gs gc ge = go
+  where
+    go = sized $ \sz -> do
+      s <- gs
+      ds <- gc
+      let coe = case E.coefficient ds of
+            Nothing -> error "genFinite: coefficient failed"
+            Just r -> r
+      mayI <- ge s coe
+      case mayI of
+        Nothing -> resize (sz + 1) go
+        Just i ->
+          let ce = case E.coeffExp coe i of
+                Left _ -> error "genFinite: coeffExp failed"
+                Right g -> g 
+          in return $ E.Decoded s (E.Finite ce)
 
 rangedExponent
   :: (Int, Int)
@@ -219,7 +217,7 @@ genDecoded = frequency [(4, genFinite), (1, inf), (1, nan)]
 -- | Generates finite decoded numbers.
 genFinite :: Gen E.Decoded
 genFinite = genFiniteDcd genSign (coeffDigits decimalDigs)
-            (const sizedExponent)
+            (const (fmap (fmap Just) sizedExponent))
  
 
 -- ## Specialized finite generators
@@ -227,14 +225,14 @@ genFinite = genFiniteDcd genSign (coeffDigits decimalDigs)
 -- | Generates positive and negative zeroes.
 genZero :: Gen E.Decoded
 genZero = genFiniteDcd genSign (return [E.D0])
-            (const fullExpRange)
+            (const (fmap (fmap Just) fullExpRange))
 
 -- | Generates positive one.
 genOne :: Gen E.Decoded
 genOne = genFiniteDcd (return E.Sign0) gDigs gExp
   where
     gDigs = sizedDigits E.coefficientLen (return E.D1, return E.D0)
-    gExp _ co = return $ negate $ length (E.unCoefficient co) - 1
+    gExp _ co = return . Just . negate $ length (E.unCoefficient co) - 1
 
 genSmallFinite :: Gen E.Decoded
 genSmallFinite = maxSize 5 genFinite
@@ -244,15 +242,15 @@ genNonZeroSmallFinite = maxSize 5 $ genFiniteDcd genSign
   gd ge
   where
     gd = sizedDigits E.coefficientLen decimalDigs
-    ge = const sizedExponent
+    ge = const (fmap (fmap Just) sizedExponent)
 
 genInteger :: Gen E.Decoded
 genInteger = genFiniteDcd genSign
-  (coeffDigits decimalDigs) (\_ _ -> return 0)
+  (coeffDigits decimalDigs) (\_ _ -> return . Just $ 0)
 
 genLogical :: Gen E.Decoded
 genLogical = genFiniteDcd (return E.Sign0)
-  (coeffDigits binaryDigs) (\_ _ -> return 0)
+  (coeffDigits binaryDigs) (\_ _ -> return . Just $ 0)
 
 genNormal :: Gen E.Decoded
 genNormal = genFiniteDcd genSign gd ge
@@ -261,30 +259,31 @@ genNormal = genFiniteDcd genSign gd ge
     ge _ c = do
       let minNrml = E.unExponent . E.minNormalExp $ c
           maxE = E.unExponent . snd . E.minMaxExp $ c
-      choose (minNrml, maxE)
+      r <- choose (minNrml, maxE)
+      return . Just $ r
 
-genSubnormal :: Gen (Maybe E.Decoded)
+genSubnormal :: Gen E.Decoded
 genSubnormal = genFiniteDcd genSign gd ge
   where
     gd = sizedDigits E.coefficientLen decimalDigs
     ge _ c =
       let minNrml = E.unExponent . E.minNormalExp $ c
           minE = E.unExponent . fst . E.minMaxExp $ c
-          f | minE > minNrml - 1 = Nothing
-            | otherwise = choose (minE, minNrml - 1)
+          f | minE > minNrml - 1 = return Nothing
+            | otherwise = fmap Just $ choose (minE, minNrml - 1)
       in f
 
 genPositive :: Gen E.Decoded
 genPositive = genFiniteDcd (return E.Sign0) gd ge
   where
     gd = sizedDigits E.coefficientLen decimalDigs
-    ge = const sizedExponent
+    ge = const (fmap (fmap Just) sizedExponent)
 
 genNegative :: Gen E.Decoded
 genNegative = genFiniteDcd (return E.Sign1) gd ge
   where
     gd = sizedDigits E.coefficientLen decimalDigs
-    ge = const sizedExponent
+    ge = const (fmap (fmap Just) sizedExponent)
 
 -- ## Specialized other generators
 
@@ -295,7 +294,7 @@ genSignaling = genNaNDcd genSign (return E.Signaling)
 genSigned :: Gen E.Decoded
 genSigned = oneof
   [ genFiniteDcd (return E.Sign1) (coeffDigits decimalDigs)
-      (const sizedExponent)
+      (const (fmap (fmap Just) sizedExponent))
   , genNaNDcd (return E.Sign1) genNaN (payloadDigits decimalDigs)
   , genInfinite (return E.Sign1)
   ]
@@ -932,7 +931,7 @@ tests = testGroup "IO"
     , testBoolean "isSigned" genSigned
         E.dIsSigned E.isSigned
 
-    , testBoolean "isSubnormal" (tryAgain genSubnormal)
+    , testBoolean "isSubnormal" genSubnormal
         E.dIsSubnormal E.isSubnormal
 
     , testBoolean "isZero" genZero E.dIsZero E.isZero
