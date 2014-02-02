@@ -116,15 +116,15 @@ module Data.Deka.IO
   , unPayload
 
   -- *** Exponents
-  , FiniteExp
-  , unFiniteExp
-  , zeroFiniteExp
+  , Exponent
+  , unExponent
+  , zeroExponent
   , minMaxExp
   , AdjustedExp
   , adjustedExp
   , unAdjustedExp
   , minNormal
-  , adjustedToFinite
+  , adjustedToExponent
   , CoeffExp
   , ceCoeff
   , ceExp
@@ -1027,8 +1027,8 @@ data NaN
 -- @-x - (c - 1) + 1@ and @x - (c - 1)@
 --
 -- See Decimal Arithmetic Specification version 1.70, page 10.
-minMaxExp :: Coefficient -> (FiniteExp, FiniteExp)
-minMaxExp d = (FiniteExp l, FiniteExp h)
+minMaxExp :: Coefficient -> (Exponent, Exponent)
+minMaxExp d = (Exponent l, Exponent h)
   where
     l = negate x - (c - 1) + 1
     h = x - (c - 1)
@@ -1042,7 +1042,7 @@ minNormal = AdjustedExp c'DECQUAD_Emin
 
 -- | The signed integer which indicates the power of ten by which
 -- the coefficient is multiplied.
-newtype FiniteExp = FiniteExp { unFiniteExp :: Int }
+newtype Exponent = Exponent { unExponent :: Int }
   deriving (Eq, Ord, Show)
 
 -- | For a particular coefficient, the exponent must be in a
@@ -1050,7 +1050,7 @@ newtype FiniteExp = FiniteExp { unFiniteExp :: Int }
 -- enforced.
 data CoeffExp = CoeffExp
   { ceCoeff :: Coefficient
-  , ceExp :: FiniteExp
+  , ceExp :: Exponent
   } deriving (Eq, Ord, Show)
 
 
@@ -1062,10 +1062,10 @@ coeffExp ds e
   | otherwise = Right $ CoeffExp ds r
   where
     (l, h) = minMaxExp ds
-    r = FiniteExp e
+    r = Exponent e
 
-zeroFiniteExp :: FiniteExp
-zeroFiniteExp = FiniteExp 0
+zeroExponent :: Exponent
+zeroExponent = Exponent 0
 
 data Value
   = Finite CoeffExp
@@ -1114,7 +1114,7 @@ toDecNumberBCD (Decoded s v) = (e, ds, sgn)
             Signaling -> c'DECFLOAT_sNaN
           np = pad ++ map digitToInt ps
           pad = replicate (c'DECQUAD_Pmax - length ps) 0
-      Finite (CoeffExp (Coefficient digs) (FiniteExp ex)) ->
+      Finite (CoeffExp (Coefficient digs) (Exponent ex)) ->
         ( fromIntegral ex, pad ++ map digitToInt digs )
         where
           pad = replicate (c'DECQUAD_Pmax - length digs) 0
@@ -1134,7 +1134,7 @@ getDecoded sgn ex coef = Decoded s v
     v | ex == c'DECFLOAT_qNaN = NaN Quiet pld
       | ex == c'DECFLOAT_sNaN = NaN Signaling pld
       | ex == c'DECFLOAT_Inf = Infinite
-      | otherwise = Finite (CoeffExp coe (FiniteExp $ fromIntegral ex))
+      | otherwise = Finite (CoeffExp coe (Exponent $ fromIntegral ex))
       where
         pld = Payload . toDigs . tail $ coef
         coe = Coefficient . toDigs $ coef
@@ -1229,7 +1229,7 @@ dIsInfinite (Decoded _ v) = case v of
 
 dIsInteger :: Decoded -> Bool
 dIsInteger (Decoded _ v) = case v of
-  Finite c -> unFiniteExp (ceExp c) == 0
+  Finite c -> unExponent (ceExp c) == 0
   _ -> False
 
 -- | True only if @x@ is zero or positive, an integer (finite with
@@ -1242,7 +1242,7 @@ dIsLogical (Decoded s v) = fromMaybe False $ do
   (d, e) <- case v of
     Finite (CoeffExp ds ex) -> return (ds, ex)
     _ -> Nothing
-  guard $ e == zeroFiniteExp
+  guard $ e == zeroExponent
   return
     . all (\x -> x == D0 || x == D1)
     . unCoefficient $ d
@@ -1311,12 +1311,12 @@ dDigits (Coefficient ds) = case dropWhile (== D0) ds of
 data AdjustedExp = AdjustedExp { unAdjustedExp :: Int }
   deriving (Eq, Show, Ord)
 
-adjustedExp :: Coefficient -> FiniteExp -> AdjustedExp
-adjustedExp ds e = AdjustedExp $ unFiniteExp e
+adjustedExp :: Coefficient -> Exponent -> AdjustedExp
+adjustedExp ds e = AdjustedExp $ unExponent e
   + dDigits ds - 1
 
-adjustedToFinite :: Coefficient -> AdjustedExp -> FiniteExp
-adjustedToFinite ds e = FiniteExp $ unAdjustedExp e -
+adjustedToExponent :: Coefficient -> AdjustedExp -> Exponent
+adjustedToExponent ds e = Exponent $ unAdjustedExp e -
   dDigits ds + 1
 
 -- # decQuad functions not recreated here:
