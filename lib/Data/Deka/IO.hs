@@ -170,15 +170,6 @@ module Data.Deka.IO
   -- * Exponent and coefficient adjustment
   , quantize
   , reduce
-  , Exponent(..)
-  , getExponent
-  , setExponent
-  , CoeffDigits
-  , unCoeffDigits
-  , coeffDigits
-  , coeffDigitsLen
-  , getCoefficient
-  , setCoefficient
 
   -- * Comparisons
   , compare
@@ -821,28 +812,6 @@ fromUInt32 i = Env $
   c'decQuadFromUInt32 pR i >>
   return r
 
-getCoefficient :: Quad -> Env (Sign, CoeffDigits)
-getCoefficient q = Env $
-  withForeignPtr (unDec q) $ \pQ ->
-  allocaArray c'DECQUAD_Pmax $ \pArr ->
-  c'decQuadGetCoefficient pQ pArr >>= \sgn ->
-  peekArray c'DECQUAD_Pmax pArr >>= \ds ->
-  let s | sgn == c'DECFLOAT_Sign = Sign1
-        | sgn == 0 = Sign0
-        | otherwise = error "getCoefficient: unknown sign"
-      rs = map intToDigit ds
-  in return (s, CoeffDigits rs)
-
-getExponent :: Quad -> Env Exponent
-getExponent q = Env $
-  withForeignPtr (unDec q) $ \pQ ->
-  c'decQuadGetExponent pQ >>= \i ->
-  let r | i == c'DECFLOAT_qNaN = EQuiet
-        | i == c'DECFLOAT_sNaN = ESignaling
-        | i == c'DECFLOAT_Inf = EInf
-        | otherwise = EFinite . FiniteExp . fromIntegral $ i
-  in return r
-
 invert :: Quad -> Ctx Quad
 invert = unary c'decQuadInvert
 
@@ -973,33 +942,6 @@ sameQuantum x y = Env $
 
 scaleB :: Quad -> Quad -> Ctx Quad
 scaleB = binary c'decQuadScaleB
-
-
-setCoefficient :: CoeffDigits -> Sign -> Quad -> Env Quad
-setCoefficient (CoeffDigits ds) s q = Env $
-  withForeignPtr (unDec q) $ \pQ ->
-  newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
-  c'decQuadCopy pR pQ >>= \_ ->
-  allocaArray c'DECQUAD_Pmax $ \pArr ->
-  pokeArray pArr (map digitToInt ds) >>
-  let sgn = case s of { Sign0 -> 0; Sign1 -> c'DECFLOAT_Sign } in
-  c'decQuadSetCoefficient pR pArr sgn >>
-  return r
-
-setExponent :: Exponent -> Quad -> Ctx Quad
-setExponent e q = Ctx $ \pC ->
-  withForeignPtr (unDec q) $ \pQ ->
-  newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
-  c'decQuadCopy pR pQ >>= \_ ->
-  let n = case e of
-            EQuiet -> c'DECFLOAT_qNaN
-            ESignaling -> c'DECFLOAT_sNaN
-            EInf -> c'DECFLOAT_Inf
-            EFinite ex -> fromIntegral . unFiniteExp $ ex in
-  c'decQuadSetExponent pR pC n >>
-  return r
 
 shift :: Quad -> Quad -> Ctx Quad
 shift = binary c'decQuadShift
@@ -1219,21 +1161,6 @@ intToDigit i = case i of
     _ -> error "intToDigit: integer out of range" }
 
 
--- | A list of digits, less than or equal to coeffDigitsLen long.
--- Could be either a payload or a finite coefficient.
-newtype CoeffDigits = CoeffDigits { unCoeffDigits :: [Digit] }
-  deriving (Eq, Ord, Show)
-
-coeffDigits :: [Digit] -> Maybe CoeffDigits
-coeffDigits ds
-  | null ds = Nothing
-  | length ds > 1 && head ds == D0 = Nothing
-  | length ds > coeffDigitsLen = Nothing
-  | otherwise = Just . CoeffDigits $ ds
-
-coeffDigitsLen :: Int
-coeffDigitsLen = c'DECQUAD_Pmax
-
 -- | A list of digits, less than or equal to 'coefficientLen' long.
 -- Corresponds only to finite numbers.
 newtype Coefficient = Coefficient { unCoefficient :: [Digit] }
@@ -1287,15 +1214,6 @@ coefficientLen = c'DECQUAD_Pmax
 
 payloadDigitsLen :: Int
 payloadDigitsLen = c'DECQUAD_Pmax - 1
-
--- | No separate code for NaN; in the header, NaN and qNaN are the
--- same value.
-data Exponent
-  = EQuiet
-  | ESignaling
-  | EInf
-  | EFinite FiniteExp
-  deriving (Eq, Ord, Show)
 
 -- # Decoded predicates
 
@@ -1410,6 +1328,8 @@ adjustedToFinite ds e = FiniteExp $ unAdjustedExp e -
 -- skipped: fromNumber - not needed
 -- skipped: fromPacked - use fromPackedChecked instead
 -- skipped: fromWider - not needed
+-- skipped: getExponent, setExponent - use toBCD, fromBCD
+-- skipped: getCoefficient, setCoefficient - use toBCD, fromBCD
 -- skipped: isCanonical - not needed
 -- skipped: radix - not needed
 -- skipped: toNumber - not needed

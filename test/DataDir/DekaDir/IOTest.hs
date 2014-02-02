@@ -72,30 +72,37 @@ genNaN = elements [ E.Quiet, E.Signaling ]
 genDigit :: Gen E.Digit
 genDigit = elements [minBound..maxBound]
 
+-- | Given a length, generate a list of digits.  The most
+-- significant digit is never 0, unless the length is 1, in which
+-- case it might be a zero.
+genDigits :: Int -> Gen [E.Digit]
+genDigits i
+  | i == 1 = fmap (:[]) genDigit
+  | otherwise = do
+      d1 <- elements [ E.D1, E.D2, E.D3, E.D4, E.D5,
+                       E.D6, E.D7, E.D8, E.D9 ]
+      ds <- vectorOf (i - 1) genDigit
+      return $ d1 : ds
+
 genCoefficient :: Gen E.Coefficient
-genCoefficient = sized
+genCoefficient = sized $ \s -> do
+  len <- choose (1, min s E.coefficientLen)
+  ds <- genDigits len
+  case E.coefficient ds of
+    Nothing -> error "genCoefficient failed"
+    Just c -> return c
 
-genFiniteDigits :: Gen E.FiniteDigits
-genFiniteDigits = do
-  ds <- vectorOf E.finiteDigitsLen genDigit
-  case E.finiteDigits ds of
-    Nothing -> error "genFiniteDigits failed"
-    Just r -> return r
-
-genLogicalFiniteDigits :: Gen E.FiniteDigits
-genLogicalFiniteDigits = do
-  let g = elements [ E.D0, E.D1 ]
-  ds <- vectorOf E.finiteDigitsLen g
-  case E.finiteDigits ds of
-    Nothing -> error "genLogicalFiniteDigits failed"
-    Just r -> return r
-
-genCoeffDigits :: Gen E.CoeffDigits
-genCoeffDigits = do
-  ds <- vectorOf E.coeffDigitsLen genDigit
-  case E.coeffDigits ds of
-    Nothing -> error "genCoeffDigits failed"
-    Just r -> return r
+genLogicalCoefficient :: Gen E.Coefficient
+genLogicalCoefficient = sized $ \s -> do
+  len <- choose (1, min s E.coefficientLen)
+  let g | len == 1 = fmap (:[]) genDigit
+        | otherwise = do
+            ds <- vectorOf (len - 1) (elements [E.D0, E.D1])
+            return $ E.D1 : ds
+  ds <- g
+  case E.coefficient ds of
+    Nothing -> error "genLogicalCoefficient failed"
+    Just c -> return c
 
 genPayloadDigits :: Gen E.PayloadDigits
 genPayloadDigits = do
