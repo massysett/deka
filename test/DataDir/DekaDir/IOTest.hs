@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
-
 -- | Tests for the IO module.
 --
 -- The object of these tests is not to test decNumber but, rather,
@@ -18,8 +16,7 @@ import Control.Monad
 import Test.Tasty
 import qualified Data.Deka.IO as E
 import Data.Deka.Pure (runCtx, evalCtx, liftEnv, runEnv)
-import Data.Deka.Decnumber
-import Test.Tasty.QuickCheck
+import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck hiding (maxSize)
 
 isLeft :: Either a b -> Bool
@@ -63,6 +60,13 @@ decreaseAbs q = do
   if neg
     then E.nextPlus q
     else E.nextMinus q
+
+tryAgain :: Gen (Maybe a) -> Gen a
+tryAgain g = sized $ \s -> do
+  r <- g
+  case r of
+    Nothing -> resize (s + 1) (tryAgain g)
+    Just r -> return r
 
 -- # Generators
 
@@ -230,17 +234,71 @@ genOne :: Gen E.Decoded
 genOne = genFiniteDcd (return E.Sign0) gDigs gExp
   where
     gDigs = sizedDigits E.coefficientLen (return E.D1, return E.D0)
-    gExp _ co = return $ 10 ^ (length (E.unCoefficient co) - 1)
+    gExp _ co = return $ negate $ length (E.unCoefficient co) - 1
 
 genSmallFinite :: Gen E.Decoded
-genSmallFinite = maxSize 10 genFinite
+genSmallFinite = maxSize 5 genFinite
 
 genNonZeroSmallFinite :: Gen E.Decoded
-genNonZeroSmallFinite = genSmallFinite `suchThat` notZero
+genNonZeroSmallFinite = maxSize 5 $ genFiniteDcd genSign
+  gd ge
   where
-    notZero (E.Decoded _ v) = case v of
-      E.Finite ce -> (E.unCoefficient . E.ceCoeff $ ce) /= [E.D0]
-      _ -> error "genNonZeroSmallFinite: should never happen"
+    gd = sizedDigits E.coefficientLen decimalDigs
+    ge = const sizedExponent
+
+genInteger :: Gen E.Decoded
+genInteger = genFiniteDcd genSign
+  (coeffDigits decimalDigs) (\_ _ -> return 0)
+
+genLogical :: Gen E.Decoded
+genLogical = genFiniteDcd (return E.Sign0)
+  (coeffDigits binaryDigs) (\_ _ -> return 0)
+
+genNormal :: Gen E.Decoded
+genNormal = genFiniteDcd genSign gd ge
+  where
+    gd = sizedDigits E.coefficientLen decimalDigs
+    ge _ c = do
+      let minNrml = E.unExponent . E.minNormalExp $ c
+          maxE = E.unExponent . snd . E.minMaxExp $ c
+      choose (minNrml, maxE)
+
+genSubnormal :: Gen (Maybe E.Decoded)
+genSubnormal = genFiniteDcd genSign gd ge
+  where
+    gd = sizedDigits E.coefficientLen decimalDigs
+    ge _ c =
+      let minNrml = E.unExponent . E.minNormalExp $ c
+          minE = E.unExponent . fst . E.minMaxExp $ c
+          f | minE > minNrml - 1 = Nothing
+            | otherwise = choose (minE, minNrml - 1)
+      in f
+
+genPositive :: Gen E.Decoded
+genPositive = genFiniteDcd (return E.Sign0) gd ge
+  where
+    gd = sizedDigits E.coefficientLen decimalDigs
+    ge = const sizedExponent
+
+genNegative :: Gen E.Decoded
+genNegative = genFiniteDcd (return E.Sign1) gd ge
+  where
+    gd = sizedDigits E.coefficientLen decimalDigs
+    ge = const sizedExponent
+
+-- ## Specialized other generators
+
+genSignaling :: Gen E.Decoded
+genSignaling = genNaNDcd genSign (return E.Signaling)
+  (payloadDigits decimalDigs)
+
+genSigned :: Gen E.Decoded
+genSigned = oneof
+  [ genFiniteDcd (return E.Sign1) (coeffDigits decimalDigs)
+      (const sizedExponent)
+  , genNaNDcd (return E.Sign1) genNaN (payloadDigits decimalDigs)
+  , genInfinite (return E.Sign1)
+  ]
 
 -- ## Other generators
 
@@ -253,7 +311,6 @@ genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
 mkQuad :: E.Decoded -> E.Quad
 mkQuad = runEnv . E.fromBCD
 
-tests = undefined
 
 -- # Test builders
 
@@ -526,7 +583,7 @@ testBoolean n g pd f = testGroup n
       f q
 
   , testProperty "fails when it should" $
-    forAll (g `suchThat` (not . pd)) $ \dcd -> runEnv $ do
+    forAll (genDecoded `suchThat` (not . pd)) $ \dcd -> runEnv $ do
       q <- E.fromBCD dcd
       fmap not $ f q
 
@@ -537,9 +594,9 @@ testBoolean n g pd f = testGroup n
         return $ b == pd dcd
   ]
 
-{-
 -- # Tests
 
+tests :: TestTree
 tests = testGroup "IO"
   [ testGroup "helper functions"
     [ testGroup "biggestDigs"
@@ -566,6 +623,7 @@ tests = testGroup "IO"
           in r > 1 ==> numDigits r - 1 == numDigits (r - 1)
         ]
     ]
+
 
   , testGroup "immutability"
     [ testGroup "conversions"
@@ -595,26 +653,6 @@ tests = testGroup "IO"
     , testGroup "exponent and coefficient adjustment"
       [ imuBinary "quantize" E.quantize
       , imuUni "reduce" E.reduce
-      , imuUni "getExponent" (fmap liftEnv E.getExponent)
-
-      , testProperty "setExponent" $
-        forAll genExponent $ \ex ->
-        \(Visible q) -> evalCtx $ do
-          b1 <- liftEnv $ E.toBCD q
-          _ <- E.setExponent ex q
-          b2 <- liftEnv $ E.toBCD q
-          return $ b1 == b2
-
-      , imuUni "getCoefficient" (fmap liftEnv E.getCoefficient)
-
-      , testProperty "setCoefficient" $
-        forAll genCoeffDigits $ \ds ->
-        forAll genSign $ \sn ->
-        \(Visible q) -> runEnv $ do
-          b1 <- E.toBCD q
-          _ <- E.setCoefficient ds sn q
-          b2 <- E.toBCD q
-          return $ b1 == b2
       ]
 
     , testGroup "comparisons"
@@ -681,59 +719,19 @@ tests = testGroup "IO"
     ]
 
   , testGroup "conversions"
-    [ testGroup "exponent"
-      [ testProperty "fails when exponent is too small" $
-        let (l, _) = E.minMaxExp in
-        forAll (choose (minBound, l - 1)) $
-        isLeft . E.finiteExp
-
-      , testProperty "fails when exponent is too large" $
-        let (_, h) = E.minMaxExp in
-        forAll (choose (h + 1, maxBound)) $
-        isLeft . E.finiteExp
-
-      , testProperty "fails when exponent is < c'DECQUAD_Emin" $
-        forAll (choose (minBound, c'DECQUAD_Emin - 1)) $
-        isLeft . E.finiteExp
-
-      , testProperty "fails when exponent is > c'DECQUAD_Emax" $
-        forAll (choose (c'DECQUAD_Emax + 1, maxBound)) $
-        isLeft . E.finiteExp
-
-      , testProperty "succeeds when it should" $
-        forAll (choose E.minMaxExp) $
-        isRight . E.finiteExp
-
-      ]
-
-    , testGroup "decode and encode"
-      [ testProperty "round trip from Quad" $
-        forAll (fmap Blind genFromDecoded) $ \(Blind d) ->
-        runEnv $ do
-          dcd <- E.toBCD d
-          ecd <- E.fromBCD dcd
-          r <- E.compareTotal ecd d
-          E.isZero r
-
-      , testProperty "round trip from Decoded" $
+    [ testGroup "decode and encode"
+      [ testProperty "round trip from Decoded" $
         forAll genDecoded $ \d ->
         let r = runEnv $ do
               ecd <- E.fromBCD d
               E.toBCD ecd
         in printTestCase ("result: " ++ show r) (r == d)
-
-      , testProperty "round trip from subnormal Decoded" $
-        forAll genDcdSubnormal $ \d ->
-        let r = runEnv $ do
-              ecd <- E.fromBCD d
-              E.toBCD ecd
-        in r == d
       ]
 
     , testGroup "strings"
       [ testProperty ("Decoded -> Quad -> ByteString"
           ++ " -> Quad -> Decoded") $
-        forAll (oneof [genDecoded, genDcdSubnormal]) $ \d ->
+        forAll genDecoded $ \d ->
           let r = evalCtx $ do
                 q <- liftEnv $ E.fromBCD d
                 bs <- liftEnv $ E.toByteString q
@@ -761,9 +759,11 @@ tests = testGroup "IO"
 
     , testGroup "subtract"
       [ testProperty "is the inverse of add" $
-        forAll genSmallFinite $ \(Visible a) ->
-        forAll genSmallFinite $ \(Visible b) ->
+        forAll genSmallFinite $ \da ->
+        forAll genSmallFinite $ \db ->
         let (r, fl) = runCtx $ do
+              a <- liftEnv $ E.fromBCD da
+              b <- liftEnv $ E.fromBCD db
               r1 <- E.add a b
               r2 <- E.subtract r1 b
               c <- E.compare r2 a
@@ -775,10 +775,13 @@ tests = testGroup "IO"
 
     , testGroup "fused multiply add"
       [ testProperty "is same as multiply and add" $
-        forAll genSmallFinite $ \(Visible a) ->
-        forAll genSmallFinite $ \(Visible b) ->
-        forAll genSmallFinite $ \(Visible c) ->
+        forAll genSmallFinite $ \da ->
+        forAll genSmallFinite $ \db ->
+        forAll genSmallFinite $ \dc ->
         let (r, fl) = runCtx $ do
+              a <- liftEnv $ E.fromBCD da
+              b <- liftEnv $ E.fromBCD db
+              c <- liftEnv $ E.fromBCD dc
               r1 <- E.multiply a b
               r2 <- E.add r1 c
               r2' <- E.fma a b c
@@ -791,8 +794,11 @@ tests = testGroup "IO"
 
       , testGroup "divideInteger"
         [ testProperty "result has exponent 0" $
-          \(SmallFin a) (SmallFin b) ->
+          forAll genSmallFinite $ \da ->
+          forAll genSmallFinite $ \db ->
           let (e, fl) = runCtx $ do
+                a <- liftEnv $ E.fromBCD da
+                b <- liftEnv $ E.fromBCD db
                 c <- E.divideInteger a b
                 liftEnv $ E.isInteger c
           in fl == E.emptyFlags ==> e
@@ -800,8 +806,11 @@ tests = testGroup "IO"
 
       , testGroup "remainder"
         [ testProperty "x = int * y + rem" $
-          \(SmallFin x) (SmallFin y) ->
+          forAll genSmallFinite $ \dx ->
+          forAll genSmallFinite $ \dy ->
           let (r, fl) = runCtx $ do
+                x <- liftEnv $ E.fromBCD dx
+                y <- liftEnv $ E.fromBCD dy
                 it <- E.divideInteger x y
                 rm <- E.remainder x y
                 i1 <- E.multiply it y
@@ -820,11 +829,19 @@ tests = testGroup "IO"
   , testGroup "exponent and coefficient adjustment"
     [ testGroup "quantize"
       [ testProperty "result has same quantum" $
-        \(SmallFin x) (SmallFin y) ->
+        forAll genSmallFinite $ \dx ->
+        forAll genSmallFinite $ \dy ->
         let (r, fl) = runCtx $ do
+              x <- liftEnv $ E.fromBCD dx
+              y <- liftEnv $ E.fromBCD dy
               c <- E.quantize x y
-              exC <- liftEnv $ E.getExponent c
-              exY <- liftEnv $ E.getExponent y
+              let getExp a = do
+                    dcd <- liftEnv $ E.toBCD a
+                    return $ case E.dValue dcd of
+                      E.Finite ce -> Just (E.ceExp ce)
+                      _ -> Nothing
+              exC <- getExp c
+              exY <- getExp y
               fin <- liftEnv $ E.isFinite c
               return $ fin && exC == exY
         in fl == E.emptyFlags ==> r
@@ -832,20 +849,22 @@ tests = testGroup "IO"
 
     , testGroup "reduce"
       [ testProperty "result is equivalent" $
-        \(SmallFin x) -> evalCtx $ do
+        forAll genSmallFinite $ \dx -> evalCtx $ do
+            x <- liftEnv $ E.fromBCD dx
             r <- E.reduce x
             c <- E.compare r x
             liftEnv $ E.isZero c
 
       , testProperty "result has no trailing zeroes" $
-        \(SmallFin x) -> evalCtx $ do
+        forAll genSmallFinite $ \dx -> evalCtx $ do
+            x <- liftEnv $ E.fromBCD dx
             r <- E.reduce x
             dcd <- liftEnv $ E.toBCD r
             return $ case E.dValue dcd of
               E.Infinite -> False
               E.NaN _ _ -> False
-              E.Finite ds _ ->
-                let digs = E.unFiniteDigits ds
+              E.Finite ce ->
+                let digs = E.unCoefficient . E.ceCoeff $ ce
                 in all (== E.D0) digs || last digs /= E.D0
       ]
     ]
@@ -883,29 +902,40 @@ tests = testGroup "IO"
     ]
 
   , testGroup "tests"
-    [ testBoolean "isFinite" genDcdFinite E.dIsFinite E.isFinite
-    , testBoolean "isInfinite" genDcdInfinite
+    [ testBoolean "isFinite" genFinite E.dIsFinite E.isFinite
+
+    , testBoolean "isInfinite" (genInfinite genSign)
         E.dIsInfinite E.isInfinite
-    , testBoolean "isInteger" genDcdInteger
+
+    , testBoolean "isInteger" genInteger
         E.dIsInteger E.isInteger
-    , testBoolean "isLogical" genDcdLogical
+
+    , testBoolean "isLogical" genLogical
         E.dIsLogical E.isLogical
-    , testBoolean "isNaN" genDcdNaN
+
+    , testBoolean "isNaN"
+      (genNaNDcd genSign genNaN (payloadDigits decimalDigs))
         E.dIsNaN E.isNaN
-    , testBoolean "isNegative" genDcdNegative
-        E.dIsNegative E.isNegative
-    , testBoolean "isNormal" genDcdNormal
+
+    , testBoolean "isNegative" genNegative
+      E.dIsNegative E.isNegative
+
+    , testBoolean "isNormal" genNormal
         E.dIsNormal E.isNormal
-    , testBoolean "isPositive" genDcdPositive
+
+    , testBoolean "isPositive" genPositive
         E.dIsPositive E.isPositive
-    , testBoolean "isSignaling" genDcdSignaling
+
+    , testBoolean "isSignaling" genSignaling
         E.dIsSignaling E.isSignaling
-    , testBoolean "isSigned" genDcdSigned
+
+    , testBoolean "isSigned" genSigned
         E.dIsSigned E.isSigned
-    , testBoolean "isSubnormal" genDcdSubnormal
+
+    , testBoolean "isSubnormal" (tryAgain genSubnormal)
         E.dIsSubnormal E.isSubnormal
-    , testBoolean "isZero" genDcdZero
-        E.dIsZero E.isZero
+
+    , testBoolean "isZero" genZero E.dIsZero E.isZero
+
     ]
   ]
--}

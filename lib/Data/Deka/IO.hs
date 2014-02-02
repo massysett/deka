@@ -124,6 +124,7 @@ module Data.Deka.IO
   , adjustedExp
   , unAdjustedExp
   , minNormal
+  , minNormalExp
   , adjustedToExponent
   , CoeffExp
   , ceCoeff
@@ -1039,6 +1040,12 @@ minMaxExp d = (Exponent l, Exponent h)
 -- Adjusted exponents smaller than this are subnormal.
 minNormal :: AdjustedExp
 minNormal = AdjustedExp c'DECQUAD_Emin
+
+-- | Like 'minNormal', but returns the size of the regular exponent
+-- rather than the adjusted exponent.
+minNormalExp :: Coefficient -> Exponent
+minNormalExp (Coefficient ls) =
+  Exponent $ c'DECQUAD_Emin - length ls + 1
 
 -- | The signed integer which indicates the power of ten by which
 -- the coefficient is multiplied.
