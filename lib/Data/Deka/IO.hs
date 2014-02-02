@@ -1035,8 +1035,8 @@ minMaxExp d = (Exponent l, Exponent h)
     x = c'DECQUAD_Emax
     c = length . unCoefficient $ d
 
--- | The smallest possible exponent that is still normal.  Exponents
--- smaller than this are subnormal.
+-- | The smallest possible adjusted exponent that is still normal.
+-- Adjusted exponents smaller than this are subnormal.
 minNormal :: AdjustedExp
 minNormal = AdjustedExp c'DECQUAD_Emin
 

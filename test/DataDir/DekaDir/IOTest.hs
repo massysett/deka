@@ -66,145 +66,205 @@ decreaseAbs q = do
 
 -- # Generators
 
-genNaN :: Gen E.NaN
-genNaN = elements [ E.Quiet, E.Signaling ]
-
-genDigit :: Gen E.Digit
-genDigit = elements [minBound..maxBound]
-
--- | Given a length, generate a list of digits.  The most
--- significant digit is never 0, unless the length is 1, in which
--- case it might be a zero.
-genDigits :: Int -> Gen [E.Digit]
-genDigits i
-  | i == 1 = fmap (:[]) genDigit
-  | otherwise = do
-      d1 <- elements [ E.D1, E.D2, E.D3, E.D4, E.D5,
-                       E.D6, E.D7, E.D8, E.D9 ]
-      ds <- vectorOf (i - 1) genDigit
-      return $ d1 : ds
-
-genCoefficient :: Gen E.Coefficient
-genCoefficient = sized $ \s -> do
-  len <- choose (1, min s E.coefficientLen)
-  ds <- genDigits len
-  case E.coefficient ds of
-    Nothing -> error "genCoefficient failed"
-    Just c -> return c
-
-genLogicalCoefficient :: Gen E.Coefficient
-genLogicalCoefficient = sized $ \s -> do
-  len <- choose (1, min s E.coefficientLen)
-  let g | len == 1 = fmap (:[]) genDigit
-        | otherwise = do
-            ds <- vectorOf (len - 1) (elements [E.D0, E.D1])
-            return $ E.D1 : ds
-  ds <- g
-  case E.coefficient ds of
-    Nothing -> error "genLogicalCoefficient failed"
-    Just c -> return c
-
-genPayloadDigits :: Gen E.PayloadDigits
-genPayloadDigits = do
-  ds <- vectorOf E.payloadDigitsLen genDigit
-  case E.payloadDigits ds of
-    Nothing -> error "genPayloadDigits failed"
-    Just r -> return r
-
-genFiniteExp :: Gen E.FiniteExp
-genFiniteExp = do
-  i <- choose E.minMaxExp
-  case E.finiteExp i of
-    Left _ -> error "genFiniteExp failed"
-    Right r -> return r
-
 genSign :: Gen E.Sign
 genSign = elements [ minBound..maxBound ]
 
-genValue :: Gen E.Value
-genValue = oneof
-  [ liftM2 E.Finite genFiniteDigits genFiniteExp
-  , return E.Infinite
-  , liftM2 E.NaN genNaN genPayloadDigits
-  ]
+genBinaryMSD :: Gen E.Digit
+genBinaryMSD = return E.D1
+
+genBinaryNonMSD :: Gen E.Digit
+genBinaryNonMSD = elements [E.D0, E.D1]
+
+binaryDigs :: (Gen E.Digit, Gen E.Digit)
+binaryDigs = (genBinaryMSD, genBinaryNonMSD)
+
+genDecimalMSD :: Gen E.Digit
+genDecimalMSD = elements [ E.D1, E.D2, E.D3, E.D4, E.D5,
+                           E.D6, E.D7, E.D8, E.D9 ]
+
+genDecimalNonMSD :: Gen E.Digit
+genDecimalNonMSD = elements
+  [ E.D0, E.D1, E.D2, E.D3, E.D4, E.D5,
+    E.D6, E.D7, E.D8, E.D9 ]
+
+decimalDigs :: (Gen E.Digit, Gen E.Digit)
+decimalDigs = (genDecimalMSD, genDecimalNonMSD)
+
+-- | Given a length, generate a list of digits.
+genDigits
+  :: Int
+  -- ^ Length
+  -> (Gen E.Digit, Gen E.Digit)
+  -- ^ Generate MSD, remaining digits
+  -> Gen [E.Digit]
+genDigits l (gm, gr) = do
+  msd <- gm
+  rs <- vectorOf (l - 1) gr
+  return $ msd : rs
+
+sizedDigits
+  :: Int
+  -- ^ Maximum length. (Size parameter determines the maximum
+  -- length, but it will not exceed this amount.)
+  -> (Gen E.Digit, Gen E.Digit)
+  -- ^ Generate MSD, remaining digits
+  -> Gen [E.Digit]
+sizedDigits m (gm, gr) = sized $ \s ->
+  let sz = max 1 s
+      maxLen = min sz m
+  len <- choose (1, m)
+  genDigits len (gm, gr)
+
+-- ## Finite number generators
+
+coeffDigits :: (Gen E.Digit, Gen E.Digit) -> Gen [E.Digit]
+coeffDigits = sizedDigits E.coefficientLen
+
+genFiniteDcd
+  :: Gen E.Sign
+  -> Gen [E.Digit]
+  -- ^ Generate coefficient
+  -> (E.Sign -> E.Coefficient -> Gen Int)
+  -- ^ Generate exponent
+  -> Gen E.Decoded
+genFiniteDcd gs gc ge = do
+  s <- gs
+  ds <- gc
+  let coe = case E.coefficient ds of
+        Nothing -> error "genFinite: coefficient failed"
+        Just r -> r
+  i <- ge s coe
+  let ce = case E.coeffExp coe i of
+        Left _ -> error "genFinite: coeffExp failed"
+        Right g -> g 
+  return $ E.Decoded s (E.Finite ce)
+
+rangedExponent
+  :: (Int, Int)
+  -- ^ Minimum and maximum exponent.  Exponent will never exceed
+  -- allowable values.
+  -> a
+  -> E.Coefficient
+  -> Gen Int
+rangedExponent (em, ex) _ c = do
+  let (mPE, xPE) = E.minMaxExp c
+      (mP, xP) = (E.unExponent mPE, E.unExponent xPE)
+      (mR, xR) = (max em mP, min ex xP)
+  choose (mR, xR)
+
+sizedExponent :: a -> E.Coefficient -> Gen Int
+sizedExponent = sized $ \s ->
+  let x = s ^ 2
+  in rangedExponent (negate x, x)
+
+fullExpRange :: a -> E.Coefficient -> Gen Int
+fullExpRange _ c =
+  let (m, x) = E.minMaxExp
+      (mi, xi) = (E.unExponent m, E.unExponent x)
+  in choose (mi, xi)
+
+-- ## Infinite number generators
+
+genInfinite :: Gen E.Decoded
+genInfinite = return E.Infinite
+
+-- ## NaN number generators
+
+payloadDigits :: (Gen E.Digit, Gen E.Digit) -> Gen [E.Digit]
+payloadDigits = sizedDigits E.payloadDigitsLen
+
+genNaN :: Gen E.NaN
+genNaN = elements [ E.Quiet, E.Signaling ]
+
+genNaNDcd
+  :: Gen E.Sign
+  -> Gen E.NaN
+  -> Gen [E.Digit]
+  -- ^ Generate payload
+  -> Gen E.Decoded
+genNaNDcd gs gn gd = do
+  s <- gs
+  ds <- gd
+  n <- gn
+  let pay = case E.payloadDigits ds of
+        Nothing -> error "genNaNDcd: payload failed"
+        Just r -> r
+  return $ E.Decoded s (E.NaN n pay)
+
+-- ## Decoded generators
 
 genDecoded :: Gen E.Decoded
-genDecoded = liftM2 E.Decoded genSign genValue
-
-genFromDecoded :: Gen E.Quad
-genFromDecoded = do
-  d <- genDecoded
-  return . fst . runCtx . liftEnv . E.fromBCD $ d
-
-genFinite :: Gen Visible
-genFinite = do
-  v <- liftM2 E.Finite genFiniteDigits genFiniteExp
-  s <- genSign
-  return . Visible . evalCtx . liftEnv . E.fromBCD $ E.Decoded s v
-
-mkDigits :: Integer -> (E.Sign, [E.Digit])
-mkDigits p = (s, ds)
+genDecoded = frequency [(4, fin), (1, inf), (1, nan)]
   where
-    s = if p < 0 then E.Sign1 else E.Sign0
-    ds = case E.integralToDigits (abs p) of
-      Nothing -> error "digitRange failed"
-      Just r -> r
+    fin = genFiniteDcd genSign (coeffDigits decimalDigs)
+            sizedExponent
+    inf = genInfinite
+    nan = genNaNDcd genSign genNaN (payloadDigits decimalDigs)
 
-mkFinite
-  :: Integer
-  -- ^ Coefficient
-  -> Int
-  -- ^ Exponent
-  -> Visible
-mkFinite co ex =
-  let (s, ds) = mkDigits co
-      en = case E.finiteExp ex of
-        Left _ -> error "mkFinite: exponent failed"
-        Right r -> r
-      pad = replicate (E.finiteDigitsLen - length ds) E.D0
-      digs = case E.finiteDigits (pad ++ ds) of
-        Nothing -> error "genFiniteRange: coefficient failed"
-        Just g -> g
-      d = E.Decoded s (E.Finite digs en)
-      dec = runEnv (E.fromBCD d)
-  in Visible dec
+-- ## Visible
 
-genSmallFinite :: Gen Visible
-genSmallFinite = liftM2 mkFinite genC genR
-  where
-    n = biggestDigs 5
-    genC = choose (negate n, n)
-    genR = choose (-10, 10)
+newtype Visible = Visible { unVisible :: E.Quad }
 
-newtype SmallFin = SmallFin { unSmallFin :: E.Quad }
+instance Show Visible where
+  show = BS8.unpack . runEnv . E.toByteString . unVisible
+
+-- ## Specialized finite generators
+
+newtype Finite = Finite { unFinite :: Visible }
+  deriving Show
+
+instance Arbitrary Finite where
+  arbitrary = fmap f g
+    where
+      f = Finite . Visible . runEnv . E.fromBCD
+      g = genFiniteDcd genSign (coeffDigits decimalDigs) sizedExponent
+
+newtype Binary = Binary { unBinary :: Visible }
+  deriving Show
+
+instance Arbitrary Binary where
+  arbitrary = fmap f genLogicalDCD
+    where
+      f = Binary . Visible . runEnv . E.fromBCD
+      g = genFiniteDcd (return E.Sign0) (coeffDigits binaryDigs)
+            (\_ _ -> return 0)
+
+newtype SmallFin = SmallFin { unSmallFin :: Visible }
+  deriving Show
 
 instance Arbitrary SmallFin where
-  arbitrary = fmap (SmallFin . unVisible) genSmallFinite
-
-instance Show SmallFin where
-  show = BS8.unpack . runEnv . E.toByteString . unSmallFin
+  arbitrary = fmap (SmallFin . unFinite) $ maxSize 10 arbitrary
 
 -- | Non zero small finite number.
-newtype NZSmallFin = NZSmallFin { unNZSmallFin :: E.Quad }
-
-instance Show NZSmallFin where
-  show = BS8.unpack . runEnv . E.toByteString . unNZSmallFin
+newtype NZSmallFin = NZSmallFin { unNZSmallFin :: Visible }
+  deriving Show
 
 instance Arbitrary NZSmallFin where
-  arbitrary = fmap (NZSmallFin . unVisible)
-    $ liftM2 mkFinite genC genR
+  arbitrary = fmap f g
     where
-      genC = oneof [ choose (negate n, (-1))
-                   , choose (1, n) ]
-      n = biggestDigs 5
-      genR = choose (-10, 10)
+      f = NZSmallFin . Visible
+      g = genFiniteDcd genSign
+        (
+    where
+      notZero 
+    v <- arbitrary `suchThat` notZero
+    return . NZSmallFin $ v
+    where
+      notZero x = case bcd of
+        E.Finite ce -> E.unCoefficient (E.ceCoeff ce) /= [E.D0]
+        _ -> error "NZSmallFin: finite not generated"
+        where
+          bcd = runEnv . E.fromBCD . unVisible $ x
 
 genOne :: Gen Visible
 genOne = do
-  e <- choose (0, c'DECQUAD_Pmax - 1)
-  let expn = negate e
-      c = 10 ^ e
-  return $ mkFinite c expn
+  s <- genSign
+  e <- choose (0, E.coefficientLen - 1)
+  let i = 10 ^ e
+      expn = negate e
+      ds = E.integralToDigits i
+      
+  return $ mkFinite s ce
 
 genZero :: Gen Visible
 genZero = do
@@ -215,14 +275,6 @@ genRound :: Gen E.Round
 genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
   E.roundHalfEven, E.roundHalfDown, E.roundDown, E.roundFloor,
   E.round05Up, E.roundMax ]
-
-newtype Visible = Visible { unVisible :: E.Quad }
-
-instance Show Visible where
-  show = BS8.unpack . runEnv . E.toByteString . unVisible
-
-instance Arbitrary Visible where
-  arbitrary = fmap Visible genFromDecoded
 
 genExponent :: Gen E.Exponent
 genExponent = oneof
