@@ -134,9 +134,7 @@ integralToDeka :: Integral a => a -> Either String Deka
 integralToDeka i = do
   coe <- maybe (Left "coefficient too long") Right
       . P.coefficient . P.integralToDigits $ i
-  let ce = either (const (error "integralToDeka: coeffExp failed"))
-        id $ P.coeffExp coe 0
-      d = Decoded sgn (Finite ce)
+  let d = Decoded sgn (Finite coe zeroExponent)
       sgn = if i < 0 then Sign1 else Sign0
   return . Deka . runEnv $ fromBCD d
 

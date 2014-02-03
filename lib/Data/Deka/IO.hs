@@ -117,19 +117,16 @@ module Data.Deka.IO
 
   -- *** Exponents
   , Exponent
+  , exponent
   , unExponent
   , zeroExponent
   , minMaxExp
   , AdjustedExp
   , adjustedExp
   , unAdjustedExp
-  , minNormal
+  , minNormalAdj
   , minNormalExp
   , adjustedToExponent
-  , CoeffExp
-  , ceCoeff
-  , ceExp
-  , coeffExp
 
   -- *** Sign, NaN, Value, Decoded
   , Sign(..)
@@ -1021,71 +1018,73 @@ data NaN
   | Signaling
   deriving (Eq, Ord, Show, Enum, Bounded)
 
--- | The minimum and maximum possible exponent.
---
 -- Decimal Arithmetic Specification version 1.70, page 10, says that
 -- the minimum and maximum adjusted exponent is given by
 --
 -- @-x - (c - 1) + 1@ and @x - (c - 1)@
 --
--- where x is (roughly speaking) Emax and c is the number of digits
--- in the coefficient.
+-- where @x@ the upper limit on the absolute value of exponent, and
+-- @c@ is the length of the coefficient in decimal digits.
 --
--- However, this is only for normal numbers.  When you include
--- subnormal numbers, the
+-- However, the lower bound of the above formula only accounts for
+-- normal numbers.  When subnormal numbers are enabled (as they are
+-- here), the lower bound on exponents is
 --
--- If the coefficient has c digits, and Emax is x, the exponent e
--- is within the closed-ended range
+-- @m - (p - 1)@
 --
+-- where @m@ is the smallest possible adjusted exponent for normal
+-- numbers (called Emin), and p is the working precision.
 --
--- See Decimal Arithmetic Specification version 1.70, page 10.
-minMaxExp :: Coefficient -> (Exponent, Exponent)
-minMaxExp d = (Exponent l, Exponent h)
+-- Also, the upper bound is different too, becuase decQuad is
+-- clamped; see decNumber manual, page 23.  This means the maximum
+-- exponent is limited to
+--
+-- @t - (p - 1)@
+--
+-- where @t@ is the maximum possible adjusted exponent and p is the
+-- working precision.
+--
+-- The function below uses the minimum and maximum accounting for
+-- the clamp and the subnormals.
+
+-- | The minimum and maximum possible exponent.
+minMaxExp :: (Int, Int)
+minMaxExp = (l, h)
   where
-    l = negate x - (c - 1) + 1
-    h = x - (c - 1)
-    x = c'DECQUAD_Emax
-    c = length . unCoefficient $ d
+    l = c'DECQUAD_Emin - c'DECQUAD_Pmax + 1
+    h = c'DECQUAD_Emax - c'DECQUAD_Pmax + 1
 
 -- | The smallest possible adjusted exponent that is still normal.
 -- Adjusted exponents smaller than this are subnormal.
-minNormal :: AdjustedExp
-minNormal = AdjustedExp c'DECQUAD_Emin
+minNormalAdj :: AdjustedExp
+minNormalAdj = AdjustedExp c'DECQUAD_Emin
 
--- | Like 'minNormal', but returns the size of the regular exponent
+-- | Like 'minNormalAdj', but returns the size of the regular exponent
 -- rather than the adjusted exponent.
 minNormalExp :: Coefficient -> Exponent
-minNormalExp c = adjustedToExponent c $ minNormal
+minNormalExp c = adjustedToExponent c $ minNormalAdj
 
 -- | The signed integer which indicates the power of ten by which
 -- the coefficient is multiplied.
 newtype Exponent = Exponent { unExponent :: Int }
   deriving (Eq, Ord, Show)
 
--- | For a particular coefficient, the exponent must be in a
--- particular range; 'coeffExp' ensures this relationship is
--- enforced.
-data CoeffExp = CoeffExp
-  { ceCoeff :: Coefficient
-  , ceExp :: Exponent
-  } deriving (Eq, Ord, Show)
-
-
--- | Ensures the exponent falls within the correct range.
-coeffExp :: Coefficient -> Int -> Either String CoeffExp
-coeffExp ds e
-  | r < l = Left "exponent too small"
-  | r > h = Left "exponent too large"
-  | otherwise = Right $ CoeffExp ds r
+-- | Ensures that the exponent is within the range allowed by
+-- 'minMaxExp'.
+exponent :: Int -> Maybe Exponent
+exponent i
+  | i < l = Nothing
+  | i > h = Nothing
+  | otherwise = Just . Exponent $ i
   where
-    (l, h) = minMaxExp ds
-    r = Exponent e
+    (l, h) = minMaxExp
+
 
 zeroExponent :: Exponent
 zeroExponent = Exponent 0
 
 data Value
-  = Finite CoeffExp
+  = Finite Coefficient Exponent
   | Infinite
   | NaN NaN Payload
   deriving (Eq, Ord, Show)
@@ -1131,7 +1130,7 @@ toDecNumberBCD (Decoded s v) = (e, ds, sgn)
             Signaling -> c'DECFLOAT_sNaN
           np = pad ++ map digitToInt ps
           pad = replicate (c'DECQUAD_Pmax - length ps) 0
-      Finite (CoeffExp (Coefficient digs) (Exponent ex)) ->
+      Finite (Coefficient digs) (Exponent ex) ->
         ( fromIntegral ex, pad ++ map digitToInt digs )
         where
           pad = replicate (c'DECQUAD_Pmax - length digs) 0
@@ -1151,7 +1150,7 @@ getDecoded sgn ex coef = Decoded s v
     v | ex == c'DECFLOAT_qNaN = NaN Quiet pld
       | ex == c'DECFLOAT_sNaN = NaN Signaling pld
       | ex == c'DECFLOAT_Inf = Infinite
-      | otherwise = Finite (CoeffExp coe (Exponent $ fromIntegral ex))
+      | otherwise = Finite coe (Exponent $ fromIntegral ex)
       where
         pld = Payload . toDigs . tail $ coef
         coe = Coefficient . toDigs $ coef
@@ -1236,7 +1235,7 @@ payloadDigitsLen = c'DECQUAD_Pmax - 1
 
 dIsFinite :: Decoded -> Bool
 dIsFinite (Decoded _ v) = case v of
-  Finite _ -> True
+  Finite _ _ -> True
   _ -> False
 
 dIsInfinite :: Decoded -> Bool
@@ -1246,7 +1245,7 @@ dIsInfinite (Decoded _ v) = case v of
 
 dIsInteger :: Decoded -> Bool
 dIsInteger (Decoded _ v) = case v of
-  Finite c -> unExponent (ceExp c) == 0
+  Finite _ e -> unExponent e == 0
   _ -> False
 
 -- | True only if @x@ is zero or positive, an integer (finite with
@@ -1257,7 +1256,7 @@ dIsLogical :: Decoded -> Bool
 dIsLogical (Decoded s v) = fromMaybe False $ do
   guard $ s == Sign0
   (d, e) <- case v of
-    Finite (CoeffExp ds ex) -> return (ds, ex)
+    Finite ds ex -> return (ds, ex)
     _ -> Nothing
   guard $ e == zeroExponent
   return
@@ -1276,14 +1275,14 @@ dIsNegative :: Decoded -> Bool
 dIsNegative (Decoded s v) = fromMaybe False $ do
   guard $ s == Sign1
   return $ case v of
-    Finite (CoeffExp d _) -> any (/= D0) . unCoefficient $ d
+    Finite d _ -> any (/= D0) . unCoefficient $ d
     Infinite -> True
     _ -> False
 
 dIsNormal :: Decoded -> Bool
 dIsNormal (Decoded _ v) = case v of
-  Finite (CoeffExp d e)
-    | adjustedExp d e < minNormal -> False
+  Finite d e
+    | adjustedExp d e < minNormalAdj -> False
     | otherwise -> any (/= D0) . unCoefficient $ d
   _ -> False
 
@@ -1291,7 +1290,7 @@ dIsPositive :: Decoded -> Bool
 dIsPositive (Decoded s v)
   | s == Sign1 = False
   | otherwise = case v of
-      Finite (CoeffExp d _) -> any (/= D0) . unCoefficient $ d
+      Finite d _ -> any (/= D0) . unCoefficient $ d
       Infinite -> True
       _ -> False
 
@@ -1306,13 +1305,13 @@ dIsSigned (Decoded s _) = s == Sign1
 
 dIsSubnormal :: Decoded -> Bool
 dIsSubnormal (Decoded _ v) = case v of
-  Finite (CoeffExp d e) -> adjustedExp d e < minNormal
+  Finite d e -> adjustedExp d e < minNormalAdj
   _ -> False
 
 -- | True for any zero (negative or positive zero).
 dIsZero :: Decoded -> Bool
 dIsZero (Decoded _ v) = case v of
-  Finite (CoeffExp d _) -> all (== D0) . unCoefficient $ d
+  Finite d _ -> all (== D0) . unCoefficient $ d
   _ -> False
 
 -- | The number of significant digits. Zero returns 1.
