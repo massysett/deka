@@ -11,26 +11,23 @@
 --
 -- <http://speleotrove.com/decimal/>
 --
--- In particular, this module implements the decQuad type.  decQuad
--- supports up to 34 digits of precision and exponents up to
--- (roughly) 6144.  It doesn't silently round, overflow, or
--- underflow; rather, the library will notify you if these things
--- happen.
+-- Many of the comments on what these functions do are taken
+-- directly from the documentation for the decNumber C library.
 --
--- Every function in this module returns canonical 'Quad' (contrast
--- the decNumber library which will, under limited circumstances,
--- return non-canonical decimals).  I am not certain that canonical
--- vs. non-canonical matters in typical use, though it may matter
--- when using 'compareTotal'.
+-- In particular, this module implements the decQuad type.  decQuad
+-- supports up to 34 digits of precision and exponents between -6176
+-- and 6111.  It doesn't silently round, overflow, or underflow;
+-- rather, the library will notify you if these things happen.
 --
 -- Many functions in this module clash with Prelude names, so you
 -- might want to do
 --
--- > import qualified Data.Deka.Pure as D
+-- > import qualified Data.Deka.Quad as Q
 module Data.Deka.Quad
   (
     -- * Quad
     Quad
+  , QuadT(..)
 
     -- * Rounding
     -- | For more on the rounding algorithms, see
@@ -45,7 +42,6 @@ module Data.Deka.Quad
   , roundDown
   , roundFloor
   , round05Up
-  , roundMax
 
   -- * Flags
   --
@@ -58,7 +54,6 @@ module Data.Deka.Quad
   , divisionImpossible
   , invalidOperation
   , inexact
-  , invalidContext
   , underflow
   , overflow
   , conversionSyntax
@@ -93,63 +88,18 @@ module Data.Deka.Quad
   , posInf
   , decClass
 
-  -- * Conversions
-  -- ** Digits
-  , Digit(..)
-  , digitsToIntegral
-  , integralToDigits
-
-  -- ** Complete encoding and decoding
-
-  -- *** Coefficients
-  , coefficientLen
-  , payloadDigitsLen
-  , Coefficient
-  , coefficient
-  , unCoefficient
-  , Payload
-  , payloadDigits
-  , unPayload
-
-  -- *** Exponents
-  , Exponent
-  , exponent
-  , unExponent
-  , zeroExponent
-  , minMaxExp
-  , AdjustedExp
-  , adjustedExp
-  , unAdjustedExp
-  , minNormalAdj
-  , minNormalExp
-  , adjustedToExponent
-
-  -- *** Sign, NaN, Value, Decoded
-  , Sign(..)
-  , NaN(..)
-  , Value(..)
-  , Decoded(..)
-
-  --- *** Conversion functions
-  , fromBCD
-  , toBCD
-
-  -- ** Strings
+  -- * Converting to and from strings
   , fromByteString
   , toByteString
   , toEngByteString
 
-  -- ** Integers
+  -- * Converting to and from integers
   , fromInt32
   , fromUInt32
   , toInt32
   , toInt32Exact
   , toUInt32
   , toUInt32Exact
-
-  -- ** Other Quad
-  , toIntegralExact
-  , toIntegralValue
 
   -- * Arithmetic
   , add
@@ -201,28 +151,78 @@ module Data.Deka.Quad
   , nextPlus
   , nextToward
 
-  -- * Logical, bitwise, digit shifting
+  -- * Digit-wise
   , and
   , or
-  , shift
   , xor
-  , rotate
   , invert
+  , shift
+  , rotate
 
-  -- * Transcendental
+  -- * log and scale
   , logB
   , scaleB
 
   -- * Attributes
   , digits
 
+  -- * Integral rounding
+
+  -- | If you want to round but not to an integral value (e.g. round
+  -- to two decimal places), see 'quantize'.
+  , toIntegralExact
+  , toIntegralValue
+
   -- * Constants
   , zero
-
-  -- * Library info
   , version
 
-  -- * Decoded predicates
+  -- * Complete encoding and decoding
+
+  -- | These convert a 'Quad' to a 'Decoded', which is a pure
+  -- Haskell type containing all the information in the 'Quad'.
+
+  -- ** Digits
+  , Digit(..)
+  , digitToInt
+  , intToDigit
+  , digitsToInteger
+  , integralToDigits
+
+  -- ** Coefficients
+  , coefficientLen
+  , payloadLen
+  , Coefficient
+  , coefficient
+  , unCoefficient
+  , Payload
+  , payload
+  , unPayload
+
+  -- ** Exponents
+  , Exponent
+  , exponent
+  , unExponent
+  , zeroExponent
+  , minMaxExp
+  , AdjustedExp
+  , adjustedExp
+  , unAdjustedExp
+  , minNormalAdj
+  , minNormalExp
+  , adjustedToExponent
+
+  -- ** Sign, NaN, Value, Decoded
+  , Sign(..)
+  , NaN(..)
+  , Value(..)
+  , Decoded(..)
+
+  --- ** Conversion functions
+  , fromBCD
+  , toBCD
+
+  -- ** Decoded predicates
 
   -- | These duplicate the tests that are available for the Quad
   -- type directly.
@@ -244,9 +244,13 @@ module Data.Deka.Quad
 
 -- # Imports
 
-import Data.Maybe
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans.Writer
+import qualified Data.ByteString.Char8 as BS8
+import Data.List (intersperse)
+import Data.Maybe
+import Foreign.C
 import Foreign.Safe hiding
   ( void
   , isSigned
@@ -254,8 +258,6 @@ import Foreign.Safe hiding
   , shift
   , xor
   )
-import Foreign.C
-import Data.Deka.Decnumber
 import Prelude hiding
   ( abs
   , and
@@ -270,81 +272,119 @@ import Prelude hiding
   , exponent
   )
 import qualified Prelude
-import qualified Data.ByteString.Char8 as BS8
-import Control.Monad.Trans.Writer
 import System.IO.Unsafe (unsafePerformIO)
+
+import Data.Deka.Decnumber
 
 -- # Rounding
 
 newtype Round = Round { unRound :: C'rounding }
   deriving (Eq, Ord, Show)
 
+-- | Round toward negative infinity.
 roundCeiling :: Round
 roundCeiling = Round c'DEC_ROUND_CEILING
 
+-- | Round away from zero.
 roundUp :: Round
 roundUp = Round c'DEC_ROUND_UP
 
+-- | Round away from zero, but only if the discarded digits are
+-- greater than or equal to half of the value of a one in the next
+-- left position.
 roundHalfUp :: Round
 roundHalfUp = Round c'DEC_ROUND_HALF_UP
 
+-- | Round away from zero if discarded digits are greater than half
+-- of the value of a one in the next left position.  If discarded
+-- digits are less than half, ignore the discarded digits.  If they
+-- represent exactly half, do not alter result coefficient if its
+-- rightmost digit is even, or increment it by one if its rightmost
+-- digit is odd (to make an even digit).
 roundHalfEven :: Round
 roundHalfEven = Round c'DEC_ROUND_HALF_EVEN
 
+-- | If the discarded digits represent greater than half of the
+-- value of a one in the next left position then the result
+-- coefficient is incremented by one (that is, rounded away from
+-- zero).  Otherwise the discarded digits are ignored.
 roundHalfDown :: Round
 roundHalfDown = Round c'DEC_ROUND_HALF_DOWN
 
+-- | Round toward zero; the discarded digits are ignored.
 roundDown :: Round
 roundDown = Round c'DEC_ROUND_DOWN
 
+-- | Round toward negative infinity.  If all discarded digits are
+-- zero or if the sign is zero, the result is unchanged.  Otherwise,
+-- the sign is 1 and the result coefficient is incremented by 1.
 roundFloor :: Round
 roundFloor = Round c'DEC_ROUND_FLOOR
 
+-- | Round zero or five away from zero.  The same as 'roundUp',
+-- except that rounding up occurs only if the digit to be rounded up
+-- is 0 or 5, and after overflow the result is the same as for
+-- 'roundDown'.
 round05Up :: Round
 round05Up = Round c'DEC_ROUND_05UP
 
-roundMax :: Round
-roundMax = Round c'DEC_ROUND_MAX
-
 -- # Status
 
+-- | A single error or warning condition that may be set in the
+-- 'Ctx'.
 newtype Flag = Flag C'uint32_t
   deriving (Eq, Ord, Show)
 
 -- Docs are a bit unclear about what status flags can actually be
 -- set; the source code reveals that these can be set.
 
+-- | @0/0@ is undefined.  It sets this flag and returns a quiet NaN.
 divisionUndefined :: Flag
 divisionUndefined = Flag c'DEC_Division_undefined
 
+-- | A non-zero dividend is divided by zero.  Unlike @0/0@, it has a
+-- defined result (a signed Infinity).
 divisionByZero :: Flag
 divisionByZero = Flag c'DEC_Division_by_zero
 
+-- | Sometimes raised by 'divideInteger' and 'remainder'.
 divisionImpossible :: Flag
 divisionImpossible = Flag c'DEC_Division_impossible
 
+-- | Raised on a variety of invalid operations, such as an attempt
+-- to use 'compareSignal' on an operand that is an NaN.
 invalidOperation :: Flag
 invalidOperation = Flag c'DEC_Invalid_operation
 
+-- | One or more non-zero coefficient digits were discarded during
+-- rounding.
 inexact :: Flag
 inexact = Flag c'DEC_Inexact
 
-invalidContext :: Flag
-invalidContext = Flag c'DEC_Invalid_context
-
+-- | A result is both subnormal and inexact.
 underflow :: Flag
 underflow = Flag c'DEC_Underflow
 
+-- | The exponent of a result is too large to be represented.
 overflow :: Flag
 overflow = Flag c'DEC_Overflow
 
+-- | A source string (for instance, in 'fromByteString') contained
+-- errors.
 conversionSyntax :: Flag
 conversionSyntax = Flag c'DEC_Conversion_syntax
+
+-- Invalid Context is not recreated here; it should never happen
 
 -- | A container for multiple 'Flag' indicating which are set and
 -- which are not.
 newtype Flags = Flags { unFlags :: C'uint32_t }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+-- | Show gives you a comma-separated list of flags that are set, or
+-- an empty string if no flags are set.
+instance Show Flags where
+  show = concat . intersperse ", " . flagList
 
 setFlag :: Flag -> Flags -> Flags
 setFlag (Flag f1) (Flags fA) = Flags (f1 .|. fA)
@@ -371,7 +411,6 @@ flagList fl = execWriter $ do
   f "divisionImpossible" divisionImpossible
   f "invalidOperation" invalidOperation
   f "inexact" inexact
-  f "invalidContext" invalidContext
   f "underflow" underflow
   f "overflow" overflow
   f "conversionSyntax" conversionSyntax
@@ -383,7 +422,7 @@ flagList fl = execWriter $ do
 -- computations occur within a @context@, which affects the manner
 -- in which computations are done (for instance, the context
 -- determines the rounding algorithm).  The context also carries
--- some results from computations (for instance, a computation might
+-- the flags that computations can set (for instance, a computation might
 -- set a flag to indicate that the result is rounded or inexact or
 -- was a division by zero.) The Ctx monad carries this context.
 newtype Ctx a = Ctx { unCtx :: Ptr C'decContext -> IO a }
@@ -428,7 +467,7 @@ setRound r = Ctx $ \cPtr -> do
   let pR = p'decContext'round cPtr
   poke pR . unRound $ r
 
--- | By default, rounding is half even.  No status flags are set
+-- | By default, rounding is set to 'roundHalfEven'.  No status flags are set
 -- initially.  Returns the final status flags along with the result
 -- of the computation.
 runCtx :: Ctx a -> (a, Flags)
@@ -449,40 +488,49 @@ evalCtx (Ctx k) = unsafePerformIO $ do
     k pCtx
 
 
-
 -- # Class
 
 -- | Different categories of 'Quad'.
 newtype DecClass = DecClass C'decClass
   deriving (Eq, Ord)
 
+-- | Signaling NaN
 sNan :: DecClass
 sNan = DecClass c'DEC_CLASS_SNAN
 
+-- | Quiet NaN
 qNan :: DecClass
 qNan = DecClass c'DEC_CLASS_QNAN
 
+-- | Negative infinity
 negInf :: DecClass
 negInf = DecClass c'DEC_CLASS_NEG_INF
 
+-- | Negative normal number
 negNormal :: DecClass
 negNormal = DecClass c'DEC_CLASS_NEG_NORMAL
 
+-- | Negative subnormal number
 negSubnormal :: DecClass
 negSubnormal = DecClass c'DEC_CLASS_NEG_SUBNORMAL
 
+-- | The negative zero
 negZero :: DecClass
 negZero = DecClass c'DEC_CLASS_NEG_ZERO
 
+-- | The positive zero
 posZero :: DecClass
 posZero = DecClass c'DEC_CLASS_POS_ZERO
 
+-- | A positive subnormal number
 posSubnormal :: DecClass
 posSubnormal = DecClass c'DEC_CLASS_POS_SUBNORMAL
 
+-- | A positive normal number
 posNormal :: DecClass
 posNormal = DecClass c'DEC_CLASS_POS_NORMAL
 
+-- | Positive infinity
 posInf :: DecClass
 posInf = DecClass c'DEC_CLASS_POS_INF
 
@@ -502,10 +550,7 @@ instance Show DecClass where
 
 
 -- | Decimal number.  This is immutable, like any Haskell value you
--- would ordinarily work with.  (Actually, that is a bit of a lie.
--- Under the covers it is a pointer to a C struct, which is in fact
--- mutable like anything in C.  However, no function exposed in this
--- API mutates a Quad's pointee after the Quad is created.)
+-- would ordinarily work with.
 --
 -- As indicated in the General Decimal Arithmetic specification,
 -- a 'Quad' might be a finite number (perhaps the most common type)
@@ -513,15 +558,44 @@ instance Show DecClass where
 -- you a little more about a particular 'Quad'.
 newtype Quad = Quad { unDec :: ForeignPtr C'decQuad }
 
+-- | The Show instance uses 'toByteString'.
 instance Show Quad where
   show = BS8.unpack . toByteString
+
+-- | A Quad is not a member of 'Eq' or 'Ord' because the semantics
+-- of the 'compare' function do not easily allow for this.  However,
+-- if you want to compare using a total ordering, you can wrap your
+-- 'Quad' in 'QuadT'.  For more on what a total ordering is, see
+--
+-- <http://speleotrove.com/decimal/decifaq4.html>
+--
+-- and look under @Which is larger? 7.5 or 7.500?@.  As this
+-- title suggests, when using a total ordering, @7.5@ and @7.500@
+-- are not equal.
+
+newtype QuadT = QuadT { unQuadT :: Quad }
+  deriving Show
+
+instance Eq QuadT where
+  QuadT x == QuadT y
+    | isZero (compareTotal x y) = False
+    | otherwise = True
+
+instance Ord QuadT where
+  compare (QuadT x) (QuadT y)
+    | isZero r = EQ
+    | isPositive r = GT
+    | otherwise = LT
+    where
+      r = compareTotal x y
+
+
+-- # Helpers.  Do not export these.
 
 -- | Creates a new Quad.  Uninitialized, so don't export this
 -- function.
 newQuad :: IO Quad
 newQuad = fmap Quad mallocForeignPtr
-
--- # Helpers
 
 type Unary
   = Ptr C'decQuad
@@ -674,7 +748,9 @@ add = binary unsafe'c'decQuadAdd
 -- | Digit-wise logical and.  Operands must be:
 --
 -- * zero or positive
+--
 -- * integers
+--
 -- * comprise only zeroes and/or ones
 --
 -- If not, 'invalidOperation' is set.
@@ -714,29 +790,37 @@ compareTotal = binaryCtxFree unsafe'c'decQuadCompareTotal
 compareTotalMag :: Quad -> Quad -> Quad
 compareTotalMag = binaryCtxFree unsafe'c'decQuadCompareTotalMag
 
--- | @copySign x y@ returns @z@, which is a copy of @x@ but has the
--- sign of @y@.  Unlike @decQuadCopySign@, the result is always
--- canonical.  This function never raises any signals.
-copySign :: Quad -> Quad -> Quad
-copySign fr to = unsafePerformIO $
-  newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
-  withForeignPtr (unDec fr) $ \pF ->
-  withForeignPtr (unDec to) $ \pT ->
-  unsafe'c'decQuadCopySign pR pF pT >>
-  unsafe'c'decQuadCanonical pR pR >>
-  return r
+-- decNumber's CopySign copies the contents from pS to PN, except
+-- that the sign is copied from pP to pN
 
+-- | @copySign x y@ returns @z@, which is a copy of @x@ but has the
+-- sign of @y@.  This function never raises any signals.
+copySign :: Quad -> Quad -> Quad
+copySign s p = unsafePerformIO $
+  newQuad >>= \n ->
+  withForeignPtr (unDec n) $ \pN ->
+  withForeignPtr (unDec s) $ \pS ->
+  withForeignPtr (unDec p) $ \pP ->
+  unsafe'c'decQuadCopySign pN pS pP >>
+  return n
+
+-- | Number of significant digits.
 digits :: Quad -> Int
 digits = fromIntegral . unaryGet unsafe'c'decQuadDigits
 
 divide :: Quad -> Quad -> Ctx Quad
 divide = binary unsafe'c'decQuadDivide
 
+-- | @divideInteger x y@ returns the integer part of the result
+-- (rounded toward zero), with an exponent of 0.  If the the result
+-- would not fit because it has too many digits,
+-- 'divisionImpossible' is set.
 divideInteger :: Quad -> Quad -> Ctx Quad
 divideInteger = binary unsafe'c'decQuadDivideInteger
 
--- | fused multiply add.
+-- | Fused multiply add; @fma x y z@ calculates @x * y + z@.  The
+-- multiply is carried out first and is exact, so the result has
+-- only one final rounding.
 fma :: Quad -> Quad -> Quad -> Ctx Quad
 fma = ternary unsafe'c'decQuadFMA
 
@@ -749,7 +833,7 @@ fromInt32 i = unsafePerformIO $
 
 -- | Reads a ByteString, which can be in scientific, engineering, or
 -- \"regular\" decimal notation.  Also reads NaN, Infinity, etc.
--- Will return a signaling NaN and set the Invalid flag if the
+-- Will return a signaling NaN and set 'invalidOperation' if the
 -- string given is invalid.
 --
 -- In the decNumber C library, this function was called
@@ -770,12 +854,23 @@ fromUInt32 i = unsafePerformIO $
   unsafe'c'decQuadFromUInt32 pR i >>
   return r
 
+-- | Digit-wise logical inversion.  The operand must be:
+--
+-- * zero or positive
+--
+-- * integers
+--
+-- * comprise only zeroes and/or ones
+--
+-- If not, 'invalidOperation' is set.
 invert :: Quad -> Ctx Quad
 invert = unary unsafe'c'decQuadInvert
 
+-- | True if @x@ is neither infinite nor a NaN.
 isFinite :: Quad -> Bool
 isFinite = boolean unsafe'c'decQuadIsFinite
 
+-- | True for infinities.
 isInfinite :: Quad -> Bool
 isInfinite = boolean unsafe'c'decQuadIsInfinite
 
@@ -790,6 +885,7 @@ isInteger = boolean unsafe'c'decQuadIsInteger
 isLogical :: Quad -> Bool
 isLogical = boolean unsafe'c'decQuadIsLogical
 
+-- | True for NaNs.
 isNaN :: Quad -> Bool
 isNaN = boolean unsafe'c'decQuadIsNaN
 
@@ -823,40 +919,63 @@ isSubnormal = boolean unsafe'c'decQuadIsSubnormal
 isZero :: Quad -> Bool
 isZero = boolean unsafe'c'decQuadIsZero
 
+-- | @logB x@ Returns the adjusted exponent of x, according to IEEE
+-- 754 rules.  If @x@ is infinite, returns +Infinity.  If @x@ is
+-- zero, the result is -Infinity, and 'divisionByZero' is set.  If
+-- @x@ is less than zero, the absolute value of @x@ is used.  If @x@
+-- is one, the result is 0.  NaNs are propagated as for arithmetic
+-- operations.
 logB :: Quad -> Ctx Quad
 logB = unary unsafe'c'decQuadLogB
 
+-- | @max x y@ returns the larger argument; if either (but not both)
+-- @x@ or @y@ is a quiet NaN then the other argument is the result;
+-- otherwise, NaNs, are handled as for arithmetic operations.
 max :: Quad -> Quad -> Ctx Quad
 max = binary unsafe'c'decQuadMax
 
+-- | Like 'max' but the absolute values of the arguments are used.
 maxMag :: Quad -> Quad -> Ctx Quad
 maxMag = binary unsafe'c'decQuadMaxMag
 
+-- | @min x y@ returns the smaller argument; if either (but not both)
+-- @x@ or @y@ is a quiet NaN then the other argument is the result;
+-- otherwise, NaNs, are handled as for arithmetic operations.
 min :: Quad -> Quad -> Ctx Quad
 min = binary unsafe'c'decQuadMin
 
+-- | Like 'min' but the absolute values of the arguments are used.
 minMag :: Quad -> Quad -> Ctx Quad
 minMag = binary unsafe'c'decQuadMinMag
 
+-- | Negation.  Result has the same effect as @0 - x@ when the
+-- exponent of the zero is the same as that of @x@, if @x@ is
+-- finite.
 minus :: Quad -> Ctx Quad
 minus = unary unsafe'c'decQuadMinus
 
 multiply :: Quad -> Quad -> Ctx Quad
 multiply = binary unsafe'c'decQuadMultiply
 
+-- | Decrements toward negative infinity.
 nextMinus :: Quad -> Ctx Quad
 nextMinus = unary unsafe'c'decQuadNextMinus
 
+-- | Increments toward positive infinity.
 nextPlus :: Quad -> Ctx Quad
 nextPlus = unary unsafe'c'decQuadNextPlus
 
+-- | @nextToward x y@ returns the next 'Quad' in the direction of
+-- @y@.
 nextToward :: Quad -> Quad -> Ctx Quad
 nextToward = binary unsafe'c'decQuadNextToward
 
 -- | Digit wise logical inclusive Or.  Operands must be:
 --
 -- * zero or positive
+--
 -- * integers
+--
 -- * comprise only zeroes and/or ones
 --
 -- If not, 'invalidOperation' is set.
@@ -876,18 +995,35 @@ plus = unary unsafe'c'decQuadPlus
 quantize :: Quad -> Quad -> Ctx Quad
 quantize = binary unsafe'c'decQuadQuantize
 
+-- | Reduces coefficient to its shortest possible form without
+-- changing the value of the result by removing all possible
+-- trailing zeroes.
 reduce :: Quad -> Ctx Quad
 reduce = unary unsafe'c'decQuadReduce
 
+-- | Remainder from integer division.  If the intermediate integer
+-- does not fit within a Quad, 'divisionImpossible' is raised.
 remainder :: Quad -> Quad -> Ctx Quad
 remainder = binary unsafe'c'decQuadRemainder
 
+-- | Like 'remainder' but the nearest integer is used for for the
+-- intermediate result instead of the result from 'divideInteger'.
 remainderNear :: Quad -> Quad -> Ctx Quad
 remainderNear = binary unsafe'c'decQuadRemainderNear
 
+-- | @rotate x y@ rotates the digits of x to the left (if @y@ is
+-- positive) or right (if @y@ is negative) without adjusting the
+-- exponent or sign of @x@.  @y@ is the number of positions to
+-- rotate and must be in the range @negate 'coefficientLen'@ to
+-- @'coefficentLen'@.
+--
+-- NaNs are propagated as usual.  No status is set unless @y@ is
+-- invalid or an operand is an NaN.
 rotate :: Quad -> Quad -> Ctx Quad
 rotate = binary unsafe'c'decQuadRotate
 
+-- | True only if both operands have the same exponent or are both
+-- NaNs (quiet or signaling) or both infinite.
 sameQuantum :: Quad -> Quad -> Bool
 sameQuantum x y = unsafePerformIO $
   withForeignPtr (unDec x) $ \pX ->
@@ -898,9 +1034,24 @@ sameQuantum x y = unsafePerformIO $
     0 -> False
     _ -> error "sameQuantum: error: invalid result"
 
+-- | @scaleB x y@ calculates @x * 10 ^ y@.  @y@ must be an integer
+-- (finite with exponent of 0) in the range of plus or minus @2 *
+-- 'coefficientLen' + 'coefficientLen')@, typically resulting from
+-- 'logB'.  Underflow and overflow might occur; NaNs propagate as
+-- usual.
 scaleB :: Quad -> Quad -> Ctx Quad
 scaleB = binary unsafe'c'decQuadScaleB
 
+-- | @shift x y@ shifts digits to the left (if @y@ is positive) or
+-- right (if @y@ is negative) without adjusting the exponent or
+-- sign of @y@.  Any digits shiften in from the left or right will
+-- be 0.
+--
+-- @y@ is a count of positions to shift; it must be a finite
+-- integer in the range @negate 'coefficientLen'@ to
+-- 'coefficientLen'.  NaNs propagate as usual.  If @x@ is infinite
+-- the result is an infinity of the same sign.  No status is set
+-- unless y is invalid or the operand is an NaN.
 shift :: Quad -> Quad -> Ctx Quad
 shift = binary unsafe'c'decQuadShift
 
@@ -917,15 +1068,32 @@ subtract = binary unsafe'c'decQuadSubtract
 toEngByteString :: Quad -> BS8.ByteString
 toEngByteString = mkString unsafe'c'decQuadToEngString
 
+-- | Uses the rounding method given rather than the one in the
+-- 'Ctx'.  If the operand is infinite, an NaN, or if the result of
+-- rounding is outside the range of a 'C'int32_t', then
+-- 'invalidOperation' is set.  'inexact' is not set even if rounding
+-- occurred.
 toInt32 :: Round -> Quad -> Ctx C'int32_t
 toInt32 = getRounded unsafe'c'decQuadToInt32
 
+-- | Like 'toInt32' but if rounding removes non-zero digits then
+-- 'inexact' is set.
 toInt32Exact :: Round -> Quad -> Ctx C'int32_t
 toInt32Exact = getRounded unsafe'c'decQuadToInt32Exact
 
+-- | Rounds to an integral using the rounding mode set in the 'Ctx'.
+-- If the operand is infinite, an infinity of the same sign is
+-- returned.  If the operand is an NaN, the result is the same as
+-- for other arithmetic operations.  If rounding removes non-zero
+-- digits then 'inexact' is set.
 toIntegralExact :: Quad -> Ctx Quad
 toIntegralExact = unary unsafe'c'decQuadToIntegralExact
 
+-- | @toIntegralValue r x@ returns an integral value of @x@ using
+-- the rounding mode @r@ rather than the one specified in the 'Ctx'.
+-- If the operand is an NaN, the result is the same as for other
+-- arithmetic operations.  'inexact' is not set even if rounding
+-- occurred.
 toIntegralValue :: Round -> Quad -> Ctx Quad
 toIntegralValue (Round rnd) d = Ctx $ \pC ->
   withForeignPtr (unDec d) $ \pD ->
@@ -944,19 +1112,41 @@ toIntegralValue (Round rnd) d = Ctx $ \pC ->
 toByteString :: Quad -> BS8.ByteString
 toByteString = mkString unsafe'c'decQuadToString
 
+-- | @toUInt32 r x@ returns the value of @x@, rounded to an integer
+-- if necessary using the rounding mode @r@ rather than the one
+-- given in the 'Ctx'.  If @x@ is infinite, or outside of the range
+-- of a 'C'uint32_t', then 'invalidOperation' is set.  'inexact' is
+-- not set even if rounding occurs.
+--
+-- The negative zero converts to 0 and is valid, but negative
+-- numbers are not valid.
 toUInt32 :: Round -> Quad -> Ctx C'uint32_t
 toUInt32 = getRounded unsafe'c'decQuadToUInt32
 
+-- | Same as 'toUInt32' but if rounding removes non-zero digits then
+-- 'inexact' is set.
 toUInt32Exact :: Round -> Quad -> Ctx C'uint32_t
 toUInt32Exact = getRounded unsafe'c'decQuadToUInt32Exact
 
+-- | Identifies the version of the decNumber C library.
 version :: BS8.ByteString
 version = unsafePerformIO $
   unsafe'c'decQuadVersion >>= BS8.packCString
 
+-- | Digit-wise logical exclusive or.  Operands must be:
+--
+-- * zero or positive
+--
+-- * integers
+--
+-- * comprise only zeroes and/or ones
+--
+-- If not, 'invalidOperation' is set.
+
 xor :: Quad -> Quad -> Ctx Quad
 xor = binary unsafe'c'decQuadXor
 
+-- | A Quad whose coefficient, exponent, and sign are all 0.
 zero :: Quad
 zero = unsafePerformIO $
   newQuad >>= \d ->
@@ -1039,7 +1229,7 @@ exponent i
   where
     (l, h) = minMaxExp
 
-
+-- | An Exponent whose value is 0.
 zeroExponent :: Exponent
 zeroExponent = Exponent 0
 
@@ -1049,12 +1239,16 @@ data Value
   | NaN NaN Payload
   deriving (Eq, Ord, Show)
 
+-- | A pure Haskell type which holds information identical to that
+-- in a 'Quad'.
 data Decoded = Decoded
   { dSign :: Sign
   , dValue :: Value
   } deriving (Eq, Ord, Show)
 
 
+-- | Decodes a 'Quad' to a pure Haskell type which holds identical
+-- information.
 toBCD :: Quad -> Decoded
 toBCD d = unsafePerformIO $
   withForeignPtr (unDec d) $ \pD ->
@@ -1065,8 +1259,7 @@ toBCD d = unsafePerformIO $
   peekArray c'DECQUAD_Pmax pArr >>= \coef ->
   return (getDecoded sgn ex coef)
 
--- | Encodes a new 'Quad'.  The result is always canonical.  However,
--- the function does not signal if the result is an sNaN.
+-- | Encodes a new 'Quad'.
 fromBCD :: Decoded -> Quad
 fromBCD dcd = unsafePerformIO $
   newQuad >>= \d ->
@@ -1076,6 +1269,8 @@ fromBCD dcd = unsafePerformIO $
   unsafe'c'decQuadFromBCD pD expn pArr sgn >>
   return d
 
+
+-- ## Decoding and encoding helpers
 
 toDecNumberBCD :: Decoded -> (C'int32_t, [C'uint8_t], C'int32_t)
 toDecNumberBCD (Decoded s v) = (e, ds, sgn)
@@ -1142,6 +1337,9 @@ intToDigit i = case i of
 newtype Coefficient = Coefficient { unCoefficient :: [Digit] }
   deriving (Eq, Ord, Show)
 
+-- | Creates a 'Coefficient'.  Checks to ensure it is not null and
+-- that it is not longer than 'coefficientLen' and that it does not
+-- have leading zeroes (if it is 0, a single 'D0' is allowed).
 coefficient :: [Digit] -> Maybe Coefficient
 coefficient ls
   | null ls = Nothing
@@ -1149,22 +1347,27 @@ coefficient ls
   | length ls > coefficientLen = Nothing
   | otherwise = Just . Coefficient $ ls
 
--- | A list of digits, less than or equal to 'payloadDigitsLen'
--- long.
+-- | A list of digits, less than or equal to 'payloadLen'
+-- long.  Accompanies an NaN, potentially with diagnostic
+-- information (I do not know if decNumber actually makes use of
+-- this.)
 newtype Payload = Payload { unPayload :: [Digit] }
   deriving (Eq, Ord, Show)
 
-payloadDigits :: [Digit] -> Maybe Payload
-payloadDigits ds
+-- | Creates a 'Payload'.  Checks to ensure it is not null and
+-- that it is not longer than 'payloadLen' and that it does not
+-- have leading zeroes (if it is 0, a single 'D0' is allowed).
+payload :: [Digit] -> Maybe Payload
+payload ds
   | null ds = Nothing
   | length ds > 1 && head ds == D0 = Nothing
-  | length ds > payloadDigitsLen = Nothing
+  | length ds > payloadLen = Nothing
   | otherwise = Just . Payload $ ds
 
 
 -- | The most significant digit is at the head of the list.
-digitsToIntegral :: [Digit] -> Integer
-digitsToIntegral ls = go (length ls - 1) 0 ls
+digitsToInteger :: [Digit] -> Integer
+digitsToInteger ls = go (length ls - 1) 0 ls
   where
     go c t ds = case ds of
       [] -> t
@@ -1172,7 +1375,7 @@ digitsToIntegral ls = go (length ls - 1) 0 ls
                   t' = m + t
                   c' = c - 1
                   _types = c :: Int
-              in t' `seq` c' `seq` go c' t' xs
+              in go c' t' xs
 
 -- | The most significant digit is at
 -- the head of the list.  Sign of number is not relevant.
@@ -1185,11 +1388,13 @@ integralToDigits = reverse . go . Prelude.abs
           let (d, m) = i `divMod` 10
           in intToDigit m : go d
 
+-- | Maximum number of digits in a coefficient.
 coefficientLen :: Int
 coefficientLen = c'DECQUAD_Pmax
 
-payloadDigitsLen :: Int
-payloadDigitsLen = c'DECQUAD_Pmax - 1
+-- | Maximum number of digits in a payload.
+payloadLen :: Int
+payloadLen = c'DECQUAD_Pmax - 1
 
 -- # Decoded predicates
 

@@ -173,7 +173,7 @@ genInfinite gs = do
 -- ## NaN number generators
 
 payloadDigits :: (Gen E.Digit, Gen E.Digit) -> Gen [E.Digit]
-payloadDigits = sizedDigits E.payloadDigitsLen
+payloadDigits = sizedDigits E.payloadLen
 
 genNaN :: Gen E.NaN
 genNaN = elements [ E.Quiet, E.Signaling ]
@@ -188,7 +188,7 @@ genNaNDcd gs gn gd = do
   s <- gs
   ds <- gd
   n <- gn
-  let pay = case E.payloadDigits ds of
+  let pay = case E.payload ds of
         Nothing -> error "genNaNDcd: payload failed"
         Just r -> r
   return $ E.Decoded s (E.NaN n pay)
@@ -290,7 +290,7 @@ genSigned = oneof
 genRound :: Gen E.Round
 genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
   E.roundHalfEven, E.roundHalfDown, E.roundDown, E.roundFloor,
-  E.round05Up, E.roundMax ]
+  E.round05Up ]
 
 
 -- # Test builders
