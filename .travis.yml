@@ -11,4 +11,4 @@ before_install:
 script:
   - cabal configure --enable-tests
   - cabal build
-  - cabal test --show-details=always
+  - dist/build/tasty-test/tasty-test --quickcheck-max-size=100 --quickcheck-tests=5000
