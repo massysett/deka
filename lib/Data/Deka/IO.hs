@@ -1,5 +1,25 @@
 {-# LANGUAGE Safe #-}
 
+-- Safe Haskell
+--
+-- This module is Safe, but not only to satisfy Safe Haskell.  It
+-- also makes the module easier to test.  Because all computations
+-- happen in a newtype wrapped IO monad, it is possible to test
+-- functions to ensure they are not mutating the pointees of the
+-- Quad type.  To test, you assemble a computation in the Env or Ctx
+-- monad that decodes a Quad, uses the Quad in a computation, and
+-- then decodes the Quad again.  If the decoded result changed, you
+-- have a problem.  If these functions were exported as pure
+-- functions, I'm not sure how I could test this property.
+--
+-- If you really wanted the context-free functions to be pure, you
+-- could store the decQuad data directly within the Quad type rather
+-- than in a C pointer.  This would eliminate the need to test
+-- for mutation.  However, this would necessitate marshalling
+-- data for every decQuad call, which does not seem to make much
+-- sense considering that nearly all work happens in C rather than
+-- in Haskell.
+
 -- | Floating-point decimals.
 --
 -- This uses the decNumber C library, so you will want to read the
