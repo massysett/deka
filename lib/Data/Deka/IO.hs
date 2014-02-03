@@ -1022,10 +1022,21 @@ data NaN
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | The minimum and maximum possible exponent.
+--
+-- Decimal Arithmetic Specification version 1.70, page 10, says that
+-- the minimum and maximum adjusted exponent is given by
+--
+-- @-x - (c - 1) + 1@ and @x - (c - 1)@
+--
+-- where x is (roughly speaking) Emax and c is the number of digits
+-- in the coefficient.
+--
+-- However, this is only for normal numbers.  When you include
+-- subnormal numbers, the
+--
 -- If the coefficient has c digits, and Emax is x, the exponent e
 -- is within the closed-ended range
 --
--- @-x - (c - 1) + 1@ and @x - (c - 1)@
 --
 -- See Decimal Arithmetic Specification version 1.70, page 10.
 minMaxExp :: Coefficient -> (Exponent, Exponent)
@@ -1044,8 +1055,7 @@ minNormal = AdjustedExp c'DECQUAD_Emin
 -- | Like 'minNormal', but returns the size of the regular exponent
 -- rather than the adjusted exponent.
 minNormalExp :: Coefficient -> Exponent
-minNormalExp (Coefficient ls) =
-  Exponent $ c'DECQUAD_Emin - length ls + 1
+minNormalExp c = adjustedToExponent c $ minNormal
 
 -- | The signed integer which indicates the power of ten by which
 -- the coefficient is multiplied.
