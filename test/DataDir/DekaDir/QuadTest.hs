@@ -11,7 +11,6 @@
 module DataDir.DekaDir.QuadTest where
 
 import Control.Applicative
-import Control.Exception (evaluate)
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad
 import Test.Tasty
@@ -134,19 +133,17 @@ genFiniteDcd
   -> (E.Coefficient -> Gen Int)
   -- ^ Generate exponent
   -> Gen E.Decoded
-genFiniteDcd gs gc ge = go
-  where
-    go = sized $ \sz -> do
-      s <- gs
-      ds <- gc
-      let coe = case E.coefficient ds of
-            Nothing -> error "genFinite: coefficient failed"
-            Just r -> r
-      e <- ge coe
-      let ex = case E.exponent e of
-            Nothing -> error "genFiniteDcd: exponent failed"
-            Just r -> r
-      return $ E.Decoded s (E.Finite coe ex)
+genFiniteDcd gs gc ge = do
+  s <- gs
+  ds <- gc
+  let coe = case E.coefficient ds of
+        Nothing -> error "genFinite: coefficient failed"
+        Just r -> r
+  e <- ge coe
+  let ex = case E.exponent e of
+        Nothing -> error "genFiniteDcd: exponent failed"
+        Just r -> r
+  return $ E.Decoded s (E.Finite coe ex)
 
 rangedExponent
   :: (Int, Int)
@@ -255,12 +252,12 @@ genNormal = genFiniteDcd genSign gd ge
 genSubnormal :: Gen E.Decoded
 genSubnormal = genFiniteDcd genSign gd ge
   where
-    gd = sizedDigits E.coefficientLen decimalDigs
+    gd = sizedDigits (E.coefficientLen - 1) decimalDigs
     ge c =
       let minNrml = E.unExponent . E.minNormalExp $ c
-          minE = E.unExponent . fst . E.minMaxExp $ c
-          f | minE > minNrml - 1 = return Nothing
-            | otherwise = fmap Just $ choose (minE, minNrml - 1)
+          minE = fst E.minMaxExp
+          f | minE > minNrml - 1 = error "genSubnormal failed"
+            | otherwise = choose (minE, minNrml - 1)
       in f
 
 genPositive :: Gen E.Decoded
@@ -712,7 +709,7 @@ tests = testGroup "IO"
         forAll genDecoded $ \d ->
           let q = E.fromBCD d
               bs = E.toByteString q
-              q' = E.fromByteString bs
+              q' = E.evalCtx $ E.fromByteString bs
               d' = E.toBCD q'
               desc = "toByteString: " ++ BS8.unpack bs
                 ++ " toBCD: " ++ show d'
@@ -839,8 +836,8 @@ tests = testGroup "IO"
             return $ case E.dValue dcd of
               E.Infinite -> False
               E.NaN _ _ -> False
-              E.Finite _ e ->
-                let digs = E.unCoefficient e
+              E.Finite c _ ->
+                let digs = E.unCoefficient c
                 in all (== E.D0) digs || last digs /= E.D0
       ]
     ]
