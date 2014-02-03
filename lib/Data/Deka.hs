@@ -10,9 +10,9 @@ module Data.Deka
 
 import Control.Arrow hiding (left)
 import Control.Monad.Trans.Class
-import Data.Deka.Pure
+import Data.Deka.Quad
 import Data.List (intersperse)
-import qualified Data.Deka.Pure as P
+import qualified Data.Deka.Quad as P
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad.Trans.Either
 
@@ -50,7 +50,7 @@ cmpDec x y = do
 
 cmpDecTotal :: Quad -> Quad -> EitherT String Ctx Ordering
 cmpDecTotal x y = do
-  r <- lift . liftEnv $ P.compareTotal x y
+  let r = P.compareTotal x y
   decToOrd r
 
 eqDecTotal :: Quad -> Quad -> EitherT String Ctx Bool
@@ -76,16 +76,16 @@ runIf dflt a rs = do
 decToOrd :: Quad -> EitherT String Ctx Ordering
 decToOrd d
   = runIf (left "decToOrd: non-finite operand")
-          (lift . liftEnv . isFinite $ d)
+          (return $ isFinite d)
   .  successfulPair (left "decToOrd: nonsense result")
-  . map (first (lift . liftEnv))
+  . map (first return)
   $ [ (isPositive d, GT)
     , (isZero d, EQ)
     , (isNegative d, LT)
     ]
 
 showDec :: Quad -> String
-showDec = BS8.unpack . runEnv . toByteString
+showDec = BS8.unpack . toByteString
 
 newtype Deka = Deka { unDeka :: Quad }
 
@@ -113,7 +113,7 @@ instance Num Deka where
     | f isNegative = fromInteger (-1)
     | otherwise = fromInteger 1
     where
-      f g = runEnv . g $ x
+      f g = g x
   fromInteger = either (error . ("Deka: fromInteger: error: " ++))
     id . integralToDeka
 
@@ -136,7 +136,7 @@ integralToDeka i = do
       . P.coefficient . P.integralToDigits $ i
   let d = Decoded sgn (Finite coe zeroExponent)
       sgn = if i < 0 then Sign1 else Sign0
-  return . Deka . runEnv $ fromBCD d
+  return . Deka $ fromBCD d
 
 strToDeka :: String -> Either String Deka
 strToDeka s =
@@ -146,6 +146,6 @@ strToDeka s =
     case flagsErrorMessage fl of
       Left e -> return $ Left e
       Right _ -> do
-        fin <- liftEnv $ isFinite d
+        let fin = isFinite d
         return $ if not fin then (Left "result not finite")
           else Right d

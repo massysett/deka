@@ -1,25 +1,5 @@
 {-# LANGUAGE Trustworthy #-}
 
--- Safe Haskell
---
--- This module is Safe, but not only to satisfy Safe Haskell.  It
--- also makes the module easier to test.  Because all computations
--- happen in a newtype wrapped IO monad, it is possible to test
--- functions to ensure they are not mutating the pointees of the
--- Quad type.  To test, you assemble a computation in the Env or Ctx
--- monad that decodes a Quad, uses the Quad in a computation, and
--- then decodes the Quad again.  If the decoded result changed, you
--- have a problem.  If these functions were exported as pure
--- functions, I'm not sure how I could test this property.
---
--- If you really wanted the context-free functions to be pure, you
--- could store the decQuad data directly within the Quad type rather
--- than in a C pointer.  This would eliminate the need to test
--- for mutation.  However, this would necessitate marshalling
--- data for every decQuad call, which does not seem to make much
--- sense considering that nearly all work happens in C rather than
--- in Haskell.
-
 -- | Floating-point decimals.
 --
 -- This uses the decNumber C library, so you will want to read the
@@ -90,10 +70,6 @@ module Data.Deka.Quad
   , emptyFlags
   , flagList
 
-  -- * Env monad
-  , Env
-  , runEnvIO
-
   -- * Ctx monad
   , Ctx
   , getStatus
@@ -101,7 +77,7 @@ module Data.Deka.Quad
   , getRound
   , setRound
   , runCtx
-  , liftEnv
+  , evalCtx
 
   -- * Class
   , DecClass
@@ -248,8 +224,8 @@ module Data.Deka.Quad
 
   -- * Decoded predicates
 
-  -- | These duplicate the tests that are available in the Env
-  -- monad.
+  -- | These duplicate the tests that are available for the Quad
+  -- type directly.
   , dIsFinite
   , dIsInfinite
   , dIsInteger
@@ -401,38 +377,6 @@ flagList fl = execWriter $ do
   f "conversionSyntax" conversionSyntax
 
 
--- | The Env monad
---
--- Since Deka is a binding to a C library, all the work happens in
--- the mutable land of C pointers.  That means that everything
--- happens in the IO monad.  The Env monad is simply a wrapper of
--- the IO monad.  Since the Env data constructor is not exported,
--- you can't do arbitrary IO computations in the monad; you can only
--- do the computations from this module.  Because all the
--- computations in this module do not create observable side
--- effects, it is safe to use 'unsafePerformIO' to perform Env
--- computations in a pure function.  This module does not have such
--- a function so that this module can stay Safe for Safe Haskell
--- purposes; however, the "Data.Deka.Pure" module does have such a
--- function.
-
-newtype Env a = Env { runEnvIO :: IO a }
-
-instance Functor Env where
-  fmap = liftM
-
-instance Applicative Env where
-  pure = return
-  (<*>) = ap
-
-instance Monad Env where
-  return = Env . return
-  Env a >>= f = Env $ do
-    r1 <- a
-    runEnvIO $ f r1
-  fail = Env . fail
-
-
 -- | The Ctx monad
 --
 -- The General Decimal Arithmetic specification states that most
@@ -442,20 +386,6 @@ instance Monad Env where
 -- some results from computations (for instance, a computation might
 -- set a flag to indicate that the result is rounded or inexact or
 -- was a division by zero.) The Ctx monad carries this context.
---
--- Conceptually the Ctx monad includes the Env monad.  Any Env
--- computation can be lifted into a Ctx computation with a
--- 'liftEnv'.  You will do most computations in the Ctx monad;
--- however, on occasion it is useful to do computations entirely in
--- the Env monad.  You know that computations entirely in the Env
--- monad are unaffected by, and cannot affect, the context.
---
--- The Ctx monad captures both the context and the IO.  Because
--- 'Quad' is exposed only as an immutable type, and because there is
--- no way to do arbitrary IO in the Ctx monad (which is why it is
--- not an instance of the 'MonadIO' class), it is safe to put an
--- 'unsafePerformIO' on Ctx computations so they can be done in pure
--- functions.
 newtype Ctx a = Ctx { unCtx :: Ptr C'decContext -> IO a }
 
 instance Functor Ctx where
@@ -472,10 +402,6 @@ instance Monad Ctx where
     let b = unCtx $ f r1
     b p
   fail s = Ctx $ \_ -> fail s
-
--- | Lifts an Env computation into a Ctx.
-liftEnv :: Env a -> Ctx a
-liftEnv (Env k) = Ctx $ \_ -> k
 
 -- | The current status flags, which indicate results from previous
 -- computations.
@@ -513,6 +439,16 @@ runCtx (Ctx k) = unsafePerformIO $ do
     res <- k pCtx
     fl' <- fmap Flags . peek . p'decContext'status $ pCtx
     return (res, fl')
+
+-- | Like 'runCtx' but does not return the final flags.
+evalCtx :: Ctx a -> a
+evalCtx (Ctx k) = unsafePerformIO $ do
+  fp <- mallocForeignPtr
+  withForeignPtr fp $ \pCtx -> do
+    _ <- c'decContextDefault pCtx c'DEC_INIT_DECQUAD
+    k pCtx
+
+
 
 -- # Class
 
