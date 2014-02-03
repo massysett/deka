@@ -47,7 +47,7 @@
 -- might want to do
 --
 -- > import qualified Data.Deka.Pure as D
-module Data.Deka.IO
+module Data.Deka.Quad
   (
     -- * Quad
     Quad
