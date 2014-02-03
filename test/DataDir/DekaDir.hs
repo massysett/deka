@@ -3,10 +3,8 @@
 module DataDir.DekaDir where
 
 import Test.Tasty
-import qualified DataDir.DekaDir.IOTest
-import qualified DataDir.DekaDir.PureTest
+import qualified DataDir.DekaDir.QuadTest
 
 tests = testGroup "DekaDir"
-  [ DataDir.DekaDir.IOTest.tests
-  , DataDir.DekaDir.PureTest.tests
+  [ DataDir.DekaDir.QuadTest.tests
   ]

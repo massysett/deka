@@ -1,4 +1,4 @@
--- | Tests for the IO module.
+-- | Tests for the Quad module.
 --
 -- The object of these tests is not to test decNumber but, rather,
 -- to test Deka to ensure there are no transposed arguments or other
@@ -8,7 +8,7 @@
 --
 -- encoding and decoding must also be thoroughly tested as this can
 -- be quite error prone.
-module DataDir.DekaDir.IOTest where
+module DataDir.DekaDir.QuadTest where
 
 import Control.Applicative
 import qualified Data.ByteString.Char8 as BS8
