@@ -256,7 +256,7 @@ genSubnormal :: Gen E.Decoded
 genSubnormal = genFiniteDcd genSign gd ge
   where
     gd = sizedDigits E.coefficientLen decimalDigs
-    ge _ c =
+    ge c =
       let minNrml = E.unExponent . E.minNormalExp $ c
           minE = E.unExponent . fst . E.minMaxExp $ c
           f | minE > minNrml - 1 = return Nothing
