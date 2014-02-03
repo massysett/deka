@@ -513,6 +513,9 @@ instance Show DecClass where
 -- you a little more about a particular 'Quad'.
 newtype Quad = Quad { unDec :: ForeignPtr C'decQuad }
 
+instance Show Quad where
+  show = BS8.unpack . toByteString
+
 -- | Creates a new Quad.  Uninitialized, so don't export this
 -- function.
 newQuad :: IO Quad

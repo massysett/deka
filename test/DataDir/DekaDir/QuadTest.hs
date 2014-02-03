@@ -131,7 +131,7 @@ genFiniteDcd
   :: Gen E.Sign
   -> Gen [E.Digit]
   -- ^ Generate coefficient
-  -> (E.Sign -> E.Coefficient -> Gen (Maybe Int))
+  -> Gen Int
   -- ^ Generate exponent
   -> Gen E.Decoded
 genFiniteDcd gs gc ge = go
@@ -142,37 +142,29 @@ genFiniteDcd gs gc ge = go
       let coe = case E.coefficient ds of
             Nothing -> error "genFinite: coefficient failed"
             Just r -> r
-      mayI <- ge s coe
-      case mayI of
-        Nothing -> resize (sz + 1) go
-        Just i ->
-          let ce = case E.coeffExp coe i of
-                Left _ -> error "genFinite: coeffExp failed"
-                Right g -> g 
-          in return $ E.Decoded s (E.Finite ce)
+      e <- ge
+      let ex = case E.exponent e of
+            Nothing -> error "genFiniteDcd: exponent failed"
+            Just r -> r
+      return $ E.Decoded s (E.Finite coe e)
 
 rangedExponent
   :: (Int, Int)
   -- ^ Minimum and maximum exponent.  Exponent will never exceed
   -- allowable values.
-  -> E.Coefficient
   -> Gen Int
-rangedExponent (em, ex) c = do
+rangedExponent (em, ex) = do
   let (mPE, xPE) = E.minMaxExp c
-      (mP, xP) = (E.unExponent mPE, E.unExponent xPE)
-      (mR, xR) = (max em mP, min ex xP)
+      (mR, xR) = (max em mPE, min ex xPE)
   choose (mR, xR)
 
-sizedExponent :: E.Coefficient -> Gen Int
-sizedExponent co = sized $ \s ->
+sizedExponent :: Gen Int
+sizedExponent = sized $ \s ->
   let x = s ^ (2 :: Int)
-  in rangedExponent (negate x, x) co
+  in rangedExponent (negate x, x)
 
-fullExpRange :: E.Coefficient -> Gen Int
-fullExpRange c =
-  let (m, x) = E.minMaxExp c
-      (mi, xi) = (E.unExponent m, E.unExponent x)
-  in choose (mi, xi)
+fullExpRange :: Gen Int
+fullExpRange = rangedExponent E.minMaxExp
 
 -- ## Infinite number generators
 
@@ -217,15 +209,14 @@ genDecoded = frequency [(4, genFinite), (1, inf), (1, nan)]
 -- | Generates finite decoded numbers.
 genFinite :: Gen E.Decoded
 genFinite = genFiniteDcd genSign (coeffDigits decimalDigs)
-            (const (fmap (fmap Just) sizedExponent))
+            sizedExponent
  
 
 -- ## Specialized finite generators
 
 -- | Generates positive and negative zeroes.
 genZero :: Gen E.Decoded
-genZero = genFiniteDcd genSign (return [E.D0])
-            (const (fmap (fmap Just) fullExpRange))
+genZero = genFiniteDcd genSign (return [E.D0]) fullExpRange
 
 -- | Generates positive one.
 genOne :: Gen E.Decoded
@@ -242,7 +233,7 @@ genNonZeroSmallFinite = maxSize 5 $ genFiniteDcd genSign
   gd ge
   where
     gd = sizedDigits E.coefficientLen decimalDigs
-    ge = const (fmap (fmap Just) sizedExponent)
+    ge = sizedExponent
 
 genInteger :: Gen E.Decoded
 genInteger = genFiniteDcd genSign
@@ -293,8 +284,7 @@ genSignaling = genNaNDcd genSign (return E.Signaling)
 
 genSigned :: Gen E.Decoded
 genSigned = oneof
-  [ genFiniteDcd (return E.Sign1) (coeffDigits decimalDigs)
-      (const (fmap (fmap Just) sizedExponent))
+  [ genFiniteDcd (return E.Sign1) (coeffDigits decimalDigs) sizedExponent
   , genNaNDcd (return E.Sign1) genNaN (payloadDigits decimalDigs)
   , genInfinite (return E.Sign1)
   ]
