@@ -55,8 +55,7 @@ library
   exposed-modules:     
       Data.Deka
     , Data.Deka.Decnumber
-    , Data.Deka.IO
-    , Data.Deka.Pure
+    , Data.Deka.Quad
     , Data.Deka.Docs
     , Data.Deka.Docs.Examples
   
