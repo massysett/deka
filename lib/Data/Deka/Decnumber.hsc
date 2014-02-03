@@ -1,5 +1,4 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-{-# LANGUAGE Safe #-}
 -- Bindings-dsl sometimes shadows in do notation
 -- Bindings-dsl imports unused things
 
@@ -46,7 +45,7 @@ module Data.Deka.Decnumber where
 
 -- decContext
 #num DEC_INIT_DECQUAD
-#ccall decContextDefault , Ptr <decContext> -> <int32_t> -> IO (Ptr <decContext>)
+#ccall_unsafe decContextDefault , Ptr <decContext> -> <int32_t> -> IO (Ptr <decContext>)
 
 #integral_t enum decClass
 #num DEC_CLASS_SNAN
@@ -124,89 +123,89 @@ module Data.Deka.Decnumber where
 
 -- Utilities
 
-#ccall decQuadToInt32 , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <int32_t>
-#ccall decQuadToInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <int32_t>
+#ccall_unsafe decQuadToInt32 , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <int32_t>
+#ccall_unsafe decQuadToInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <int32_t>
 
-#ccall decQuadFromInt32 , Ptr <decQuad> -> <int32_t> -> IO (Ptr <decQuad>)
-#ccall decQuadFromPacked , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> IO (Ptr <decQuad>)
-#ccall decQuadFromPackedChecked , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> IO (Ptr <decQuad>)
-#ccall decQuadFromUInt32 , Ptr <decQuad> -> <uint32_t> -> IO (Ptr <decQuad>)
-#ccall decQuadFromString , Ptr <decQuad> -> CString -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadGetCoefficient , Ptr <decQuad> -> Ptr <uint8_t> -> IO <int32_t>
-#ccall decQuadGetExponent , Ptr <decQuad> -> IO <int32_t>
-#ccall decQuadSetCoefficient , Ptr <decQuad> -> Ptr <uint8_t> -> <int32_t> -> IO (Ptr <decQuad>)
-#ccall decQuadSetExponent , Ptr <decQuad> -> Ptr <decContext> -> <int32_t> -> IO (Ptr <decQuad>)
-#ccall decQuadShow , Ptr <decQuad> -> CString -> IO ()
-#ccall decQuadToEngString , Ptr <decQuad> -> CString -> IO CString
-#ccall decQuadToString , Ptr <decQuad> -> CString -> IO CString
-#ccall decQuadToUInt32 , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <uint32_t>
-#ccall decQuadToUInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <uint32_t>
-#ccall decQuadZero , Ptr <decQuad> -> IO (Ptr <decQuad>)
-#ccall decQuadAbs , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadAdd , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadAnd , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadDivide , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadDivideInteger , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadFMA , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadFromBCD , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> <int32_t> -> IO (Ptr <decQuad>)
-#ccall decQuadInvert , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadLogB , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadMax , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadMaxMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadMin , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadMinMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadMinus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadMultiply , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadNextMinus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadNextPlus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadNextToward , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadOr , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadPlus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadQuantize , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadReduce , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadRemainder , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadRemainderNear , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadRotate , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadScaleB , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadShift , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadSubtract , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadToBCD , Ptr <decQuad> -> Ptr <int32_t> -> Ptr <uint8_t> -> IO <int32_t>
-#ccall decQuadToIntegralValue , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO (Ptr <decQuad>)
-#ccall decQuadToIntegralExact , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadXor , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadFromInt32 , Ptr <decQuad> -> <int32_t> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadFromPacked , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadFromPackedChecked , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadFromUInt32 , Ptr <decQuad> -> <uint32_t> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadFromString , Ptr <decQuad> -> CString -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadGetCoefficient , Ptr <decQuad> -> Ptr <uint8_t> -> IO <int32_t>
+#ccall_unsafe decQuadGetExponent , Ptr <decQuad> -> IO <int32_t>
+#ccall_unsafe decQuadSetCoefficient , Ptr <decQuad> -> Ptr <uint8_t> -> <int32_t> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadSetExponent , Ptr <decQuad> -> Ptr <decContext> -> <int32_t> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadShow , Ptr <decQuad> -> CString -> IO ()
+#ccall_unsafe decQuadToEngString , Ptr <decQuad> -> CString -> IO CString
+#ccall_unsafe decQuadToString , Ptr <decQuad> -> CString -> IO CString
+#ccall_unsafe decQuadToUInt32 , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <uint32_t>
+#ccall_unsafe decQuadToUInt32Exact , Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO <uint32_t>
+#ccall_unsafe decQuadZero , Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadAbs , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadAdd , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadAnd , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadDivide , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadDivideInteger , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadFMA , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadFromBCD , Ptr <decQuad> -> <int32_t> -> Ptr <uint8_t> -> <int32_t> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadInvert , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadLogB , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadMax , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadMaxMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadMin , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadMinMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadMinus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadMultiply , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadNextMinus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadNextPlus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadNextToward , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadOr , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadPlus , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadQuantize , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadReduce , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadRemainder , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadRemainderNear , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadRotate , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadScaleB , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadShift , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadSubtract , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadToBCD , Ptr <decQuad> -> Ptr <int32_t> -> Ptr <uint8_t> -> IO <int32_t>
+#ccall_unsafe decQuadToIntegralValue , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> <enum rounding> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadToIntegralExact , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadXor , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
 
 -- Comparisons
 
-#ccall decQuadCompare , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadCompareSignal , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
-#ccall decQuadCompareTotal , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
-#ccall decQuadCompareTotalMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadCompare , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadCompareSignal , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decContext> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadCompareTotal , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadCompareTotalMag , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
 
 -- Copies
-#ccall decQuadCanonical , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
-#ccall decQuadCopyAbs , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
-#ccall decQuadCopyNegate , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
-#ccall decQuadCopySign , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
-#ccall decQuadCopy , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadCanonical , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadCopyAbs , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadCopyNegate , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadCopySign , Ptr <decQuad> -> Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
+#ccall_unsafe decQuadCopy , Ptr <decQuad> -> Ptr <decQuad> -> IO (Ptr <decQuad>)
 
 -- Non-computational
 
-#ccall decQuadClass , Ptr <decQuad> -> IO <decClass>
-#ccall decQuadClassString , Ptr <decQuad> -> IO CString
-#ccall decQuadDigits , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsCanonical , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsFinite , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsInteger , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsLogical , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsInfinite , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsNaN , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsNegative , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsNormal , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsPositive , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsSignaling , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsSigned , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsSubnormal , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadIsZero , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadRadix , Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadSameQuantum , Ptr <decQuad> -> Ptr <decQuad> -> IO <uint32_t>
-#ccall decQuadVersion , IO CString
+#ccall_unsafe decQuadClass , Ptr <decQuad> -> IO <decClass>
+#ccall_unsafe decQuadClassString , Ptr <decQuad> -> IO CString
+#ccall_unsafe decQuadDigits , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsCanonical , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsFinite , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsInteger , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsLogical , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsInfinite , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsNaN , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsNegative , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsNormal , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsPositive , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsSignaling , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsSigned , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsSubnormal , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadIsZero , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadRadix , Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadSameQuantum , Ptr <decQuad> -> Ptr <decQuad> -> IO <uint32_t>
+#ccall_unsafe decQuadVersion , IO CString

@@ -435,7 +435,7 @@ runCtx :: Ctx a -> (a, Flags)
 runCtx (Ctx k) = unsafePerformIO $ do
   fp <- mallocForeignPtr
   withForeignPtr fp $ \pCtx -> do
-    _ <- c'decContextDefault pCtx c'DEC_INIT_DECQUAD
+    _ <- unsafe'c'decContextDefault pCtx c'DEC_INIT_DECQUAD
     res <- k pCtx
     fl' <- fmap Flags . peek . p'decContext'status $ pCtx
     return (res, fl')
@@ -445,7 +445,7 @@ evalCtx :: Ctx a -> a
 evalCtx (Ctx k) = unsafePerformIO $ do
   fp <- mallocForeignPtr
   withForeignPtr fp $ \pCtx -> do
-    _ <- c'decContextDefault pCtx c'DEC_INIT_DECQUAD
+    _ <- unsafe'c'decContextDefault pCtx c'DEC_INIT_DECQUAD
     k pCtx
 
 
@@ -663,10 +663,10 @@ getRounded f (Round r) d = Ctx $ \pC ->
 -- | Absolute value.  NaNs are handled normally (the sign of an NaN
 -- is not affected, and an sNaN sets 'invalidOperation'.
 abs :: Quad -> Ctx Quad
-abs = unary c'decQuadAbs
+abs = unary unsafe'c'decQuadAbs
 
 add :: Quad -> Quad -> Ctx Quad
-add = binary c'decQuadAdd
+add = binary unsafe'c'decQuadAdd
 
 -- | Digit-wise logical and.  Operands must be:
 --
@@ -676,11 +676,11 @@ add = binary c'decQuadAdd
 --
 -- If not, 'invalidOperation' is set.
 and :: Quad -> Quad -> Ctx Quad
-and = binary c'decQuadAnd
+and = binary unsafe'c'decQuadAnd
 
 -- | More information about a particular 'Quad'.
 decClass :: Quad -> DecClass
-decClass = DecClass . unaryGet c'decQuadClass
+decClass = DecClass . unaryGet unsafe'c'decQuadClass
 
 -- | Compares two 'Quad' numerically.  The result might be @-1@, @0@,
 -- @1@, or NaN, where @-1@ means x is less than y, @0@ indicates
@@ -691,12 +691,12 @@ decClass = DecClass . unaryGet c'decQuadClass
 -- result might be an NaN.
 --
 compare :: Quad -> Quad -> Ctx Quad
-compare = binary c'decQuadCompare
+compare = binary unsafe'c'decQuadCompare
 
 -- | Same as 'compare', but a quietNaN is treated like a signaling
 -- NaN (sets 'invalidOperation').
 compareSignal :: Quad -> Quad -> Ctx Quad
-compareSignal = binary c'decQuadCompareSignal
+compareSignal = binary unsafe'c'decQuadCompareSignal
 
 -- | Compares using an IEEE 754 total ordering, which takes into
 -- account the exponent.  IEEE 754 says that this function might
@@ -704,12 +704,12 @@ compareSignal = binary c'decQuadCompareSignal
 -- canonical; 'Quad' are always canonical so you don't need to worry
 -- about that here.
 compareTotal :: Quad -> Quad -> Quad
-compareTotal = binaryCtxFree c'decQuadCompareTotal
+compareTotal = binaryCtxFree unsafe'c'decQuadCompareTotal
 
 -- | Same as 'compareTotal' but compares the absolute value of the
 -- two arguments.
 compareTotalMag :: Quad -> Quad -> Quad
-compareTotalMag = binaryCtxFree c'decQuadCompareTotalMag
+compareTotalMag = binaryCtxFree unsafe'c'decQuadCompareTotalMag
 
 -- | @copySign x y@ returns @z@, which is a copy of @x@ but has the
 -- sign of @y@.  Unlike @decQuadCopySign@, the result is always
@@ -720,28 +720,28 @@ copySign fr to = unsafePerformIO $
   withForeignPtr (unDec r) $ \pR ->
   withForeignPtr (unDec fr) $ \pF ->
   withForeignPtr (unDec to) $ \pT ->
-  c'decQuadCopySign pR pF pT >>
-  c'decQuadCanonical pR pR >>
+  unsafe'c'decQuadCopySign pR pF pT >>
+  unsafe'c'decQuadCanonical pR pR >>
   return r
 
 digits :: Quad -> Int
-digits = fromIntegral . unaryGet c'decQuadDigits
+digits = fromIntegral . unaryGet unsafe'c'decQuadDigits
 
 divide :: Quad -> Quad -> Ctx Quad
-divide = binary c'decQuadDivide
+divide = binary unsafe'c'decQuadDivide
 
 divideInteger :: Quad -> Quad -> Ctx Quad
-divideInteger = binary c'decQuadDivideInteger
+divideInteger = binary unsafe'c'decQuadDivideInteger
 
 -- | fused multiply add.
 fma :: Quad -> Quad -> Quad -> Ctx Quad
-fma = ternary c'decQuadFMA
+fma = ternary unsafe'c'decQuadFMA
 
 fromInt32 :: C'int32_t -> Quad
 fromInt32 i = unsafePerformIO $
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
-  c'decQuadFromInt32 pR i
+  unsafe'c'decQuadFromInt32 pR i
   >> return r
 
 -- | Reads a ByteString, which can be in scientific, engineering, or
@@ -757,98 +757,98 @@ fromByteString s = Ctx $ \pC ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
   BS8.useAsCString s $ \pS ->
-  c'decQuadFromString pR pS pC >>
+  unsafe'c'decQuadFromString pR pS pC >>
   return r
 
 fromUInt32 :: C'uint32_t -> Quad
 fromUInt32 i = unsafePerformIO $
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
-  c'decQuadFromUInt32 pR i >>
+  unsafe'c'decQuadFromUInt32 pR i >>
   return r
 
 invert :: Quad -> Ctx Quad
-invert = unary c'decQuadInvert
+invert = unary unsafe'c'decQuadInvert
 
 isFinite :: Quad -> Bool
-isFinite = boolean c'decQuadIsFinite
+isFinite = boolean unsafe'c'decQuadIsFinite
 
 isInfinite :: Quad -> Bool
-isInfinite = boolean c'decQuadIsInfinite
+isInfinite = boolean unsafe'c'decQuadIsInfinite
 
 -- | True if @x@ is finite and has exponent of @0@; False otherwise.
 -- This can lead to unexpected results; for instance, 3 x 10 ^ 2 is
 -- 300, but this function will return False.
 isInteger :: Quad -> Bool
-isInteger = boolean c'decQuadIsInteger
+isInteger = boolean unsafe'c'decQuadIsInteger
 
 -- | True only if @x@ is zero or positive, an integer (finite with
 -- exponent of 0), and the coefficient is only zeroes and/or ones.
 isLogical :: Quad -> Bool
-isLogical = boolean c'decQuadIsLogical
+isLogical = boolean unsafe'c'decQuadIsLogical
 
 isNaN :: Quad -> Bool
-isNaN = boolean c'decQuadIsNaN
+isNaN = boolean unsafe'c'decQuadIsNaN
 
 -- | True only if @x@ is less than zero and is not an NaN.
 isNegative :: Quad -> Bool
-isNegative = boolean c'decQuadIsNegative
+isNegative = boolean unsafe'c'decQuadIsNegative
 
 -- | True only if @x@ is finite, non-zero, and not subnormal.
 isNormal :: Quad -> Bool
-isNormal = boolean c'decQuadIsNormal
+isNormal = boolean unsafe'c'decQuadIsNormal
 
 -- | True only if @x@ is greater than zero and is not an NaN.
 isPositive :: Quad -> Bool
-isPositive = boolean c'decQuadIsPositive
+isPositive = boolean unsafe'c'decQuadIsPositive
 
 -- | True only if @x@ is a signaling NaN.
 isSignaling :: Quad -> Bool
-isSignaling = boolean c'decQuadIsSignaling
+isSignaling = boolean unsafe'c'decQuadIsSignaling
 
 -- | True only if @x@ has a sign of 1.  Note that zeroes and NaNs
 -- may have sign of 1.
 isSigned :: Quad -> Bool
-isSigned = boolean c'decQuadIsSigned
+isSigned = boolean unsafe'c'decQuadIsSigned
 
 -- | True only if @x@ is subnormal - that is, finite, non-zero, and
 -- with a magnitude less than 10 ^ emin.
 isSubnormal :: Quad -> Bool
-isSubnormal = boolean c'decQuadIsSubnormal
+isSubnormal = boolean unsafe'c'decQuadIsSubnormal
 
 -- | True only if @x@ is a zero.
 isZero :: Quad -> Bool
-isZero = boolean c'decQuadIsZero
+isZero = boolean unsafe'c'decQuadIsZero
 
 logB :: Quad -> Ctx Quad
-logB = unary c'decQuadLogB
+logB = unary unsafe'c'decQuadLogB
 
 max :: Quad -> Quad -> Ctx Quad
-max = binary c'decQuadMax
+max = binary unsafe'c'decQuadMax
 
 maxMag :: Quad -> Quad -> Ctx Quad
-maxMag = binary c'decQuadMaxMag
+maxMag = binary unsafe'c'decQuadMaxMag
 
 min :: Quad -> Quad -> Ctx Quad
-min = binary c'decQuadMin
+min = binary unsafe'c'decQuadMin
 
 minMag :: Quad -> Quad -> Ctx Quad
-minMag = binary c'decQuadMinMag
+minMag = binary unsafe'c'decQuadMinMag
 
 minus :: Quad -> Ctx Quad
-minus = unary c'decQuadMinus
+minus = unary unsafe'c'decQuadMinus
 
 multiply :: Quad -> Quad -> Ctx Quad
-multiply = binary c'decQuadMultiply
+multiply = binary unsafe'c'decQuadMultiply
 
 nextMinus :: Quad -> Ctx Quad
-nextMinus = unary c'decQuadNextMinus
+nextMinus = unary unsafe'c'decQuadNextMinus
 
 nextPlus :: Quad -> Ctx Quad
-nextPlus = unary c'decQuadNextPlus
+nextPlus = unary unsafe'c'decQuadNextPlus
 
 nextToward :: Quad -> Quad -> Ctx Quad
-nextToward = binary c'decQuadNextToward
+nextToward = binary unsafe'c'decQuadNextToward
 
 -- | Digit wise logical inclusive Or.  Operands must be:
 --
@@ -858,53 +858,53 @@ nextToward = binary c'decQuadNextToward
 --
 -- If not, 'invalidOperation' is set.
 or :: Quad -> Quad -> Ctx Quad
-or = binary c'decQuadOr
+or = binary unsafe'c'decQuadOr
 
 -- | Same effect as @0 + x@ where the exponent of the zero is the
 -- same as that of @x@ if @x@ is finite).  NaNs are handled as for
 -- arithmetic operations.
 plus :: Quad -> Ctx Quad
-plus = unary c'decQuadPlus
+plus = unary unsafe'c'decQuadPlus
 
 -- | @quantize x y@ returns @z@ which is @x@ set to have the same
 -- quantum as @y@; that is, numerically the same value but rounded
 -- or padded if necessary to have the same exponent as @y@.  Useful
 -- for rounding monetary quantities.
 quantize :: Quad -> Quad -> Ctx Quad
-quantize = binary c'decQuadQuantize
+quantize = binary unsafe'c'decQuadQuantize
 
 reduce :: Quad -> Ctx Quad
-reduce = unary c'decQuadReduce
+reduce = unary unsafe'c'decQuadReduce
 
 remainder :: Quad -> Quad -> Ctx Quad
-remainder = binary c'decQuadRemainder
+remainder = binary unsafe'c'decQuadRemainder
 
 remainderNear :: Quad -> Quad -> Ctx Quad
-remainderNear = binary c'decQuadRemainderNear
+remainderNear = binary unsafe'c'decQuadRemainderNear
 
 rotate :: Quad -> Quad -> Ctx Quad
-rotate = binary c'decQuadRotate
+rotate = binary unsafe'c'decQuadRotate
 
 sameQuantum :: Quad -> Quad -> Bool
 sameQuantum x y = unsafePerformIO $
   withForeignPtr (unDec x) $ \pX ->
   withForeignPtr (unDec y) $ \pY ->
-  c'decQuadSameQuantum pX pY >>= \r ->
+  unsafe'c'decQuadSameQuantum pX pY >>= \r ->
   return $ case r of
     1 -> True
     0 -> False
     _ -> error "sameQuantum: error: invalid result"
 
 scaleB :: Quad -> Quad -> Ctx Quad
-scaleB = binary c'decQuadScaleB
+scaleB = binary unsafe'c'decQuadScaleB
 
 shift :: Quad -> Quad -> Ctx Quad
-shift = binary c'decQuadShift
+shift = binary unsafe'c'decQuadShift
 
 -- omitted: Show
 
 subtract :: Quad -> Quad -> Ctx Quad
-subtract = binary c'decQuadSubtract
+subtract = binary unsafe'c'decQuadSubtract
 
 -- | Returns a string in engineering notation.
 --
@@ -912,23 +912,23 @@ subtract = binary c'decQuadSubtract
 -- name is changed here because the function does not return a
 -- regular Haskell 'String'.
 toEngByteString :: Quad -> BS8.ByteString
-toEngByteString = mkString c'decQuadToEngString
+toEngByteString = mkString unsafe'c'decQuadToEngString
 
 toInt32 :: Round -> Quad -> Ctx C'int32_t
-toInt32 = getRounded c'decQuadToInt32
+toInt32 = getRounded unsafe'c'decQuadToInt32
 
 toInt32Exact :: Round -> Quad -> Ctx C'int32_t
-toInt32Exact = getRounded c'decQuadToInt32Exact
+toInt32Exact = getRounded unsafe'c'decQuadToInt32Exact
 
 toIntegralExact :: Quad -> Ctx Quad
-toIntegralExact = unary c'decQuadToIntegralExact
+toIntegralExact = unary unsafe'c'decQuadToIntegralExact
 
 toIntegralValue :: Round -> Quad -> Ctx Quad
 toIntegralValue (Round rnd) d = Ctx $ \pC ->
   withForeignPtr (unDec d) $ \pD ->
   newQuad >>= \r ->
   withForeignPtr (unDec r) $ \pR ->
-  c'decQuadToIntegralValue pR pD pC rnd >>
+  unsafe'c'decQuadToIntegralValue pR pD pC rnd >>
   return r
 
 -- | Converts a 'Quad' to a string.  May use non-scientific
@@ -939,26 +939,26 @@ toIntegralValue (Round rnd) d = Ctx $ \pC ->
 -- was changed here because this function doesn't return a Haskell
 -- 'String'.
 toByteString :: Quad -> BS8.ByteString
-toByteString = mkString c'decQuadToString
+toByteString = mkString unsafe'c'decQuadToString
 
 toUInt32 :: Round -> Quad -> Ctx C'uint32_t
-toUInt32 = getRounded c'decQuadToUInt32
+toUInt32 = getRounded unsafe'c'decQuadToUInt32
 
 toUInt32Exact :: Round -> Quad -> Ctx C'uint32_t
-toUInt32Exact = getRounded c'decQuadToUInt32Exact
+toUInt32Exact = getRounded unsafe'c'decQuadToUInt32Exact
 
 version :: BS8.ByteString
 version = unsafePerformIO $
-  c'decQuadVersion >>= BS8.packCString
+  unsafe'c'decQuadVersion >>= BS8.packCString
 
 xor :: Quad -> Quad -> Ctx Quad
-xor = binary c'decQuadXor
+xor = binary unsafe'c'decQuadXor
 
 zero :: Quad
 zero = unsafePerformIO $
   newQuad >>= \d ->
   withForeignPtr (unDec d) $ \pD ->
-  c'decQuadZero pD >>
+  unsafe'c'decQuadZero pD >>
   return d
 
 -- # Conversions
@@ -1057,7 +1057,7 @@ toBCD d = unsafePerformIO $
   withForeignPtr (unDec d) $ \pD ->
   allocaBytes c'DECQUAD_Pmax $ \pArr ->
   alloca $ \pExp ->
-  c'decQuadToBCD pD pExp pArr >>= \sgn ->
+  unsafe'c'decQuadToBCD pD pExp pArr >>= \sgn ->
   peek pExp >>= \ex ->
   peekArray c'DECQUAD_Pmax pArr >>= \coef ->
   return (getDecoded sgn ex coef)
@@ -1070,7 +1070,7 @@ fromBCD dcd = unsafePerformIO $
   withForeignPtr (unDec d) $ \pD ->
   let (expn, digs, sgn) = toDecNumberBCD dcd in
   withArray digs $ \pArr ->
-  c'decQuadFromBCD pD expn pArr sgn >>
+  unsafe'c'decQuadFromBCD pD expn pArr sgn >>
   return d
 
 
