@@ -40,13 +40,11 @@ instance Monad Ctx where
     b p
   fail s = Ctx $ \_ -> fail s
 
--- | Decimal number.  This is immutable, like any Haskell value you
--- would ordinarily work with.
---
--- As indicated in the General Decimal Arithmetic specification,
--- a 'Quad' might be a finite number (perhaps the most common type)
--- or it might be infinite or a not-a-number.  'decClass' will tell
--- you a little more about a particular 'Quad'.
+-- | Decimal number.  As indicated in the General Decimal
+-- Arithmetic specification, a 'Quad' might be a finite number
+-- (perhaps the most common type) or it might be infinite or a
+-- not-a-number.  'decClass' will tell you a little more about a
+-- particular 'Quad'.
 newtype Quad = Quad { unQuad :: ForeignPtr C'decQuad }
 
 -- | The Show instance uses 'toByteString'.
