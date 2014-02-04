@@ -715,6 +715,32 @@ tests = testGroup "IO"
                 ++ " toBCD: " ++ show d'
           in printTestCase desc $ d' == d
       ]
+
+    , testProperty ("fromBCD and (fromByteString . scientific) "
+        ++ "give same result") $
+      forAll genDecoded $ \d ->
+      let qD = E.fromBCD d
+          (qS, fl) = E.runCtx . E.fromByteString
+                      . BS8.pack . E.scientific $ d
+          compared = E.isZero $ E.compareTotal qD qS
+      in compared && fl == E.emptyFlags
+
+    , testProperty ("fromBCD and (fromByteString . ordinary) "
+        ++ "give results that compare equal") $
+      forAll genDecoded $ \d ->
+      let qD = E.fromBCD d
+          str = E.ordinary d
+          (qS, fl) = E.runCtx . E.fromByteString
+                      . BS8.pack $ str
+          cmpResult 
+            | E.isNormal qD = E.runCtx $ E.compare qD qS
+            | otherwise = E.runCtx . return $ E.compareTotal qD qS
+          noFlags f = f == E.emptyFlags
+          desc = "string: " ++ str
+            ++ " fromByteString result: " ++ show qS
+      in noFlags fl && noFlags (snd cmpResult)
+          ==> printTestCase desc
+              (E.isZero (fst cmpResult))
     ]
 
   , testGroup "arithmetic"

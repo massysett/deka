@@ -186,6 +186,7 @@ module Data.Deka.Quad
   , Digit(..)
   , digitToInt
   , intToDigit
+  , digitToChar
   , digitsToInteger
   , integralToDigits
 
@@ -221,6 +222,8 @@ module Data.Deka.Quad
   --- ** Conversion functions
   , fromBCD
   , toBCD
+  , scientific
+  , ordinary
 
   -- ** Decoded predicates
 
@@ -1313,6 +1316,82 @@ getDecoded sgn ex coef = Decoded s v
           [] -> [D0]
           xs -> xs
 
+-- ## Decoded to scientific and ordinary notation
+
+-- | Converts a Decoded to scientific notation.  Unlike
+-- 'toByteString' this will always use scientific notation.  For
+-- NaNs and infinities, the notation is identical to that of
+-- decNumber  (see Decimal Arithmetic Specification page 19).  This
+-- means that a quiet NaN is @NaN@ while a signaling NaN is @sNaN@,
+-- and infinity is @Infinity@.
+--
+-- Like decQuadToString, the payload of an NaN is not shown if it is
+-- zero.
+
+scientific :: Decoded -> String
+scientific d = sign ++ rest
+  where
+    sign = case dSign d of
+      Sign0 -> ""
+      Sign1 -> "-"
+    rest = case dValue d of
+      Infinite -> "Infinity"
+      Finite c e -> sciFinite c e
+      NaN n p -> sciNaN n p
+
+sciFinite :: Coefficient -> Exponent -> String
+sciFinite c e = sCoe ++ 'E':sExp
+  where
+    sCoe = case unCoefficient c of
+      x:xs -> digitToChar x : case xs of
+        [] -> []
+        _ -> '.' : map digitToChar xs
+      [] -> error "sciFinite: empty coefficient"
+    sExp = show . unAdjustedExp . adjustedExp c $ e
+
+sciNaN :: NaN -> Payload -> String
+sciNaN n p = nStr ++ pStr
+  where
+    nStr = case n of { Quiet -> "NaN"; Signaling -> "sNaN" }
+    pStr = case unPayload p of
+      [D0] -> ""
+      xs -> map digitToChar xs
+
+-- | Converts Decoded to ordinary decimal notation.  For NaNs and
+-- infinities, the notation is identical to that of 'scientific'.
+-- Unlike 'scientific', though the result can always be converted back
+-- to a 'Quad' using 'fromByteString', the number of significant
+-- digits might change.  For example, though @1.2E3@ has two
+-- significant digits, using @ordinary@ on this value and then
+-- reading it back in with @fromByteString@ will give you @1200E0@,
+-- which has four significant digits.
+
+ordinary :: Decoded -> String
+ordinary d = sign ++ rest
+  where
+    sign = case dSign d of
+      Sign0 -> ""
+      Sign1 -> "-"
+    rest = case dValue d of
+      Infinite -> "Infinity"
+      Finite c e -> onyFinite c e
+      NaN n p -> sciNaN n p
+
+onyFinite :: Coefficient -> Exponent -> String
+onyFinite c e
+  | coe == [D0] = "0"
+  | ex >= 0 = map digitToChar coe ++ replicate ex '0'
+  | aex < lCoe =
+      let (lft, rt) = splitAt (lCoe - aex) coe
+      in map digitToChar lft ++ "." ++ map digitToChar rt
+  | otherwise =
+      let numZeroes = aex - lCoe
+      in "0." ++ replicate numZeroes '0' ++ map digitToChar coe
+  where
+    ex = unExponent e
+    coe = unCoefficient c
+    aex = Prelude.abs ex
+    lCoe = length coe
 
 -- ## Digits
 
@@ -1330,6 +1409,11 @@ intToDigit i = case i of
   { 0 -> D0; 1 -> D1; 2 -> D2; 3 -> D3; 4 -> D4;
     5 -> D5; 6 -> D6; 7 -> D7; 8 -> D8; 9 -> D9;
     _ -> error "intToDigit: integer out of range" }
+
+digitToChar :: Digit -> Char
+digitToChar d = case d of
+  { D0 -> '0'; D1 -> '1'; D2 -> '2'; D3 -> '3'; D4 -> '4';
+    D5 -> '5'; D6 -> '6'; D7 -> '7'; D8 -> '8'; D9 -> '9' }
 
 
 -- | A list of digits, less than or equal to 'coefficientLen' long.
@@ -1354,9 +1438,9 @@ coefficient ls
 newtype Payload = Payload { unPayload :: [Digit] }
   deriving (Eq, Ord, Show)
 
--- | Creates a 'Payload'.  Checks to ensure it is not null and
--- that it is not longer than 'payloadLen' and that it does not
--- have leading zeroes (if it is 0, a single 'D0' is allowed).
+-- | Creates a 'Payload'.  Checks to ensure it is not null, not
+-- longer than 'payloadLen' and that it does not have leading zeroes
+-- (if it is 0, a single 'D0' is allowed).
 payload :: [Digit] -> Maybe Payload
 payload ds
   | null ds = Nothing
