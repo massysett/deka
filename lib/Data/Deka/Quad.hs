@@ -572,8 +572,8 @@ unary
   -> Ctx Quad
 unary f d = Ctx $ \ptrC ->
   newQuad >>= \r ->
-  withForeignPtr (unDec d) $ \ptrX ->
-  withForeignPtr (unDec r) $ \ptrR ->
+  withForeignPtr (unQuad d) $ \ptrX ->
+  withForeignPtr (unQuad r) $ \ptrR ->
   f ptrR ptrX ptrC >>
   return r
 
@@ -591,9 +591,9 @@ binary
   -> Ctx Quad
 binary f x y = Ctx $ \pC ->
   newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
-  withForeignPtr (unDec x) $ \pX ->
-  withForeignPtr (unDec y) $ \pY ->
+  withForeignPtr (unQuad r) $ \pR ->
+  withForeignPtr (unQuad x) $ \pX ->
+  withForeignPtr (unQuad y) $ \pY ->
   f pR pX pY pC >>
   return r
 
@@ -610,9 +610,9 @@ binaryCtxFree
   -> Quad
 binaryCtxFree f x y = unsafePerformIO $
   newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
-  withForeignPtr (unDec x) $ \pX ->
-  withForeignPtr (unDec y) $ \pY ->
+  withForeignPtr (unQuad r) $ \pR ->
+  withForeignPtr (unQuad x) $ \pX ->
+  withForeignPtr (unQuad y) $ \pY ->
   f pR pX pY >>
   return r
 
@@ -625,7 +625,7 @@ unaryGet
   -> Quad
   -> a
 unaryGet f d = unsafePerformIO $
-  withForeignPtr (unDec d) $ \pD -> f pD
+  withForeignPtr (unQuad d) $ \pD -> f pD
 
 type Ternary
   = Ptr C'decQuad
@@ -643,10 +643,10 @@ ternary
   -> Ctx Quad
 ternary f x y z = Ctx $ \pC ->
   newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
-  withForeignPtr (unDec x) $ \pX ->
-  withForeignPtr (unDec y) $ \pY ->
-  withForeignPtr (unDec z) $ \pZ ->
+  withForeignPtr (unQuad r) $ \pR ->
+  withForeignPtr (unQuad x) $ \pX ->
+  withForeignPtr (unQuad y) $ \pY ->
+  withForeignPtr (unQuad z) $ \pZ ->
   f pR pX pY pZ pC
   >> return r
 
@@ -659,7 +659,7 @@ boolean
   -> Quad
   -> Bool
 boolean f d = unsafePerformIO $
-  withForeignPtr (unDec d) $ \pD ->
+  withForeignPtr (unQuad d) $ \pD ->
   f pD >>= \r ->
   return $ case r of
     1 -> True
@@ -681,7 +681,7 @@ getRounded
   -> Quad
   -> Ctx a
 getRounded f (Round r) d = Ctx $ \pC ->
-  withForeignPtr (unDec d) $ \pD ->
+  withForeignPtr (unQuad d) $ \pD ->
   f pD pC r
 
 -- # End Helpers
@@ -749,9 +749,9 @@ compareTotalMag = binaryCtxFree unsafe'c'decQuadCompareTotalMag
 copySign :: Quad -> Quad -> Quad
 copySign s p = unsafePerformIO $
   newQuad >>= \n ->
-  withForeignPtr (unDec n) $ \pN ->
-  withForeignPtr (unDec s) $ \pS ->
-  withForeignPtr (unDec p) $ \pP ->
+  withForeignPtr (unQuad n) $ \pN ->
+  withForeignPtr (unQuad s) $ \pS ->
+  withForeignPtr (unQuad p) $ \pP ->
   unsafe'c'decQuadCopySign pN pS pP >>
   return n
 
@@ -778,7 +778,7 @@ fma = ternary unsafe'c'decQuadFMA
 fromInt32 :: C'int32_t -> Quad
 fromInt32 i = unsafePerformIO $
   newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
+  withForeignPtr (unQuad r) $ \pR ->
   unsafe'c'decQuadFromInt32 pR i
   >> return r
 
@@ -793,7 +793,7 @@ fromInt32 i = unsafePerformIO $
 fromByteString :: BS8.ByteString -> Ctx Quad
 fromByteString s = Ctx $ \pC ->
   newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
+  withForeignPtr (unQuad r) $ \pR ->
   BS8.useAsCString s $ \pS ->
   unsafe'c'decQuadFromString pR pS pC >>
   return r
@@ -801,7 +801,7 @@ fromByteString s = Ctx $ \pC ->
 fromUInt32 :: C'uint32_t -> Quad
 fromUInt32 i = unsafePerformIO $
   newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
+  withForeignPtr (unQuad r) $ \pR ->
   unsafe'c'decQuadFromUInt32 pR i >>
   return r
 
@@ -977,8 +977,8 @@ rotate = binary unsafe'c'decQuadRotate
 -- NaNs (quiet or signaling) or both infinite.
 sameQuantum :: Quad -> Quad -> Bool
 sameQuantum x y = unsafePerformIO $
-  withForeignPtr (unDec x) $ \pX ->
-  withForeignPtr (unDec y) $ \pY ->
+  withForeignPtr (unQuad x) $ \pX ->
+  withForeignPtr (unQuad y) $ \pY ->
   unsafe'c'decQuadSameQuantum pX pY >>= \r ->
   return $ case r of
     1 -> True
@@ -1047,9 +1047,9 @@ toIntegralExact = unary unsafe'c'decQuadToIntegralExact
 -- occurred.
 toIntegralValue :: Round -> Quad -> Ctx Quad
 toIntegralValue (Round rnd) d = Ctx $ \pC ->
-  withForeignPtr (unDec d) $ \pD ->
+  withForeignPtr (unQuad d) $ \pD ->
   newQuad >>= \r ->
-  withForeignPtr (unDec r) $ \pR ->
+  withForeignPtr (unQuad r) $ \pR ->
   unsafe'c'decQuadToIntegralValue pR pD pC rnd >>
   return r
 
@@ -1094,7 +1094,7 @@ xor = binary unsafe'c'decQuadXor
 zero :: Quad
 zero = unsafePerformIO $
   newQuad >>= \d ->
-  withForeignPtr (unDec d) $ \pD ->
+  withForeignPtr (unQuad d) $ \pD ->
   unsafe'c'decQuadZero pD >>
   return d
 
@@ -1195,7 +1195,7 @@ data Decoded = Decoded
 -- information.
 toBCD :: Quad -> Decoded
 toBCD d = unsafePerformIO $
-  withForeignPtr (unDec d) $ \pD ->
+  withForeignPtr (unQuad d) $ \pD ->
   allocaBytes c'DECQUAD_Pmax $ \pArr ->
   alloca $ \pExp ->
   unsafe'c'decQuadToBCD pD pExp pArr >>= \sgn ->
@@ -1207,7 +1207,7 @@ toBCD d = unsafePerformIO $
 fromBCD :: Decoded -> Quad
 fromBCD dcd = unsafePerformIO $
   newQuad >>= \d ->
-  withForeignPtr (unDec d) $ \pD ->
+  withForeignPtr (unQuad d) $ \pD ->
   let (expn, digs, sgn) = toDecNumberBCD dcd in
   withArray digs $ \pArr ->
   unsafe'c'decQuadFromBCD pD expn pArr sgn >>

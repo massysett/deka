@@ -366,9 +366,9 @@ imuUni n f = testProperty desc $
   monadicIO $
   let k cPtr = do
         d <- evaluate $ E.fromBCD dx
-        dcd1 <- withForeignPtr (unDec d) peek
+        dcd1 <- withForeignPtr (unQuad d) peek
         _ <- unCtx (f d) cPtr
-        dcd2 <- withForeignPtr (unDec d) peek
+        dcd2 <- withForeignPtr (unQuad d) peek
         return $ dcd1 == dcd2
   in inContext k >>= assert
   where
@@ -388,9 +388,9 @@ imuBinary1st n (genA, getC) f = testProperty desc $
   monadicIO $
   let k cPtr = do 
         d <- evaluate $ E.fromBCD dx
-        dcd1 <- withForeignPtr (unDec d) peek
+        dcd1 <- withForeignPtr (unQuad d) peek
         _ <- unCtx (f d (getC a)) cPtr
-        dcd2 <- withForeignPtr (unDec d) peek
+        dcd2 <- withForeignPtr (unQuad d) peek
         return $ dcd1 == dcd2
   in inContext k >>= assert
   where
@@ -409,9 +409,9 @@ imuBinary2nd n (genA, getC) f = testProperty desc $
   monadicIO $
   let k cPtr = do
         d <- evaluate $ E.fromBCD dx
-        dcd1 <- withForeignPtr (unDec d) peek
+        dcd1 <- withForeignPtr (unQuad d) peek
         _ <- unCtx (f (getC a) d) cPtr
-        dcd2 <- withForeignPtr (unDec d) peek
+        dcd2 <- withForeignPtr (unQuad d) peek
         return $ dcd1 == dcd2
   in inContext k >>= assert
   where
@@ -438,9 +438,9 @@ imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
           a <- evaluate $ E.fromBCD ga
           b <- evaluate $ E.fromBCD gb
           c <- evaluate $ E.fromBCD gc 
-          dcd1 <- withForeignPtr (unDec a) peek
+          dcd1 <- withForeignPtr (unQuad a) peek
           _ <- unCtx (f a b c) cPtr
-          dcd2 <- withForeignPtr (unDec a) peek
+          dcd2 <- withForeignPtr (unQuad a) peek
           return $ dcd1 == dcd2
     in inContext k >>= assert
 
@@ -451,9 +451,9 @@ imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
           a <- evaluate $ E.fromBCD ga
           b <- evaluate $ E.fromBCD gb
           c <- evaluate $ E.fromBCD gc 
-          dcd1 <- withForeignPtr (unDec b) peek
+          dcd1 <- withForeignPtr (unQuad b) peek
           _ <- unCtx (f a b c) cPtr
-          dcd2 <- withForeignPtr (unDec b) peek
+          dcd2 <- withForeignPtr (unQuad b) peek
           return $ dcd1 == dcd2
     in inContext k >>= assert
 
@@ -464,9 +464,9 @@ imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
           a <- evaluate $ E.fromBCD ga
           b <- evaluate $ E.fromBCD gb
           c <- evaluate $ E.fromBCD gc 
-          dcd1 <- withForeignPtr (unDec c) peek
+          dcd1 <- withForeignPtr (unQuad c) peek
           _ <- unCtx (f a b c) cPtr
-          dcd2 <- withForeignPtr (unDec c) peek
+          dcd2 <- withForeignPtr (unQuad c) peek
           return $ dcd1 == dcd2
     in inContext k >>= assert
   ]

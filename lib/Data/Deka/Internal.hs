@@ -47,7 +47,7 @@ instance Monad Ctx where
 -- a 'Quad' might be a finite number (perhaps the most common type)
 -- or it might be infinite or a not-a-number.  'decClass' will tell
 -- you a little more about a particular 'Quad'.
-newtype Quad = Quad { unDec :: ForeignPtr C'decQuad }
+newtype Quad = Quad { unQuad :: ForeignPtr C'decQuad }
 
 -- | The Show instance uses 'toByteString'.
 instance Show Quad where
@@ -73,7 +73,7 @@ mkString
   -> Quad
   -> BS8.ByteString
 mkString f d = unsafePerformIO $
-  withForeignPtr (unDec d) $ \pD ->
+  withForeignPtr (unQuad d) $ \pD ->
   allocaBytes c'DECQUAD_String $ \pS ->
   f pD pS
   >> BS8.packCString pS
