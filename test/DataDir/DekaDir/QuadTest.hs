@@ -350,11 +350,10 @@ commutativity n f = testProperty desc $
 -- # Immutability test builders
 
 inContext :: (Ptr C'decContext -> IO Bool) -> PropertyM IO Bool
-inContext f = do
-  r <- run $ alloca $ \pCtx -> do
+inContext f =
+  run $ alloca $ \pCtx -> do
     _ <- unsafe'c'decContextDefault pCtx c'DEC_INIT_DECQUAD
     f pCtx
-  return r
 
 
 imuUni
@@ -645,8 +644,7 @@ tests = testGroup "IO"
 
 
   , testGroup "immutability"
-
-    , testGroup "conversions"
+    [ testGroup "conversions"
       [ imuUni "decClass" (fmap return E.decClass)
       , imuUni "toBCD" (fmap return E.toBCD)
       , imuUni "toByteString" (fmap return E.toByteString)
