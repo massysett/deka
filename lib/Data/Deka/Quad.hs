@@ -227,6 +227,7 @@ module Data.Deka.Quad
 
   -- ** Decoded predicates
 
+  -- *** Duplicates of Quad tests that return Bool
   -- | These duplicate the tests that are available for the Quad
   -- type directly.
   , dIsFinite
@@ -242,6 +243,18 @@ module Data.Deka.Quad
   , dIsSubnormal
   , dIsZero
   , dDigits
+
+  -- *** Duplicates of Quad tests that return 'DecClass'
+  , dIsSNaN
+  , dIsQNaN
+  , dIsNegInf
+  , dIsNegNormal
+  , dIsNegSubnormal
+  , dIsNegZero
+  , dIsPosZero
+  , dIsPosSubnormal
+  , dIsPosNormal
+  , dIsPosInf
 
   ) where
 
@@ -1524,6 +1537,71 @@ adjustedExp ds e = AdjustedExp $ unExponent e
 adjustedToExponent :: Coefficient -> AdjustedExp -> Exponent
 adjustedToExponent ds e = Exponent $ unAdjustedExp e -
   dDigits ds + 1
+
+-- # DecClass-like Decoded predicates
+
+dIsSNaN :: Decoded -> Bool
+dIsSNaN d = case dValue d of
+  NaN n _ -> n == Signaling
+  _ -> False
+
+dIsQNaN :: Decoded -> Bool
+dIsQNaN d = case dValue d of
+  NaN n _ -> n == Quiet
+  _ -> False
+
+dIsNegInf :: Decoded -> Bool
+dIsNegInf d
+  | dSign d == Sign0 = False
+  | otherwise = dValue d == Infinite
+
+dIsNegNormal :: Decoded -> Bool
+dIsNegNormal d
+  | dSign d == Sign0 = False
+  | otherwise = case dValue d of
+      Finite c e -> e >= minNormalExp c
+      _ -> False
+
+dIsNegSubnormal :: Decoded -> Bool
+dIsNegSubnormal d
+  | dSign d == Sign0 = False
+  | otherwise = case dValue d of
+      Finite c e -> e < minNormalExp c
+      _ -> False
+
+dIsNegZero :: Decoded -> Bool
+dIsNegZero d
+  | dSign d == Sign0 = False
+  | otherwise = case dValue d of
+      Finite c _ -> unCoefficient c == [D0]
+      _ -> False
+
+dIsPosZero :: Decoded -> Bool
+dIsPosZero d
+  | dSign d == Sign1 = False
+  | otherwise = case dValue d of
+      Finite c _ -> unCoefficient c == [D0]
+      _ -> False
+
+dIsPosSubnormal :: Decoded -> Bool
+dIsPosSubnormal d
+  | dSign d == Sign1 = False
+  | otherwise = case dValue d of
+      Finite c e -> e < minNormalExp c
+      _ -> False
+
+dIsPosNormal :: Decoded -> Bool
+dIsPosNormal d
+  | dSign d == Sign1 = False
+  | otherwise = case dValue d of
+      Finite c e -> e >= minNormalExp c
+      _ -> False
+
+dIsPosInf :: Decoded -> Bool
+dIsPosInf d
+  | dSign d == Sign1 = False
+  | otherwise = dValue d == Infinite
+
 
 -- # decQuad functions not recreated here:
 

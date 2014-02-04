@@ -349,13 +349,54 @@ commutativity n f = testProperty desc $
 
 -- # Immutability test builders
 
+
 inContext :: (Ptr C'decContext -> IO Bool) -> PropertyM IO Bool
 inContext f =
   run $ alloca $ \pCtx -> do
     _ <- unsafe'c'decContextDefault pCtx c'DEC_INIT_DECQUAD
     f pCtx
 
+{- Also for below, consider this code snippet:
 
+module Main where
+
+import Control.Exception (evaluate)
+import System.IO.Unsafe (unsafePerformIO)
+
+myThing :: String -> Int
+myThing s = unsafePerformIO $ putStrLn s >> return 2
+
+main :: IO ()
+main = do
+  x <- return . Just $ myThing "this will NOT be printed"
+  _ <- evaluate x
+  y <- return $ myThing "this will be printed"
+  _ <- evaluate y
+  _ <- evaluate $ myThing "this will be printed too"
+  putStrLn "Done"
+
+-}
+
+-- | These functions assume that reducing the return type of the
+-- subject function to WHNF will force any associated IO to occur.
+-- For example, imuUni will work as intended if you apply it
+-- like so:
+--
+-- > imuUni "okay" (fmap (fmap return) E.decClass)
+--
+-- In this case, the function passed as an argument to imuUni is
+-- run, and the result (Quad) is reduced to WHNF.  This works as
+-- intended because it forces the underlying function to perform its
+-- IO.
+--
+-- This would not work, even though it is well-typed:
+--
+-- > imuUni "broken" (fmap (fmap (return . Just)))
+--
+-- because in this case, the value returned from the computation is
+-- a Ctx Maybe.  Reducing the Maybe to WHNF will not force any
+-- underlying IO to occurr, as this just gives you either a Maybe
+-- data constructor or _|_.
 imuUni
   :: String
   -- ^ Name
@@ -367,7 +408,8 @@ imuUni n f = testProperty desc $
   let k cPtr = do
         d <- evaluate $ E.fromBCD dx
         dcd1 <- withForeignPtr (unQuad d) peek
-        _ <- unCtx (f d) cPtr
+        x <- unCtx (f d) cPtr
+        _ <- evaluate x
         dcd2 <- withForeignPtr (unQuad d) peek
         return $ dcd1 == dcd2
   in inContext k >>= assert
@@ -389,7 +431,8 @@ imuBinary1st n (genA, getC) f = testProperty desc $
   let k cPtr = do 
         d <- evaluate $ E.fromBCD dx
         dcd1 <- withForeignPtr (unQuad d) peek
-        _ <- unCtx (f d (getC a)) cPtr
+        x <- unCtx (f d (getC a)) cPtr
+        _ <- evaluate x
         dcd2 <- withForeignPtr (unQuad d) peek
         return $ dcd1 == dcd2
   in inContext k >>= assert
@@ -410,7 +453,8 @@ imuBinary2nd n (genA, getC) f = testProperty desc $
   let k cPtr = do
         d <- evaluate $ E.fromBCD dx
         dcd1 <- withForeignPtr (unQuad d) peek
-        _ <- unCtx (f (getC a) d) cPtr
+        x <- unCtx (f (getC a) d) cPtr
+        _ <- evaluate x
         dcd2 <- withForeignPtr (unQuad d) peek
         return $ dcd1 == dcd2
   in inContext k >>= assert
@@ -439,7 +483,8 @@ imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
           b <- evaluate $ E.fromBCD gb
           c <- evaluate $ E.fromBCD gc 
           dcd1 <- withForeignPtr (unQuad a) peek
-          _ <- unCtx (f a b c) cPtr
+          x <- unCtx (f a b c) cPtr
+          _ <- evaluate x
           dcd2 <- withForeignPtr (unQuad a) peek
           return $ dcd1 == dcd2
     in inContext k >>= assert
@@ -452,7 +497,8 @@ imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
           b <- evaluate $ E.fromBCD gb
           c <- evaluate $ E.fromBCD gc 
           dcd1 <- withForeignPtr (unQuad b) peek
-          _ <- unCtx (f a b c) cPtr
+          x <- unCtx (f a b c) cPtr
+          _ <- evaluate x
           dcd2 <- withForeignPtr (unQuad b) peek
           return $ dcd1 == dcd2
     in inContext k >>= assert
@@ -465,7 +511,8 @@ imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
           b <- evaluate $ E.fromBCD gb
           c <- evaluate $ E.fromBCD gc 
           dcd1 <- withForeignPtr (unQuad c) peek
-          _ <- unCtx (f a b c) cPtr
+          x <- unCtx (f a b c) cPtr
+          _ <- evaluate x
           dcd2 <- withForeignPtr (unQuad c) peek
           return $ dcd1 == dcd2
     in inContext k >>= assert
