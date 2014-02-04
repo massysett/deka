@@ -603,7 +603,19 @@ tests = testGroup "IO"
 
 
   , testGroup "immutability"
-    [ testGroup "conversions"
+    [ testGroup "behavior of Ctx monad"
+      [ testProperty "lazy returns do nothing" $
+        once . E.evalCtx $ do
+          _ <- return $ E.fromBCD (error "was evaluated")
+          return True
+
+      , testProperty "strict returns are evaluated immediately" $
+        once . expectFailure . E.evalCtx $ do
+          _ <- return $! E.fromBCD (error "was evaluated")
+          return True
+      ]
+
+    , testGroup "conversions"
       [ imuUni "decClass" (fmap return E.decClass)
       , imuUni "toBCD" (fmap return E.toBCD)
       , imuUni "toByteString" (fmap return E.toByteString)
