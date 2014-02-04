@@ -247,13 +247,11 @@ module Data.Deka.Quad
 
 -- # Imports
 
-import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.Writer
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (intersperse)
 import Data.Maybe
-import Foreign.C
 import Foreign.Safe hiding
   ( void
   , isSigned
@@ -278,6 +276,7 @@ import qualified Prelude
 import System.IO.Unsafe (unsafePerformIO)
 
 import Data.Deka.Decnumber
+import Data.Deka.Internal
 
 -- # Rounding
 
@@ -419,32 +418,6 @@ flagList fl = execWriter $ do
   f "conversionSyntax" conversionSyntax
 
 
--- | The Ctx monad
---
--- The General Decimal Arithmetic specification states that most
--- computations occur within a @context@, which affects the manner
--- in which computations are done (for instance, the context
--- determines the rounding algorithm).  The context also carries
--- the flags that computations can set (for instance, a computation might
--- set a flag to indicate that the result is rounded or inexact or
--- was a division by zero.) The Ctx monad carries this context.
-newtype Ctx a = Ctx { unCtx :: Ptr C'decContext -> IO a }
-
-instance Functor Ctx where
-  fmap = liftM
-
-instance Applicative Ctx where
-  pure = return
-  (<*>) = ap
-
-instance Monad Ctx where
-  return a = Ctx $ \_ -> return a
-  Ctx a >>= f = Ctx $ \p -> do
-    r1 <- a p
-    let b = unCtx $ f r1
-    b p
-  fail s = Ctx $ \_ -> fail s
-
 -- | The current status flags, which indicate results from previous
 -- computations.
 getStatus :: Ctx Flags
@@ -551,19 +524,6 @@ instance Show DecClass where
     | x == c'DEC_CLASS_POS_INF = "+Infinity"
     | otherwise = error "decClass show: invalid value"
 
-
--- | Decimal number.  This is immutable, like any Haskell value you
--- would ordinarily work with.
---
--- As indicated in the General Decimal Arithmetic specification,
--- a 'Quad' might be a finite number (perhaps the most common type)
--- or it might be infinite or a not-a-number.  'decClass' will tell
--- you a little more about a particular 'Quad'.
-newtype Quad = Quad { unDec :: ForeignPtr C'decQuad }
-
--- | The Show instance uses 'toByteString'.
-instance Show Quad where
-  show = BS8.unpack . toByteString
 
 -- | A Quad is not a member of 'Eq' or 'Ord' because the semantics
 -- of the 'compare' function do not easily allow for this.  However,
@@ -706,20 +666,8 @@ boolean f d = unsafePerformIO $
     0 -> False
     _ -> error "boolean: bad return value"
 
-type MkString
-  = Ptr C'decQuad
-  -> CString
-  -> IO CString
-
-mkString
-  :: MkString
-  -> Quad
-  -> BS8.ByteString
-mkString f d = unsafePerformIO $
-  withForeignPtr (unDec d) $ \pD ->
-  allocaBytes c'DECQUAD_String $ \pS ->
-  f pD pS
-  >> BS8.packCString pS
+-- MkString and mkString - moved to Internal so that toByteString
+-- can use them
 
 type GetRounded a
   = Ptr C'decQuad
@@ -1105,15 +1053,8 @@ toIntegralValue (Round rnd) d = Ctx $ \pC ->
   unsafe'c'decQuadToIntegralValue pR pD pC rnd >>
   return r
 
--- | Converts a 'Quad' to a string.  May use non-scientific
--- notation, but only if that's unambiguous; otherwise, uses
--- scientific notation.
---
--- In the decNumber C library, this is called @toString@; the name
--- was changed here because this function doesn't return a Haskell
--- 'String'.
-toByteString :: Quad -> BS8.ByteString
-toByteString = mkString unsafe'c'decQuadToString
+-- toByteString - moved to Internal so that Quad can Show in a
+-- non-orphan instance
 
 -- | @toUInt32 r x@ returns the value of @x@, rounded to an integer
 -- if necessary using the rounding mode @r@ rather than the one

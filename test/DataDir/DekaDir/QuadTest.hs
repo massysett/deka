@@ -6,17 +6,25 @@
 -- should and that there are no side effects where there shouldn't
 -- be any.
 --
+-- Every function that takes a Quad as an argument is tested to
+-- ensure it does not modify that Quad.
+--
 -- encoding and decoding must also be thoroughly tested as this can
 -- be quite error prone.
 module DataDir.DekaDir.QuadTest where
 
 import Control.Applicative
+import Control.Exception (evaluate)
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad
 import Test.Tasty
 import qualified Data.Deka.Quad as E
 import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck hiding (maxSize)
+import Test.QuickCheck.Monadic
+import Data.Deka.Internal
+import Data.Deka.Decnumber
+import Foreign
 
 isLeft :: Either a b -> Bool
 isLeft e = case e of { Left _ -> True; _ -> False }
@@ -339,20 +347,34 @@ commutativity n f = testProperty desc $
   where
     desc = n ++ " is commutative where there are no flags"
 
+-- # Immutability test builders
+
+inContext :: (Ptr C'decContext -> IO Bool) -> PropertyM IO Bool
+inContext f = do
+  r <- run $ alloca $ \pCtx -> do
+    _ <- unsafe'c'decContextDefault pCtx c'DEC_INIT_DECQUAD
+    f pCtx
+  return r
+
+
 imuUni
   :: String
   -- ^ Name
   -> (E.Quad -> E.Ctx a)
   -> TestTree
-imuUni n f = testProperty desc $ forAll genDecoded $
-  \dx -> E.evalCtx $ do
-    let d = E.fromBCD dx
-    dcd1 <- return $! E.toBCD d
-    _ <- f d
-    dcd2 <- return $! E.toBCD d
-    return $ dcd1 == dcd2
-    where
-      desc = n ++ " (unary function) does not mutate only argument"
+imuUni n f = testProperty desc $
+  forAll genDecoded $ \dx ->
+  monadicIO $
+  let k cPtr = do
+        d <- evaluate $ E.fromBCD dx
+        dcd1 <- withForeignPtr (unDec d) peek
+        _ <- unCtx (f d) cPtr
+        dcd2 <- withForeignPtr (unDec d) peek
+        return $ dcd1 == dcd2
+  in inContext k >>= assert
+  where
+    desc = n ++ " (unary function) does not mutate only argument"
+
 
 imuBinary1st
   :: Show a
@@ -363,12 +385,15 @@ imuBinary1st
   -> TestTree
 imuBinary1st n (genA, getC) f = testProperty desc $
   forAll genDecoded $ \dx ->
-  forAll genA $ \a -> E.evalCtx $ do
-    let d = E.fromBCD dx
-    dcd1 <- return $! E.toBCD d
-    _ <- f d (getC a)
-    dcd2 <- return $! E.toBCD d
-    return $ dcd1 == dcd2
+  forAll genA $ \a ->
+  monadicIO $
+  let k cPtr = do 
+        d <- evaluate $ E.fromBCD dx
+        dcd1 <- withForeignPtr (unDec d) peek
+        _ <- unCtx (f d (getC a)) cPtr
+        dcd2 <- withForeignPtr (unDec d) peek
+        return $ dcd1 == dcd2
+  in inContext k >>= assert
   where
     desc = n ++ " (binary function) does not mutate first argument"
 
@@ -381,12 +406,15 @@ imuBinary2nd
   -> TestTree
 imuBinary2nd n (genA, getC) f = testProperty desc $
   forAll genDecoded $ \dx ->
-  forAll genA $ \a -> E.evalCtx $ do
-    let d = E.fromBCD dx
-    dcd1 <- return $! E.toBCD d
-    _ <- f (getC a) d
-    dcd2 <- return $! E.toBCD d
-    return $ dcd1 == dcd2
+  forAll genA $ \a ->
+  monadicIO $
+  let k cPtr = do
+        d <- evaluate $ E.fromBCD dx
+        dcd1 <- withForeignPtr (unDec d) peek
+        _ <- unCtx (f (getC a) d) cPtr
+        dcd2 <- withForeignPtr (unDec d) peek
+        return $ dcd1 == dcd2
+  in inContext k >>= assert
   where
     desc = n ++ " (binary function) does not mutate second argument"
 
@@ -405,32 +433,46 @@ imuTernary
   -> TestTree
 imuTernary n f = testGroup (n ++ " (ternary function) - immutability")
   [ testProperty "first argument" $
-    forAll gen3 $ \t -> E.evalCtx $ do
-      let (a, b, c) = get3 t
-      dcd1 <- return $! E.toBCD a
-      _ <- f a b c
-      dcd2 <- return $! E.toBCD a
-      return $ dcd1 == dcd2
+    forAll gen3 $ \(ga, gb, gc) ->
+    monadicIO $
+    let k cPtr = do
+          a <- evaluate $ E.fromBCD ga
+          b <- evaluate $ E.fromBCD gb
+          c <- evaluate $ E.fromBCD gc 
+          dcd1 <- withForeignPtr (unDec a) peek
+          _ <- unCtx (f a b c) cPtr
+          dcd2 <- withForeignPtr (unDec a) peek
+          return $ dcd1 == dcd2
+    in inContext k >>= assert
 
   , testProperty "second argument" $
-    forAll gen3 $ \t -> E.evalCtx $ do
-      let (a, b, c) = get3 t
-      dcd1 <- return $! E.toBCD b
-      _ <- f a b c
-      dcd2 <- return $! E.toBCD b
-      return $ dcd1 == dcd2
+    forAll gen3 $ \(ga, gb, gc) ->
+    monadicIO $
+    let k cPtr = do
+          a <- evaluate $ E.fromBCD ga
+          b <- evaluate $ E.fromBCD gb
+          c <- evaluate $ E.fromBCD gc 
+          dcd1 <- withForeignPtr (unDec b) peek
+          _ <- unCtx (f a b c) cPtr
+          dcd2 <- withForeignPtr (unDec b) peek
+          return $ dcd1 == dcd2
+    in inContext k >>= assert
 
   , testProperty "third argument" $
-    forAll gen3 $ \t -> E.evalCtx $ do
-      let (a, b, c) = get3 t
-      dcd1 <- return $! E.toBCD c
-      _ <- f a b c
-      dcd2 <- return $! E.toBCD c
-      return $ dcd1 == dcd2
+    forAll gen3 $ \(ga, gb, gc) ->
+    monadicIO $
+    let k cPtr = do
+          a <- evaluate $ E.fromBCD ga
+          b <- evaluate $ E.fromBCD gb
+          c <- evaluate $ E.fromBCD gc 
+          dcd1 <- withForeignPtr (unDec c) peek
+          _ <- unCtx (f a b c) cPtr
+          dcd2 <- withForeignPtr (unDec c) peek
+          return $ dcd1 == dcd2
+    in inContext k >>= assert
   ]
   where
     gen3 = (,,) <$> genDecoded <*> genDecoded <*> genDecoded
-    get3 (da, db, dc) = (E.fromBCD da, E.fromBCD db, E.fromBCD dc)
 
 identity
   :: String
@@ -526,8 +568,8 @@ testMinMax n ab f = testProperty (n ++ " and compare") $
             zr'' = E.isZero r''
         return $ zr' && zr''
       else do
-        new <- f b a
-        r' <- E.compare new m
+        nw <- f b a
+        r' <- E.compare nw m
         return $ E.isZero r' 
 
 
@@ -603,17 +645,6 @@ tests = testGroup "IO"
 
 
   , testGroup "immutability"
-    [ testGroup "behavior of Ctx monad"
-      [ testProperty "lazy returns do nothing" $
-        once . E.evalCtx $ do
-          _ <- return $ E.fromBCD (error "was evaluated")
-          return True
-
-      , testProperty "strict returns are evaluated immediately" $
-        once . expectFailure . E.evalCtx $ do
-          _ <- return $! E.fromBCD (error "was evaluated")
-          return True
-      ]
 
     , testGroup "conversions"
       [ imuUni "decClass" (fmap return E.decClass)
