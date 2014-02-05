@@ -324,7 +324,7 @@ associativity n f = testProperty desc $
             z = E.fromBCD dz
         r1 <- f x y >>= f z
         r2 <- f y z >>= f x
-        let c = E.compareTotal r1 r2
+        let c = E.evalCtx $ E.compare r1 r2
             isZ = E.isZero c
         fl <- E.getStatus
         return (fl == E.emptyFlags, isZ)
@@ -1163,7 +1163,68 @@ tests = testGroup "IO"
         in E.isZero $ E.compareTotal rSubt rMinus
       ]
 
+    , testGroup "abs"
+      [ testProperty "sign is correctly set" $
+        forAll genDecoded $ \d ->
+        let expected = case E.dValue d of
+              E.Finite _ _ -> E.Sign0
+              E.Infinite -> E.Sign0
+              E.NaN _ _ -> E.dSign d
+            q = E.fromBCD d
+            actual = E.dSign . E.toBCD . E.evalCtx . E.abs $ q
+        in actual == expected
+      ]
+
+    , testGroup "copySign"
+      [ testProperty "z is copy of x with sign of y" $
+        forAll genDecoded $ \dx ->
+        forAll genDecoded $ \dy ->
+        let expected = dx { E.dSign = E.dSign dy }
+            (x, y) = (E.fromBCD dx, E.fromBCD dy)
+            r = E.toBCD $ E.copySign x y
+        in r == expected
+      ]
     ] -- signs
+
+  , testGroup "increment and decrement"
+    [ testProperty "nextMinus returns smaller result" $
+      forAll genFinite $ \d ->
+      let q = E.fromBCD d
+          (r, fl) = E.runCtx $ E.nextMinus q
+          cmp = E.evalCtx $ E.compare r q
+      in fl == E.emptyFlags ==> E.isNegative cmp
+
+    , testProperty "nextPlus returns larger result" $
+      forAll genFinite $ \d ->
+      let q = E.fromBCD d
+          (r, fl) = E.runCtx $ E.nextPlus q
+          cmp = E.evalCtx $ E.compare r q
+      in fl == E.emptyFlags ==> E.isPositive cmp
+
+    , testProperty "nextToward does not change sign of comparison" $
+      forAll genFinite $ \dx ->
+      forAll genFinite $ \dy ->
+      let x = E.fromBCD dx
+          y = E.fromBCD dy
+          cmp1 = E.evalCtx $ E.compare x y
+          x' = E.evalCtx $ E.nextToward x y
+          cmp2 = E.evalCtx $ E.compare x' y
+          r | E.isNegative cmp1 = E.isNegative cmp2 || E.isZero cmp2
+            | E.isZero cmp1 = E.isZero cmp2
+            | otherwise = E.isPositive cmp2 || E.isZero cmp2
+      in r
+
+    ] -- increment and decrement
+
+  , testGroup "digit-wise"
+    [ testGroup "and"
+      [ testProperty "x & 0 == 0" $
+        forAll genLogical $ \d ->
+        let q = E.fromBCD d
+            r = E.evalCtx $ E.and q E.zero
+        in E.isZero r
+      ]
+    ] -- digit-wise
 
   , testGroup "conversions"
     [ testGroup "decode and encode"
