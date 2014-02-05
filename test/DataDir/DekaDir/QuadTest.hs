@@ -659,6 +659,30 @@ testBoolean n g pd f = testGroup n
       in b == pd dcd
   ]
 
+-- | Tests functions that deal with DecClass.
+testDecClass
+  :: E.DecClass
+  -- ^ Class being tested
+  -> Gen E.Decoded
+  -- ^ Generates Decoded that are in this class
+  -> (E.Decoded -> Bool)
+  -- ^ This function should return True on Decoded that are in the
+  -- class
+  -> TestTree
+
+testDecClass c ge f = testGroup (show c)
+  [ testProperty "predicate returns True on generated decodes" $
+    forAll ge f
+
+  , testProperty "decClass returns matching class" $
+    forAll ge $ \dcd -> let q = E.fromBCD dcd in E.decClass q == c
+
+  , testProperty "decClass does not return matching class otherwise" $
+    forAll (ge `suchThat` (not . f)) $ \dcd ->
+    let q = E.fromBCD dcd in E.decClass q /= c
+  ]
+
+
 -- # Tests
 
 tests :: TestTree
@@ -702,6 +726,18 @@ tests = testGroup "IO"
       , imuBinary2nd "toUInt32Exact" (genRound, id) E.toUInt32Exact
       , imuUni "toIntegralExact" E.toIntegralExact
       , imuBinary2nd "toIntegralValue" (genRound, id) E.toIntegralValue
+      ]
+
+    , testGroup "classes"
+      [ testDecClass E.sNan
+        (genNaNDcd genSign (return E.Signaling) (payloadDigits decimalDigs))
+        E.dIsNaN
+
+      , testDecClass E.qNan
+        (genNaNDcd genSign (return E.Quiet) (payloadDigits decimalDigs))
+        E.dIsNaN
+      -- START HERE
+
       ]
 
     , testGroup "arithmetic"
