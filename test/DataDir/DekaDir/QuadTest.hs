@@ -223,6 +223,14 @@ genFinite = genFiniteDcd genSign (coeffDigits decimalDigs)
 genZero :: Gen E.Decoded
 genZero = genFiniteDcd genSign (return [E.D0]) (const fullExpRange)
 
+genNegZero :: Gen E.Decoded
+genNegZero = genFiniteDcd (return E.Sign1) (return [E.D0])
+  (const fullExpRange)
+
+genPosZero :: Gen E.Decoded
+genPosZero = genFiniteDcd (return E.Sign0) (return [E.D0])
+  (const fullExpRange)
+
 -- | Generates positive one.
 genOne :: Gen E.Decoded
 genOne = genFiniteDcd (return E.Sign0) gDigs gExp
@@ -248,19 +256,17 @@ genLogical :: Gen E.Decoded
 genLogical = genFiniteDcd (return E.Sign0)
   (coeffDigits binaryDigs) (const . return $ 0)
 
-genNormal :: Gen E.Decoded
-genNormal = genFiniteDcd genSign gd ge
+genNormal :: Gen E.Sign -> Gen [E.Digit] -> Gen E.Decoded
+genNormal gs gc = genFiniteDcd gs gc ge
   where
-    gd = sizedDigits E.coefficientLen decimalDigs
     ge c = do
       let minNrml = E.unExponent $ E.minNormalExp c
           maxE = snd E.minMaxExp
       choose (minNrml, maxE)
 
-genSubnormal :: Gen E.Decoded
-genSubnormal = genFiniteDcd genSign gd ge
+genSubnormal :: Gen E.Sign -> Gen [E.Digit] -> Gen E.Decoded
+genSubnormal gs gd = genFiniteDcd gs gd ge
   where
-    gd = sizedDigits (E.coefficientLen - 1) decimalDigs
     ge c =
       let minNrml = E.unExponent . E.minNormalExp $ c
           minE = fst E.minMaxExp
@@ -678,10 +684,34 @@ testDecClass c ge f = testGroup (show c)
     forAll ge $ \dcd -> let q = E.fromBCD dcd in E.decClass q == c
 
   , testProperty "decClass does not return matching class otherwise" $
-    forAll (ge `suchThat` (not . f)) $ \dcd ->
+    forAll (genDecoded `suchThat` (not . f)) $ \dcd ->
     let q = E.fromBCD dcd in E.decClass q /= c
   ]
 
+genInt32 :: Gen C'int32_t
+genInt32 = choose (minBound, maxBound)
+
+genUInt32 :: Gen C'uint32_t
+genUInt32 = choose (minBound, maxBound)
+
+intConversion
+  :: (Show a, Eq a)
+  => String
+  -- ^ Name
+  -> Gen a
+  -> (a -> E.Quad)
+  -- ^ Convert from C int
+  -> (E.Round -> E.Quad -> E.Ctx a)
+  -- ^ Convert to C int
+  -> TestTree
+intConversion n gen fr to = testGroup (n ++ " conversions")
+  [ testProperty "convert from C integer to Quad and back" $
+    forAll genRound $ \r ->
+    forAll gen $ \i ->
+    let q = fr i
+        (i', fl) = E.runCtx $ to r q
+    in fl == E.emptyFlags && i' == i
+  ]
 
 -- # Tests
 
@@ -726,18 +756,6 @@ tests = testGroup "IO"
       , imuBinary2nd "toUInt32Exact" (genRound, id) E.toUInt32Exact
       , imuUni "toIntegralExact" E.toIntegralExact
       , imuBinary2nd "toIntegralValue" (genRound, id) E.toIntegralValue
-      ]
-
-    , testGroup "classes"
-      [ testDecClass E.sNan
-        (genNaNDcd genSign (return E.Signaling) (payloadDigits decimalDigs))
-        E.dIsNaN
-
-      , testDecClass E.qNan
-        (genNaNDcd genSign (return E.Quiet) (payloadDigits decimalDigs))
-        E.dIsNaN
-      -- START HERE
-
       ]
 
     , testGroup "arithmetic"
@@ -809,7 +827,7 @@ tests = testGroup "IO"
       , imuUni "invert" E.invert
       ]
 
-    , testGroup "transcendental"
+    , testGroup "log and scale"
       [ imuUni "logB" E.logB
       , imuBinary "scaleB" E.scaleB
       ]
@@ -817,28 +835,57 @@ tests = testGroup "IO"
     , testGroup "attributes"
       [ imuUni "digits" (fmap return E.digits)
       ]
-    ]
+    ] -- immutability
 
-  , testGroup "conversions"
-    [ testGroup "decode and encode"
-      [ testProperty "round trip from Decoded" $
-        forAll genDecoded $ \d ->
-        let r = E.toBCD . E.fromBCD $ d
-        in printTestCase ("result: " ++ show r) (r == d)
-      ]
+  , testGroup "classes"
+    [ testDecClass E.sNan
+      (genNaNDcd genSign (return E.Signaling) (payloadDigits decimalDigs))
+      E.dIsNaN
 
-    , testGroup "strings"
-      [ testProperty ("Decoded -> Quad -> ByteString"
-          ++ " -> Quad -> Decoded") $
-        forAll genDecoded $ \d ->
-          let q = E.fromBCD d
-              bs = E.toByteString q
-              q' = E.evalCtx $ E.fromByteString bs
-              d' = E.toBCD q'
-              desc = "toByteString: " ++ BS8.unpack bs
-                ++ " toBCD: " ++ show d'
-          in printTestCase desc $ d' == d
-      ]
+    , testDecClass E.qNan
+      (genNaNDcd genSign (return E.Quiet) (payloadDigits decimalDigs))
+      E.dIsNaN
+
+    , testDecClass E.negInf
+      (genInfinite (return E.Sign1)) E.dIsNegInf
+
+    , testDecClass E.negNormal
+      (genNormal (return E.Sign1)
+        (sizedDigits E.coefficientLen decimalDigs)) E.dIsNegNormal
+
+    , testDecClass E.negSubnormal
+      (genSubnormal (return E.Sign1)
+        (sizedDigits (E.coefficientLen - 1) decimalDigs))
+        E.dIsNegSubnormal
+
+    , testDecClass E.negZero genNegZero E.dIsNegZero
+    , testDecClass E.posZero genPosZero E.dIsPosZero
+
+    , testDecClass E.posSubnormal
+      (genSubnormal (return E.Sign0)
+        (sizedDigits (E.coefficientLen - 1) decimalDigs))
+        E.dIsPosSubnormal
+
+    , testDecClass E.posNormal
+      (genNormal (return E.Sign0)
+        (sizedDigits E.coefficientLen decimalDigs)) E.dIsPosNormal
+
+    , testDecClass E.posInf
+      (genInfinite (return E.Sign0)) E.dIsPosInf
+
+    ] -- classes
+
+  , testGroup "string conversions"
+    [ testProperty ("Decoded -> Quad -> ByteString"
+        ++ " -> Quad -> Decoded") $
+      forAll genDecoded $ \d ->
+        let q = E.fromBCD d
+            bs = E.toByteString q
+            q' = E.evalCtx $ E.fromByteString bs
+            d' = E.toBCD q'
+            desc = "toByteString: " ++ BS8.unpack bs
+              ++ " toBCD: " ++ show d'
+        in printTestCase desc $ d' == d
 
     , testProperty ("fromBCD and (fromByteString . scientific) "
         ++ "give same result") $
@@ -865,7 +912,32 @@ tests = testGroup "IO"
       in noFlags fl && noFlags (snd cmpResult)
           ==> printTestCase desc
               (E.isZero (fst cmpResult))
-    ]
+
+    , testProperty "toByteString -> fromByteString" $
+      forAll genDecoded $ \d ->
+      let q = E.fromBCD d
+          bs = E.toByteString q
+          (q', fl) = E.runCtx . E.fromByteString $ bs
+          cmpRes = E.compareTotal q q'
+      in E.isZero cmpRes && fl == E.emptyFlags
+
+    , testProperty "toEngByteString -> fromByteString" $
+      forAll genDecoded $ \d ->
+      let q = E.fromBCD d
+          bs = E.toEngByteString q
+          (q', fl) = E.runCtx . E.fromByteString $ bs
+          cmpRes = E.evalCtx $ E.compare q q'
+          cmpResTot = E.compareTotal q q'
+          res = if E.isNormal q then cmpRes else cmpResTot
+      in E.isZero res && fl == E.emptyFlags
+    ] -- string conversions
+
+  , testGroup "integer conversions"
+    [ intConversion "int32" genInt32 E.fromInt32 E.toInt32
+    , intConversion "uint32" genUInt32 E.fromUInt32 E.toUInt32
+    , intConversion "int32 exact" genInt32 E.fromInt32 E.toInt32Exact
+    , intConversion "uint32 exact" genUInt32 E.fromUInt32 E.toUInt32Exact
+    ] -- integer conversions
 
   , testGroup "arithmetic"
     [ testGroup "add"
@@ -911,43 +983,42 @@ tests = testGroup "IO"
               cm <- E.compare r2 r2'
               return $ E.isZero cm
         in fl == E.emptyFlags ==> r
+      ]
 
-      , testGroup "divide"
-        [ identity "one" genOne E.divide ]
+    , testGroup "divide"
+      [ identity "one" genOne E.divide ]
 
-      , testGroup "divideInteger"
-        [ testProperty "result has exponent 0" $
-          forAll genSmallFinite $ \da ->
-          forAll genSmallFinite $ \db ->
-          let (e, fl) = E.runCtx $ do
-                let a = E.fromBCD da
-                    b = E.fromBCD db
-                c <- E.divideInteger a b
-                return $ E.isInteger c
-          in fl == E.emptyFlags ==> e
-        ]
+    , testGroup "divideInteger"
+      [ testProperty "result has exponent 0" $
+        forAll genSmallFinite $ \da ->
+        forAll genSmallFinite $ \db ->
+        let (e, fl) = E.runCtx $ do
+              let a = E.fromBCD da
+                  b = E.fromBCD db
+              c <- E.divideInteger a b
+              return $ E.isInteger c
+        in fl == E.emptyFlags ==> e
+      ]
 
-      , testGroup "remainder"
-        [ testProperty "x = int * y + rem" $
-          forAll genSmallFinite $ \dx ->
-          forAll genSmallFinite $ \dy ->
-          let (r, fl) = E.runCtx $ do
-                let x = E.fromBCD dx
-                    y = E.fromBCD dy
-                it <- E.divideInteger x y
-                rm <- E.remainder x y
-                i1 <- E.multiply it y
-                i2 <- E.add i1 rm
-                c <- E.compare i2 x
-                return $ E.isZero c
-          in fl == E.emptyFlags ==> r
-        ]
-
+    , testGroup "remainder"
+      [ testProperty "x = int * y + rem" $
+        forAll genSmallFinite $ \dx ->
+        forAll genSmallFinite $ \dy ->
+        let (r, fl) = E.runCtx $ do
+              let x = E.fromBCD dx
+                  y = E.fromBCD dy
+              it <- E.divideInteger x y
+              rm <- E.remainder x y
+              i1 <- E.multiply it y
+              i2 <- E.add i1 rm
+              c <- E.compare i2 x
+              return $ E.isZero c
+        in fl == E.emptyFlags ==> r
+      ]
       -- remainderNear - no test - not sure I understand the
       -- semantics
 
-      ]
-    ]
+    ] -- arithmetic
 
   , testGroup "exponent and coefficient adjustment"
     [ testGroup "quantize"
@@ -990,7 +1061,7 @@ tests = testGroup "IO"
                 let digs = E.unCoefficient c
                 in all (== E.D0) digs || last digs /= E.D0
       ]
-    ]
+    ] -- exponent and coefficient adjustment
 
   , testGroup "comparisons"
     [ comparison "compare" E.nextPlus E.nextMinus E.compare
@@ -1021,7 +1092,7 @@ tests = testGroup "IO"
                     qy = E.fromBCD . snd $ p
                 in not $ E.sameQuantum qx qy
       ]
-    ]
+    ] -- comparisons
 
   , testGroup "tests"
     [ testBoolean "isFinite" genFinite E.dIsFinite E.isFinite
@@ -1042,7 +1113,8 @@ tests = testGroup "IO"
     , testBoolean "isNegative" genNegative
       E.dIsNegative E.isNegative
 
-    , testBoolean "isNormal" genNormal
+    , testBoolean "isNormal"
+      (genNormal genSign (sizedDigits E.coefficientLen decimalDigs))
         E.dIsNormal E.isNormal
 
     , testBoolean "isPositive" genPositive
@@ -1054,10 +1126,52 @@ tests = testGroup "IO"
     , testBoolean "isSigned" genSigned
         E.dIsSigned E.isSigned
 
-    , testBoolean "isSubnormal" genSubnormal
+    , testBoolean "isSubnormal"
+        (genSubnormal genSign (sizedDigits (E.coefficientLen - 1) decimalDigs))
         E.dIsSubnormal E.isSubnormal
 
     , testBoolean "isZero" genZero E.dIsZero E.isZero
 
-    ]
+    ] -- tests
+
+  , testGroup "signs"
+    [ testGroup "plus"
+      [ testProperty "same as 0 + x where 0 has same exponent" $
+        forAll genDecoded $ \d ->
+        let e = case E.dValue d of
+              E.Finite _ ex -> ex
+              _ -> E.zeroExponent
+            z = E.fromBCD $ E.Decoded E.Sign0
+                  (E.Finite E.zeroCoefficient e)
+            q = E.fromBCD d
+            rAdd = E.evalCtx $ E.add z q
+            rPlus = E.evalCtx $ E.plus q
+        in E.isZero $ E.compareTotal rAdd rPlus
+      ]
+
+    , testGroup "minus"
+      [ testProperty "same as 0 - x where 0 has same exponent" $
+        forAll genDecoded $ \d ->
+        let e = case E.dValue d of
+              E.Finite _ ex -> ex
+              _ -> E.zeroExponent
+            z = E.fromBCD $ E.Decoded E.Sign0
+                  (E.Finite E.zeroCoefficient e)
+            q = E.fromBCD d
+            rSubt = E.evalCtx $ E.subtract z q
+            rMinus = E.evalCtx $ E.minus q
+        in E.isZero $ E.compareTotal rSubt rMinus
+      ]
+
+    ] -- signs
+
+  , testGroup "conversions"
+    [ testGroup "decode and encode"
+      [ testProperty "round trip from Decoded" $
+        forAll genDecoded $ \d ->
+        let r = E.toBCD . E.fromBCD $ d
+        in printTestCase ("result: " ++ show r) (r == d)
+      ]
+    ] -- conversions
+
   ]

@@ -196,9 +196,12 @@ module Data.Deka.Quad
   , Coefficient
   , coefficient
   , unCoefficient
+  , zeroCoefficient
+  , oneCoefficient
   , Payload
   , payload
   , unPayload
+  , zeroPayload
 
   -- ** Exponents
   , Exponent
@@ -1385,6 +1388,14 @@ coefficient ls
   | length ls > coefficientLen = Nothing
   | otherwise = Just . Coefficient $ ls
 
+-- | Coefficient of 'D0'
+zeroCoefficient :: Coefficient
+zeroCoefficient = Coefficient [D0]
+
+-- | Coefficient of 'D1'
+oneCoefficient :: Coefficient
+oneCoefficient = Coefficient [D1]
+
 -- | A list of digits, less than or equal to 'payloadLen'
 -- long.  Accompanies an NaN, potentially with diagnostic
 -- information (I do not know if decNumber actually makes use of
@@ -1401,6 +1412,10 @@ payload ds
   | length ds > 1 && head ds == D0 = Nothing
   | length ds > payloadLen = Nothing
   | otherwise = Just . Payload $ ds
+
+-- | Payload of [D0]
+zeroPayload :: Payload
+zeroPayload = Payload [D0]
 
 
 -- | The most significant digit is at the head of the list.
