@@ -1224,6 +1224,36 @@ tests = testGroup "IO"
             r = E.evalCtx $ E.and q E.zero
         in E.isZero r
       ]
+
+    , testGroup "or"
+      [ testProperty "x | 0 == x" $
+        forAll genLogical $ \d ->
+        let r = E.evalCtx $ E.or (E.fromBCD d) E.zero
+        in E.isZero r
+
+      , testProperty "x | x == x" $
+        forAll genLogical $ \d ->
+        let r = E.evalCtx $ E.or x x
+            cmp = E.compareTotal r x
+            x = E.fromBCD d
+        in E.isZero cmp
+      ]
+
+    , testGroup "xor"
+      [ testProperty "x XOR 0 == x" $
+        forAll genLogical $ \d ->
+        let r = E.evalCtx $ E.xor x E.zero
+            cmp = E.compareTotal r x
+            x = E.fromBCD d
+        in E.isZero cmp
+
+      , testProperty "x XOR x == 0" $
+        forAll genLogical $ \d ->
+        let r = E.evalCtx $ E.xor x x
+            x = E.fromBCD d
+        in E.isZero r
+
+      ]
     ] -- digit-wise
 
   , testGroup "conversions"
