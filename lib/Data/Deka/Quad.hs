@@ -301,7 +301,7 @@ import Data.Deka.Internal
 newtype Round = Round { unRound :: C'rounding }
   deriving (Eq, Ord, Show)
 
--- | Round toward negative infinity.
+-- | Round toward infinity.
 roundCeiling :: Round
 roundCeiling = Round c'DEC_ROUND_CEILING
 
@@ -866,8 +866,8 @@ isInfinite :: Quad -> Bool
 isInfinite = boolean unsafe'c'decQuadIsInfinite
 
 -- | True if @x@ is finite and has exponent of @0@; False otherwise.
--- This can lead to unexpected results; for instance, 3 x 10 ^ 2 is
--- 300, but this function will return False.
+-- This tests the exponent, not the /adjusted/ exponent.  This can
+-- lead to rather interesting results under odd circumstances.
 isInteger :: Quad -> Bool
 isInteger = boolean unsafe'c'decQuadIsInteger
 

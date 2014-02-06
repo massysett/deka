@@ -24,6 +24,7 @@ import Test.QuickCheck hiding (maxSize)
 import Test.QuickCheck.Monadic
 import Data.Deka.Internal
 import Data.Deka.Decnumber
+import Data.Maybe
 import Foreign
 
 isLeft :: Either a b -> Bool
@@ -312,6 +313,13 @@ genRound = elements [ E.roundCeiling, E.roundUp, E.roundHalfUp,
   E.roundHalfEven, E.roundHalfDown, E.roundDown, E.roundFloor,
   E.round05Up ]
 
+allFlags :: [E.Flag]
+allFlags = [ E.divisionUndefined, E.divisionByZero,
+  E.divisionImpossible, E.invalidOperation, E.inexact,
+  E.underflow, E.overflow, E.conversionSyntax ]
+
+onePointFive :: E.Quad
+onePointFive = E.evalCtx . E.fromByteString . BS8.pack $ "1.5"
 
 -- # Test builders
 
@@ -867,6 +875,45 @@ tests = testGroup "Quad"
       ]
     ] -- immutability
 
+  , testGroup "rounding"
+    [ testProperty "default rounding is half even" $
+      once . E.evalCtx $ do
+        r <- E.getRound
+        return $ r == E.roundHalfEven
+
+    , testProperty "setRound works" $
+      forAll genRound $ \r -> E.evalCtx $ do
+        E.setRound r
+        r' <- E.getRound
+        return $ r == r'
+
+    , testGroup "roundCeiling"
+      [ testProperty "increases value or it stays the same" $
+        forAll genFinite $ \d -> E.evalCtx $ do
+          E.setRound E.roundCeiling
+          let x = E.fromBCD d
+          r <- E.toIntegralExact x
+          return $ case E.compareOrd r x of
+            Just GT -> True
+            Just EQ -> True
+            _ -> False
+      ]
+
+    , testGroup "roundUp"
+      [ testProperty "increases absolute value or it stays the same" $
+        forAll genFinite $ \d -> E.evalCtx $ do
+          E.setRound E.roundUp
+          let x = E.fromBCD d
+          r <- E.toIntegralExact x
+          r' <- E.abs r
+          x' <- E.abs x
+          return $ case E.compareOrd r' x' of
+            Just GT -> True
+            Just EQ -> True
+            _ -> False
+      ]
+    ] -- rounding
+
   , testGroup "classes"
     [ testDecClass E.sNan
       (genNaNDcd genSign (return E.Signaling) (payloadDigits decimalDigs))
@@ -1130,8 +1177,18 @@ tests = testGroup "Quad"
     , testBoolean "isInfinite" (genInfinite genSign)
         E.dIsInfinite E.isInfinite
 
-    , testBoolean "isInteger" genInteger
-        E.dIsInteger E.isInteger
+    , testGroup "isInteger"
+      [ testBoolean "isInteger" genInteger E.dIsInteger E.isInteger
+
+      , let e = fromMaybe (error "isInteger exponent failed")
+              . E.exponent $ 2
+            c = fromMaybe (error "isInteger coefficient failed")
+              . E.coefficient $ [E.D3]
+            dcd = E.Decoded E.Sign0 (E.Finite c e)
+            d = E.fromBCD dcd
+        in testProperty "returns False on 3 * 10 ^ 2" . once
+            . not . E.isInteger $ d
+      ]
 
     , testBoolean "isLogical" genLogical
         E.dIsLogical E.isLogical
