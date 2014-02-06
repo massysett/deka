@@ -1296,53 +1296,11 @@ tests = testGroup "Quad"
       ]
 
     , testGroup "shift"
-      [ testProperty "shift right reduces number of digits" $
-        forAll genFinite $ \d ->
-        let q = E.fromBCD d
-            r = E.evalCtx $ do
-              o <- E.minus E.one
-              E.shift q o
-            d' = E.toBCD r
-            len = lenCoeff d
-            len' = lenCoeff d'
-        in case (len, len') of
-            (Just l, Just l')
-              | l == 1 -> l' == 1
-              | otherwise -> l' == l - 1
-            _ -> False
-
-      , testProperty "shift left increases number of digits" $
-        forAll genFinite $ \d ->
-        let q = E.fromBCD d
-            r = E.evalCtx $ E.shift q (E.one)
-            d' = E.toBCD r
-            len = lenCoeff d
-            len' = lenCoeff d'
-        in case (len, len') of
-            (Just l, Just l')
-              | l == E.coefficientLen -> l' == E.coefficientLen
-              | otherwise -> l' == l + 1
-            _ -> False
-
-      , sameSignExp E.shift
+      [ sameSignExp E.shift
       ] -- shift
 
     , testGroup "rotate"
-      [ testProperty ("positive rotate increases digits "
-          ++ "when coefficient length < maximum") $
-        forAll genFinite $ \d ->
-        let q = E.fromBCD d
-            r = E.evalCtx $ E.rotate q E.one
-            d' = E.toBCD r
-            (len, len') = (lenCoeff d, lenCoeff d')
-            res = case (len, len') of
-              (Just l, Just l')
-                | l == E.coefficientLen -> l' == E.coefficientLen
-                | otherwise -> l' == l + 1
-              _ -> False
-        in printTestCase (show d') res
-
-      , sameSignExp E.rotate
+      [ sameSignExp E.rotate
       ]
     ] -- digit-wise
 
