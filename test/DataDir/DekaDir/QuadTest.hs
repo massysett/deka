@@ -32,6 +32,12 @@ isLeft e = case e of { Left _ -> True; _ -> False }
 isRight :: Either a b -> Bool
 isRight e = case e of { Right _ -> True; _ -> False }
 
+lenCoeff :: E.Decoded -> Maybe Int
+lenCoeff dcd = fmap length . fmap E.unCoefficient
+  $ case E.dValue dcd of
+      E.Finite c _ -> Just c
+      _ -> Nothing
+
 -- | Maximum Integer for testing purposes.
 maxInteger :: Integer
 maxInteger = 10 ^ (100 :: Int)
@@ -721,10 +727,26 @@ intConversion n gen fr to = testGroup (n ++ " conversions")
     in fl == E.emptyFlags && i' == i
   ]
 
+-- | Tests that what is returned by an operation has the same
+-- exponent and sign of the first operand.
+sameSignExp
+  :: (E.Quad -> E.Quad -> E.Ctx E.Quad)
+  -> TestTree
+sameSignExp f = testProperty
+  "result has same sign and exponent as first argument" $
+  forAll genFinite $ \d -> E.evalCtx $ do
+    let x = E.fromBCD d
+    r <- f x E.one
+    let d' = E.toBCD r
+        sameExp = case (E.dValue d, E.dValue d') of
+          (E.Finite _ e, E.Finite _ e') -> e == e'
+          _ -> False
+    return $ E.dSign d == E.dSign d' && sameExp
+
 -- # Tests
 
 tests :: TestTree
-tests = testGroup "IO"
+tests = testGroup "Quad"
   [ testGroup "helper functions"
     [ testGroup "biggestDigs"
       [ testProperty "generates correct number of digits" $
@@ -1270,19 +1292,71 @@ tests = testGroup "IO"
           let q = E.fromBCD d
           r1 <- E.invert q
           r2 <- E.invert r1
-          return $ E.compare r2 q == Just EQ
+          return $ E.compareOrd r2 q == Just EQ
       ]
 
     , testGroup "shift"
       [ testProperty "shift right reduces number of digits" $
         forAll genFinite $ \d ->
         let q = E.fromBCD d
-            r = E.evalCtx $ E.shift q one
-            q' = E.toBCD r
-            lenCoeff dcd = fmap length . fmap unCoeff $ case dValue dcd of
-              Finite c _ -> Just c
-              _ -> Nothing
+            r = E.evalCtx $ do
+              o <- E.minus E.one
+              E.shift q o
+            d' = E.toBCD r
+            len = lenCoeff d
+            len' = lenCoeff d'
+        in case (len, len') of
+            (Just l, Just l')
+              | l == 1 -> l' == 1
+              | otherwise -> l' == l - 1
+            _ -> False
+
+      , testProperty "shift left increases number of digits" $
+        forAll genFinite $ \d ->
+        let q = E.fromBCD d
+            r = E.evalCtx $ E.shift q (E.one)
+            d' = E.toBCD r
+            len = lenCoeff d
+            len' = lenCoeff d'
+        in case (len, len') of
+            (Just l, Just l')
+              | l == E.coefficientLen -> l' == E.coefficientLen
+              | otherwise -> l' == l + 1
+            _ -> False
+
+      , sameSignExp E.shift
+      ] -- shift
+
+    , testGroup "rotate"
+      [ testProperty "keeps the number of digits the same" $
+        forAll genFinite $ \d ->
+        let q = E.fromBCD d
+            r = E.evalCtx $ E.rotate q E.one
+            d' = E.toBCD r
+            (len, len') = (lenCoeff d, lenCoeff d')
+        in case (len, len') of
+            (Just l, Just l') -> l == l'
+            _ -> False
+
+      , sameSignExp E.rotate
+      ]
     ] -- digit-wise
+
+  , testGroup "log and scale"
+    [ testGroup "logB"
+      [ testProperty "returns adjusted exponent of finite numbers" $
+        forAll genFinite $ \d -> E.evalCtx $ do
+          let q = E.fromBCD d
+          lg <- E.logB q
+          i <- E.toInt32 E.roundUp lg
+          let e = fromIntegral i
+              r = case E.dValue d of
+                E.Finite c ex ->
+                  E.unAdjustedExp (E.adjustedExp c ex) == e
+                _ -> False
+          return r
+      ]
+    ] -- log and scale
 
   , testGroup "conversions"
     [ testGroup "decode and encode"
@@ -1293,4 +1367,4 @@ tests = testGroup "IO"
       ]
     ] -- conversions
 
-  ]
+  ]  -- Quad

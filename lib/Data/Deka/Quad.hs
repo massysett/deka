@@ -176,6 +176,7 @@ module Data.Deka.Quad
 
   -- * Constants
   , zero
+  , one
   , version
 
   -- * Complete encoding and decoding
@@ -1031,10 +1032,10 @@ sameQuantum x y = unsafePerformIO $
 scaleB :: Quad -> Quad -> Ctx Quad
 scaleB = binary unsafe'c'decQuadScaleB
 
--- | @shift x y@ shifts digits to the left (if @y@ is positive) or
--- right (if @y@ is negative) without adjusting the exponent or
--- sign of @y@.  Any digits shiften in from the left or right will
--- be 0.
+-- | @shift x y@ shifts digits the digits of x to the left (if @y@
+-- is positive) or right (if @y@ is negative) without adjusting the
+-- exponent or sign of @x@.  Any digits shifted in from the left or
+-- right will be 0.
 --
 -- @y@ is a count of positions to shift; it must be a finite
 -- integer in the range @negate 'coefficientLen'@ to
@@ -1135,6 +1136,11 @@ zero = unsafePerformIO $
   withForeignPtr (unQuad d) $ \pD ->
   unsafe'c'decQuadZero pD >>
   return d
+
+-- | A Quad with coefficient 'D1', exponent 0, and sign 'Sign0'.
+one :: Quad
+one = fromBCD
+  $ Decoded Sign0 (Finite (Coefficient [D1]) (Exponent 0))
 
 -- # Conversions
 
