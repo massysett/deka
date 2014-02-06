@@ -345,8 +345,7 @@ commutativity n f = testProperty desc $
             y = E.fromBCD dy
         r1 <- f x y
         r2 <- f y x
-        let c = E.compareTotal r1 r2
-            isZ = E.isZero c
+        let isZ = E.compareTotal r1 r2 == EQ
         fl <- E.getStatus
         return (fl == E.emptyFlags, isZ)
   in noFlags ==> resIsZero
@@ -543,6 +542,14 @@ identity n g f = testProperty name $
   where
     name = n ++ " is the identity for finite numbers"
 
+eitherToOrd :: Either E.Quad Ordering -> Ordering
+eitherToOrd = either toOrd id
+  where
+    toOrd x | E.isNegative x = LT
+            | E.isZero x = EQ
+            | E.isPositive x = GT
+            | otherwise = error "eitherToOrd: unrecognized value"
+
 comparison
   :: String
   -- ^ Name of function
@@ -550,7 +557,7 @@ comparison
   -- ^ How to make a larger Quad
   -> (E.Quad -> E.Ctx E.Quad)
   -- ^ How to make a smaller Quad
-  -> (E.Quad -> E.Quad -> E.Ctx E.Quad)
+  -> (E.Quad -> E.Quad -> E.Ctx (Either E.Quad Ordering))
   -> TestTree
 
 comparison n fB fS fC = testGroup (n ++ " comparisons")
@@ -559,20 +566,20 @@ comparison n fB fS fC = testGroup (n ++ " comparisons")
       let a = E.fromBCD da
       b <- fB a
       c <- fC b a
-      return $ E.isPositive c
+      return $ eitherToOrd c == GT
 
   , testProperty "x < y" $ forAll genNonZeroSmallFinite $
     \da -> E.evalCtx $ do
       let a = E.fromBCD da
       b <- fS a
       c <- fC b a
-      return $ E.isNegative c
+      return $ eitherToOrd c == LT
 
   , testProperty "x == x" $ forAll genNonZeroSmallFinite $
     \da -> E.evalCtx $ do
       let a = E.fromBCD da
       c <- fC a a
-      return $ E.isZero c
+      return $ eitherToOrd c == EQ
 
   , testProperty "transitive" $ forAll genNonZeroSmallFinite $
     \da ->
@@ -580,16 +587,17 @@ comparison n fB fS fC = testGroup (n ++ " comparisons")
       let a = E.fromBCD da
           b = E.fromBCD db
       c <- fC a b
-      let z = E.isZero c
-      if z
-        then do
+      case eitherToOrd c of
+        EQ -> do
           c' <- fC b a
-          return $ E.isZero c'
-        else do
+          return $ eitherToOrd c' == EQ
+        o -> do
           c' <- fC b a
-          newSign <- E.minus c
-          cmpResults <- E.compare c' newSign
-          return $ E.isZero cmpResults
+          let cOrd = eitherToOrd c'
+          return $ case cOrd of
+            LT -> o == GT
+            GT -> o == LT
+            EQ -> False
   ]
 
 testMinMax
@@ -893,7 +901,7 @@ tests = testGroup "IO"
       let qD = E.fromBCD d
           (qS, fl) = E.runCtx . E.fromByteString
                       . BS8.pack . E.scientific $ d
-          compared = E.isZero $ E.compareTotal qD qS
+          compared = E.compareTotal qD qS == EQ
       in compared && fl == E.emptyFlags
 
     , testProperty ("fromBCD and (fromByteString . ordinary) "
@@ -904,32 +912,30 @@ tests = testGroup "IO"
           (qS, fl) = E.runCtx . E.fromByteString
                       . BS8.pack $ str
           cmpResult 
-            | E.isNormal qD = E.runCtx $ E.compare qD qS
-            | otherwise = E.runCtx . return $ E.compareTotal qD qS
+            | E.isNormal qD = E.compareOrd qD qS == Just EQ
+            | otherwise = E.compareTotal qD qS == EQ
           noFlags f = f == E.emptyFlags
           desc = "string: " ++ str
             ++ " fromByteString result: " ++ show qS
-      in noFlags fl && noFlags (snd cmpResult)
-          ==> printTestCase desc
-              (E.isZero (fst cmpResult))
+      in noFlags fl ==> printTestCase desc cmpResult
 
     , testProperty "toByteString -> fromByteString" $
       forAll genDecoded $ \d ->
       let q = E.fromBCD d
           bs = E.toByteString q
           (q', fl) = E.runCtx . E.fromByteString $ bs
-          cmpRes = E.compareTotal q q'
-      in E.isZero cmpRes && fl == E.emptyFlags
+          cmpRes = E.compareTotal q q' == EQ
+      in cmpRes && fl == E.emptyFlags
 
     , testProperty "toEngByteString -> fromByteString" $
       forAll genDecoded $ \d ->
       let q = E.fromBCD d
           bs = E.toEngByteString q
           (q', fl) = E.runCtx . E.fromByteString $ bs
-          cmpRes = E.evalCtx $ E.compare q q'
-          cmpResTot = E.compareTotal q q'
+          cmpRes = E.compareOrd q q' == Just EQ
+          cmpResTot = E.compareTotal q q' == EQ
           res = if E.isNormal q then cmpRes else cmpResTot
-      in E.isZero res && fl == E.emptyFlags
+      in res && fl == E.emptyFlags
     ] -- string conversions
 
   , testGroup "integer conversions"
@@ -1064,15 +1070,17 @@ tests = testGroup "IO"
     ] -- exponent and coefficient adjustment
 
   , testGroup "comparisons"
-    [ comparison "compare" E.nextPlus E.nextMinus E.compare
+    [ comparison "compare" E.nextPlus E.nextMinus
+        (fmap (fmap (fmap Left)) E.compare)
+
     , comparison "compareSignal" E.nextPlus
-        E.nextMinus E.compare
+        E.nextMinus (fmap (fmap (fmap Left )) E.compareSignal)
 
     , comparison "compareTotal" E.nextPlus E.nextMinus
-        (fmap (fmap return) E.compareTotal)
+        (fmap (fmap (return . Right)) E.compareTotal)
 
     , comparison "compareTotalMag" increaseAbs decreaseAbs
-          (fmap (fmap return) E.compareTotalMag)
+          (fmap (fmap (return . Right)) E.compareTotalMag)
 
     , testMinMax "min" False E.min
     , testMinMax "max" False E.max
@@ -1146,7 +1154,7 @@ tests = testGroup "IO"
             q = E.fromBCD d
             rAdd = E.evalCtx $ E.add z q
             rPlus = E.evalCtx $ E.plus q
-        in E.isZero $ E.compareTotal rAdd rPlus
+        in E.compareTotal rAdd rPlus == EQ
       ]
 
     , testGroup "minus"
@@ -1160,7 +1168,7 @@ tests = testGroup "IO"
             q = E.fromBCD d
             rSubt = E.evalCtx $ E.subtract z q
             rMinus = E.evalCtx $ E.minus q
-        in E.isZero $ E.compareTotal rSubt rMinus
+        in E.compareTotal rSubt rMinus == EQ
       ]
 
     , testGroup "abs"
@@ -1228,15 +1236,16 @@ tests = testGroup "IO"
     , testGroup "or"
       [ testProperty "x | 0 == x" $
         forAll genLogical $ \d ->
-        let r = E.evalCtx $ E.or (E.fromBCD d) E.zero
-        in E.isZero r
+        let r = E.evalCtx $ E.or x E.zero
+            x = E.fromBCD d
+        in E.compareOrd x r == Just EQ
 
       , testProperty "x | x == x" $
         forAll genLogical $ \d ->
         let r = E.evalCtx $ E.or x x
             cmp = E.compareTotal r x
             x = E.fromBCD d
-        in E.isZero cmp
+        in cmp == EQ
       ]
 
     , testGroup "xor"
@@ -1245,7 +1254,7 @@ tests = testGroup "IO"
         let r = E.evalCtx $ E.xor x E.zero
             cmp = E.compareTotal r x
             x = E.fromBCD d
-        in E.isZero cmp
+        in cmp == EQ
 
       , testProperty "x XOR x == 0" $
         forAll genLogical $ \d ->
@@ -1254,6 +1263,25 @@ tests = testGroup "IO"
         in E.isZero r
 
       ]
+
+    , testGroup "invert"
+      [ testProperty "invert twice is idempotent" $
+        forAll genLogical $ \d -> E.evalCtx $ do
+          let q = E.fromBCD d
+          r1 <- E.invert q
+          r2 <- E.invert r1
+          return $ E.compare r2 q == Just EQ
+      ]
+
+    , testGroup "shift"
+      [ testProperty "shift right reduces number of digits" $
+        forAll genFinite $ \d ->
+        let q = E.fromBCD d
+            r = E.evalCtx $ E.shift q one
+            q' = E.toBCD r
+            lenCoeff dcd = fmap length . fmap unCoeff $ case dValue dcd of
+              Finite c _ -> Just c
+              _ -> Nothing
     ] -- digit-wise
 
   , testGroup "conversions"

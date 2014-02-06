@@ -49,9 +49,7 @@ cmpDec x y = do
   decToOrd r
 
 cmpDecTotal :: Quad -> Quad -> EitherT String Ctx Ordering
-cmpDecTotal x y = do
-  let r = P.compareTotal x y
-  decToOrd r
+cmpDecTotal x y = return $ P.compareTotal x y
 
 eqDecTotal :: Quad -> Quad -> EitherT String Ctx Bool
 eqDecTotal x y = fmap (== EQ) $ cmpDecTotal x y

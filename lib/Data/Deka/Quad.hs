@@ -117,6 +117,7 @@ module Data.Deka.Quad
 
   -- * Comparisons
   , compare
+  , compareOrd
   , compareSignal
   , compareTotal
   , compareTotalMag
@@ -556,17 +557,10 @@ newtype QuadT = QuadT { unQuadT :: Quad }
   deriving Show
 
 instance Eq QuadT where
-  QuadT x == QuadT y
-    | isZero (compareTotal x y) = False
-    | otherwise = True
+  QuadT x == QuadT y = compareTotal x y == EQ
 
 instance Ord QuadT where
-  compare (QuadT x) (QuadT y)
-    | isZero r = EQ
-    | isPositive r = GT
-    | otherwise = LT
-    where
-      r = compareTotal x y
+  compare (QuadT x) (QuadT y) = compareTotal x y
 
 
 -- # Helpers.  Do not export these.
@@ -739,6 +733,21 @@ decClass = DecClass . unaryGet unsafe'c'decQuadClass
 compare :: Quad -> Quad -> Ctx Quad
 compare = binary unsafe'c'decQuadCompare
 
+-- | Wrapper for 'compare' that returns an 'Ordering' rather than a
+-- 'Quad'.  Returns @Just LT@ rather than -1, @Just EQ@ rather than
+-- 0, and @Just GT@ rather than 1, and @Nothing@ rather than NaN.
+-- This is a pure function; it does not affect the 'Ctx'.
+
+compareOrd :: Quad -> Quad -> Maybe Ordering
+compareOrd x y = evalCtx $ do
+  c <- compare x y
+  let r | isNaN c = Nothing
+        | isNegative c = Just LT
+        | isZero c = Just EQ
+        | isPositive c = Just GT
+        | otherwise = error "compareOrd: unknown result"
+  return r
+
 -- | Same as 'compare', but a quietNaN is treated like a signaling
 -- NaN (sets 'invalidOperation').
 compareSignal :: Quad -> Quad -> Ctx Quad
@@ -749,13 +758,26 @@ compareSignal = binary unsafe'c'decQuadCompareSignal
 -- return different results depending upon whether the operands are
 -- canonical; 'Quad' are always canonical so you don't need to worry
 -- about that here.
-compareTotal :: Quad -> Quad -> Quad
-compareTotal = binaryCtxFree unsafe'c'decQuadCompareTotal
+compareTotal :: Quad -> Quad -> Ordering
+compareTotal x y =
+  let c = binaryCtxFree unsafe'c'decQuadCompareTotal x y
+      r | isNegative c = LT
+        | isZero c = EQ
+        | isPositive c = GT
+        | otherwise = error "compareTotal: unknown result"
+  in r
 
 -- | Same as 'compareTotal' but compares the absolute value of the
 -- two arguments.
-compareTotalMag :: Quad -> Quad -> Quad
-compareTotalMag = binaryCtxFree unsafe'c'decQuadCompareTotalMag
+compareTotalMag :: Quad -> Quad -> Ordering
+compareTotalMag x y =
+  let c = binaryCtxFree unsafe'c'decQuadCompareTotalMag x y
+      r | isNegative c = LT
+        | isZero c = EQ
+        | isPositive c = GT
+        | otherwise = error "compareTotalMag: unknown result"
+  in r
+
 
 -- decNumber's CopySign copies the contents from pS to PN, except
 -- that the sign is copied from pP to pN
