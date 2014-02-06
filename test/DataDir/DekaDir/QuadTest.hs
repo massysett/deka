@@ -1328,15 +1328,19 @@ tests = testGroup "Quad"
       ] -- shift
 
     , testGroup "rotate"
-      [ testProperty "keeps the number of digits the same" $
+      [ testProperty ("positive rotate increases digits "
+          ++ "when coefficient length < maximum") $
         forAll genFinite $ \d ->
         let q = E.fromBCD d
             r = E.evalCtx $ E.rotate q E.one
             d' = E.toBCD r
             (len, len') = (lenCoeff d, lenCoeff d')
-        in case (len, len') of
-            (Just l, Just l') -> l == l'
-            _ -> False
+            res = case (len, len') of
+              (Just l, Just l')
+                | l == E.coefficientLen -> l' == E.coefficientLen
+                | otherwise -> l' == l + 1
+              _ -> False
+        in printTestCase (show d') res
 
       , sameSignExp E.rotate
       ]
