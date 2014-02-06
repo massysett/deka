@@ -1318,7 +1318,26 @@ tests = testGroup "Quad"
                 _ -> False
           return r
       ]
+
+    , testGroup "scaleB"
+      [ testProperty "scaleB x 0 == x" $
+        forAll genFinite $ \d -> E.evalCtx $ do
+          let q = E.fromBCD d
+          b <- E.scaleB q E.zero
+          return $ E.compareOrd q b == Just EQ
+      ]
     ] -- log and scale
+
+  , testGroup "attributes"
+    [ testGroup "digits"
+      [ testProperty "gets same result as length of decoded coeff" $
+        forAll genFinite $ \d ->
+        let digs = E.digits . E.fromBCD $ d
+        in case E.dValue d of
+            E.Finite c _ -> length (E.unCoefficient c) == digs
+            _ -> False
+      ]
+    ] -- attributes
 
   , testGroup "conversions"
     [ testGroup "decode and encode"

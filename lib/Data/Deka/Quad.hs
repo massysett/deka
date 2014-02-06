@@ -794,7 +794,8 @@ copySign s p = unsafePerformIO $
   unsafe'c'decQuadCopySign pN pS pP >>
   return n
 
--- | Number of significant digits.
+-- | Number of significant digits.  If zero or infinite, returns 1.
+-- If NaN, returns number of digits in the payload.
 digits :: Quad -> Int
 digits = fromIntegral . unaryGet unsafe'c'decQuadDigits
 
