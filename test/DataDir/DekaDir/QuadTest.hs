@@ -318,6 +318,9 @@ allFlags = [ E.divisionUndefined, E.divisionByZero,
   E.divisionImpossible, E.invalidOperation, E.inexact,
   E.underflow, E.overflow, E.conversionSyntax ]
 
+genFlag :: Gen E.Flag
+genFlag = elements allFlags
+
 onePointFive :: E.Quad
 onePointFive = E.evalCtx . E.fromByteString . BS8.pack $ "1.5"
 
@@ -887,94 +890,14 @@ tests = testGroup "Quad"
         r' <- E.getRound
         return $ r == r'
 
-    , testGroup "roundCeiling"
-      [ testProperty "increases value or it stays the same" $
-        forAll genFinite $ \d -> E.evalCtx $ do
-          E.setRound E.roundCeiling
-          let x = E.fromBCD d
-          r <- E.toIntegralExact x
-          return $ case E.compareOrd r x of
-            Just GT -> True
-            Just EQ -> True
-            _ -> False
-      ]
-
-    , testGroup "roundUp"
-      [ testProperty "increases absolute value or it stays the same" $
-        forAll genFinite $ \d -> E.evalCtx $ do
-          E.setRound E.roundUp
-          let x = E.fromBCD d
-          r <- E.toIntegralExact x
-          r' <- E.abs r
-          x' <- E.abs x
-          return $ case E.compareOrd r' x' of
-            Just GT -> True
-            Just EQ -> True
-            _ -> False
-      ]
-
-    , testGroup "roundHalfUp"
-      [ testProperty "increases or does not change value" $
-        forAll genFinite $ \d -> E.evalCtx $ do
-          E.setRound E.roundHalfUp
-          let x = E.fromBCD d
-          r <- E.toIntegralExact x
-          return $ case E.compareOrd r x of
-            Just GT -> True
-            Just EQ -> True
-            _ -> False
-      ]
-
-    , testGroup "roundHalfEven"
-      [ testProperty "increases or does not absolute value" $
-        forAll genFinite $ \d -> E.evalCtx $ do
-          E.setRound E.roundHalfEven
-          let x = E.fromBCD d
-          r <- E.toIntegralExact x
-          return $ case E.compareOrd r x of
-            Just GT -> True
-            Just EQ -> True
-            _ -> False
-      ]
-
-    , testGroup "roundHalfDown"
-      [ testProperty "increases or does not change value" $
-        forAll genFinite $ \d -> E.evalCtx $ do
-          E.setRound E.roundHalfDown
-          let x = E.fromBCD d
-          r <- E.toIntegralExact x
-          return $ case E.compareOrd r x of
-            Just GT -> True
-            Just EQ -> True
-            _ -> False
-      ]
-
-    , testGroup "roundDown"
-      [ testProperty "decreases or does not change absolute value" $
-        forAll genFinite $ \d -> E.evalCtx $ do
-          E.setRound E.roundDown
-          let x = E.fromBCD d
-          r <- E.toIntegralExact x
-          r' <- E.abs r
-          x' <- E.abs x
-          return $ case E.compareOrd r' x' of
-            Just LT -> True
-            Just EQ -> True
-            _ -> False
-      ]
-
-    , testGroup "roundFloor"
-      [ testProperty "decreases or does not change value" $
-        forAll genFinite $ \d -> E.evalCtx $ do
-          E.setRound E.roundFloor
-          let x = E.fromBCD d
-          r <- E.toIntegralExact x
-          return $ case E.compareOrd r x of
-            Just LT -> True
-            Just EQ -> True
-            _ -> False
-      ]
     ] -- rounding
+
+  , testGroup "flags"
+    [ testProperty "no flags set initially" . once
+      . E.evalCtx $ do
+        fl <- E.getStatus
+        return $ fl == E.emptyFlags
+    ]
 
   , testGroup "classes"
     [ testDecClass E.sNan

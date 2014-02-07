@@ -69,6 +69,7 @@ module Data.Deka.Quad
   , Ctx
   , getStatus
   , setStatus
+  , mapStatus
   , getRound
   , setRound
   , runCtx
@@ -301,7 +302,7 @@ import Data.Deka.Internal
 newtype Round = Round { unRound :: C'rounding }
   deriving (Eq, Ord, Show)
 
--- | Round toward infinity.
+-- | Round toward positive infinity.
 roundCeiling :: Round
 roundCeiling = Round c'DEC_ROUND_CEILING
 
@@ -309,42 +310,27 @@ roundCeiling = Round c'DEC_ROUND_CEILING
 roundUp :: Round
 roundUp = Round c'DEC_ROUND_UP
 
--- | Round toward positive infinity, but only if the discarded digits are
--- greater than or equal to half of the value of a one in the next
--- left position.
+-- | @0.5@ rounds up
 roundHalfUp :: Round
 roundHalfUp = Round c'DEC_ROUND_HALF_UP
 
--- | Round toward positive infinity, if discarded digits are greater
--- than half of the value of a one in the next left position.  If
--- discarded digits are less than half, ignore the discarded digits.
--- If they represent exactly half, do not alter result coefficient
--- if its rightmost digit is even, or increment it by one if its
--- rightmost digit is odd (to make an even digit).
+-- | @0.5@ rounds to nearest even
 roundHalfEven :: Round
 roundHalfEven = Round c'DEC_ROUND_HALF_EVEN
 
--- | If the discarded digits represent greater than half of the
--- value of a one in the next left position then the result
--- coefficient is incremented by one (rounded toward positive
--- infinity).  Otherwise the discarded digits are ignored.
+-- | @0.5@ rounds down
 roundHalfDown :: Round
 roundHalfDown = Round c'DEC_ROUND_HALF_DOWN
 
--- | Round toward zero; the discarded digits are ignored.
+-- | Round toward zero - truncate
 roundDown :: Round
 roundDown = Round c'DEC_ROUND_DOWN
 
--- | Round toward negative infinity.  If all discarded digits are
--- zero or if the sign is zero, the result is unchanged.  Otherwise,
--- the sign is 1 and the result coefficient is incremented by 1.
+-- | Round toward negative infinity.
 roundFloor :: Round
 roundFloor = Round c'DEC_ROUND_FLOOR
 
--- | Round zero or five away from zero.  The same as 'roundUp',
--- except that rounding up occurs only if the digit to be rounded up
--- is 0 or 5, and after overflow the result is the same as for
--- 'roundDown'.
+-- | Round for reround
 round05Up :: Round
 round05Up = Round c'DEC_ROUND_05UP
 
@@ -448,6 +434,12 @@ setStatus :: Flags -> Ctx ()
 setStatus f = Ctx $ \cPtr -> do
   let pSt = p'decContext'status cPtr
   poke pSt . unFlags $ f
+
+mapStatus :: (Flags -> Flags) -> Ctx ()
+mapStatus f = do
+  st <- getStatus
+  let st' = f st
+  setStatus st'
 
 -- | The current rounding method
 getRound :: Ctx Round
