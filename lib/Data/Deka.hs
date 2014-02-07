@@ -8,6 +8,7 @@ module Data.Deka
   , checked
   ) where
 
+import Data.Ratio
 import Control.Arrow hiding (left)
 import Control.Monad.Trans.Class
 import Data.Deka.Quad
@@ -96,7 +97,6 @@ instance Eq Deka where
 instance Ord Deka where
   compare (Deka x) (Deka y) = evalEither $ cmpDec x y
 
--- | Show always converts to scientific notation.
 instance Show Deka where
   show = showDec . unDeka
 
@@ -115,7 +115,21 @@ instance Num Deka where
   fromInteger = either (error . ("Deka: fromInteger: error: " ++))
     id . integralToDeka
 
--- | Multiprecision decimals with a total ordering.
+instance Real Deka where
+  toRational (Deka x) =
+    let (int, ex) = case dValue bcd of
+            (Finite c e) ->
+              ( digitsToInteger . unCoefficient $ c,
+                unExponent e)
+            _ -> error "Deka.toRational: non-finite argument"
+        mkSign = if dSign bcd == Sign0 then id else negate
+        bcd = toBCD x
+        mult = if ex < 0 then 1 % (10 ^ Prelude.abs ex) else 10 ^ ex
+    in mkSign $ fromIntegral int * mult
+
+
+
+-- | Decimals with a total ordering.
 newtype DekaT = DekaT { unDekaT :: Deka }
   deriving Show
 

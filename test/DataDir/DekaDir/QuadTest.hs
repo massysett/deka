@@ -248,6 +248,15 @@ genOne = genFiniteDcd (return E.Sign0) gDigs gExp
 genSmallFinite :: Gen E.Decoded
 genSmallFinite = maxSize 5 genFinite
 
+-- | Generates two values that are equivalent, but with
+-- different exponents.
+
+genEquivalent :: Gen (E.Decoded, E.Decoded)
+genEquivalent = do
+  ds <- sizedDigits (E.coefficientLen - 1) decimalDigs
+
+
+
 genNonZeroSmallFinite :: Gen E.Decoded
 genNonZeroSmallFinite = maxSize 5 $ genFiniteDcd genSign
   gd ge
