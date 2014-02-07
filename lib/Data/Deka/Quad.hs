@@ -309,25 +309,25 @@ roundCeiling = Round c'DEC_ROUND_CEILING
 roundUp :: Round
 roundUp = Round c'DEC_ROUND_UP
 
--- | Round away from zero, but only if the discarded digits are
+-- | Round toward positive infinity, but only if the discarded digits are
 -- greater than or equal to half of the value of a one in the next
 -- left position.
 roundHalfUp :: Round
 roundHalfUp = Round c'DEC_ROUND_HALF_UP
 
--- | Round away from zero if discarded digits are greater than half
--- of the value of a one in the next left position.  If discarded
--- digits are less than half, ignore the discarded digits.  If they
--- represent exactly half, do not alter result coefficient if its
--- rightmost digit is even, or increment it by one if its rightmost
--- digit is odd (to make an even digit).
+-- | Round toward positive infinity, if discarded digits are greater
+-- than half of the value of a one in the next left position.  If
+-- discarded digits are less than half, ignore the discarded digits.
+-- If they represent exactly half, do not alter result coefficient
+-- if its rightmost digit is even, or increment it by one if its
+-- rightmost digit is odd (to make an even digit).
 roundHalfEven :: Round
 roundHalfEven = Round c'DEC_ROUND_HALF_EVEN
 
 -- | If the discarded digits represent greater than half of the
 -- value of a one in the next left position then the result
--- coefficient is incremented by one (that is, rounded away from
--- zero).  Otherwise the discarded digits are ignored.
+-- coefficient is incremented by one (rounded toward positive
+-- infinity).  Otherwise the discarded digits are ignored.
 roundHalfDown :: Round
 roundHalfDown = Round c'DEC_ROUND_HALF_DOWN
 
@@ -867,7 +867,16 @@ isInfinite = boolean unsafe'c'decQuadIsInfinite
 
 -- | True if @x@ is finite and has exponent of @0@; False otherwise.
 -- This tests the exponent, not the /adjusted/ exponent.  This can
--- lead to rather interesting results under odd circumstances.
+-- lead to results you may not expect:
+--
+-- >>> isInteger . evalCtx . fromByteString . pack $ "3.00e2"
+-- True
+--
+-- >>> isInteger . evalCtx . fromByteString . pack $ "3e2"
+-- False
+--
+-- >>> isInteger . evalCtx . fromByteString . pack $ "3.00e0"
+-- False
 isInteger :: Quad -> Bool
 isInteger = boolean unsafe'c'decQuadIsInteger
 
