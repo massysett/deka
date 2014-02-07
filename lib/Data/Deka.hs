@@ -1,105 +1,96 @@
-{-# LANGUAGE Safe #-}
+{-# LANGUAGE Safe, DeriveDataTypeable #-}
 
+-- | Simple decimal arithmetic.
+--
+-- 'Deka' provides a decimal arithmetic type.  You are limited to 34
+-- digits of precision.  That's 34 digits total, not 34 digits after
+-- the decimal point.  For example, the numbers @123.0@ and @0.1230@
+-- both have four digits of precision.  Deka remembers significant
+-- digits, so @123@ has three digits of precision while @123.0@ has
+-- four digits of precision.
+--
+-- Using this module, the results are never inexact.  Computations
+-- will throw exceptions rather than returning an inexact result.
+-- That way, you know that any result you have is exactly correct.
+--
+-- 'Deka' represents only finite values.  There are no infinities or
+-- not-a-number values allowed.
+--
+-- For more control over your arithmetic, see "Data.Deka.Quad", but
+-- for many routine uses this module is sufficient and is more
+-- succinct because, unlike 'Quad', 'Deka' is a member of the 'Num'
+-- typeclass.
 module Data.Deka
-  ( Deka(..)
+  ( Deka
+  , unDeka
   , DekaT(..)
   , integralToDeka
   , strToDeka
-  , checked
+  , quadToDeka
+  , DekaError(..)
   ) where
 
-import Data.Ratio
-import Control.Arrow hiding (left)
-import Control.Monad.Trans.Class
+import Control.Exception
+import Data.Maybe
+import Data.Typeable
 import Data.Deka.Quad
-import Data.List (intersperse)
 import qualified Data.Deka.Quad as P
 import qualified Data.ByteString.Char8 as BS8
-import Control.Monad.Trans.Either
 
-flagsErrorMessage :: Flags -> Either String ()
-flagsErrorMessage fl = case flagList fl of
-  [] -> Right ()
-  xs -> Left ("flags set: " ++
-                (concat . intersperse ", " $ xs))
+-- | Thrown by arithmetic functions in the Num class, as this is the
+-- only way to indicate errors.
+data DekaError
+  = IntegerTooBig Integer
+  -- ^ Could not convert an integer to a Deka; it is too big.
+  | Flagged Flags
+  -- ^ A computation set flags.  This will happen if, for example,
+  -- you calculate a result that is out of range, such as
+  --
+  -- >>> maxBound + maxBound :: Deka
+  deriving (Show, Typeable)
 
-checked :: Ctx a -> Either String a
-checked a =
-  let (r, fl) = runCtx a
-  in flagsErrorMessage fl >> return r
+instance Exception DekaError
 
-eval :: Ctx c -> c
-eval = either (error . ("Deka: error: " ++)) id . checked
-
-evalEither :: EitherT String Ctx a -> a
-evalEither
-  = either checkOuterE id
-  . checked
-  . fmap (either checkE id)
-  . runEitherT
-  where
-    checkE = error . ("Deka: Deka error: " ++)
-    checkOuterE = error . ("Deka: decQuad error: " ++)
-
-eqDec :: Quad -> Quad -> EitherT String Ctx Bool
-eqDec x y = fmap (== EQ) $ cmpDec x y
-
-cmpDec :: Quad -> Quad -> EitherT String Ctx Ordering
-cmpDec x y = do
-  r <- lift $ P.compare x y
-  decToOrd r
-
-cmpDecTotal :: Quad -> Quad -> EitherT String Ctx Ordering
-cmpDecTotal x y = return $ P.compareTotal x y
-
-eqDecTotal :: Quad -> Quad -> EitherT String Ctx Bool
-eqDecTotal x y = fmap (== EQ) $ cmpDecTotal x y
-
--- | Runs monadic actions.  When the first action returns True,
--- return the corresponding result.  If no action returns True,
--- return the default result.
-successfulPair :: Monad m => m r -> [(m Bool, r)] -> m r
-successfulPair d ls = case ls of
-  [] -> d
-  x:xs -> do
-    r <- fst x
-    if r then return (snd x) else successfulPair d xs
-
--- | Runs an action. If it is true, run the next set of actions,
--- otherwise return the given result.
-runIf :: Monad m => m r -> m Bool -> m r -> m r
-runIf dflt a rs = do
-  r <- a
-  if r then rs else dflt
-
-decToOrd :: Quad -> EitherT String Ctx Ordering
-decToOrd d
-  = runIf (left "decToOrd: non-finite operand")
-          (return $ isFinite d)
-  .  successfulPair (left "decToOrd: nonsense result")
-  . map (first return)
-  $ [ (isPositive d, GT)
-    , (isZero d, EQ)
-    , (isNegative d, LT)
-    ]
-
-showDec :: Quad -> String
-showDec = BS8.unpack . toByteString
-
+-- | Deka wraps a 'Quad'.  Only finite 'Quad' may become a 'Deka';
+-- no infinities or NaN values are allowed.
+--
+-- 'Deka' is a member of 'Num' and 'Real', making it easy to use for
+-- elementary arithmetic.  Any time you perform arithmetic, the
+-- results are always exact.  The arithmetic functions will throw
+-- exceptions rather than give you an inexact result.
+--
+-- 'Deka' is not a member 'Fractional' because it is generally
+-- impossible to perform division without getting inexact results,
+-- and 'Deka' never holds inexact results.
 newtype Deka = Deka { unDeka :: Quad }
+  deriving Show
+
+eval :: Ctx a -> a
+eval c
+  | fl == emptyFlags = r
+  | otherwise = throw . Flagged $ fl
+  where
+    (r, fl) = runCtx c
 
 -- | Eq compares by value.  For instance, @3.5 == 3.500@.
 instance Eq Deka where
-  Deka x == Deka y = evalEither $ eqDec x y
+  Deka x == Deka y = case compareOrd x y of
+    Just EQ -> True
+    Just _ -> False
+    _ -> error "Deka: Eq: unexpected result"
 
 -- | Ord compares by value.  For instance, @compare 3.5 3.500 ==
 -- EQ@.
 instance Ord Deka where
-  compare (Deka x) (Deka y) = evalEither $ cmpDec x y
+  compare (Deka x) (Deka y) = case compareOrd x y of
+    Just r -> r
+    _ -> error "Deka: compare: unexpected reslt"
 
-instance Show Deka where
-  show = showDec . unDeka
-
+-- | Many of the 'Num' functions will throw 'DekaError' if their
+-- arguments are out of range or if they produce results that are
+-- out of range or inexact.  For functions that don't throw, you can
+-- use 'integralToDeka' rather than 'fromInteger', or you can use
+-- "Data.Deka.Quad" instead of 'Deka'.
 instance Num Deka where
   Deka x + Deka y = Deka . eval $ P.add x y
   Deka x - Deka y = Deka . eval $ P.subtract x y
@@ -112,21 +103,19 @@ instance Num Deka where
     | otherwise = fromInteger 1
     where
       f g = g x
-  fromInteger = either (error . ("Deka: fromInteger: error: " ++))
-    id . integralToDeka
+  fromInteger i = fromMaybe (throw (IntegerTooBig i))
+    . integralToDeka $ i
 
 instance Real Deka where
-  toRational (Deka x) =
-    let (int, ex) = case dValue bcd of
-            (Finite c e) ->
-              ( digitsToInteger . unCoefficient $ c,
-                unExponent e)
-            _ -> error "Deka.toRational: non-finite argument"
-        mkSign = if dSign bcd == Sign0 then id else negate
-        bcd = toBCD x
-        mult = if ex < 0 then 1 % (10 ^ Prelude.abs ex) else 10 ^ ex
-    in mkSign $ fromIntegral int * mult
+  toRational (Deka x) = case decodedToRational . toBCD $ x of
+    Nothing -> error "Deka.toRational: failed."
+    Just r -> r
 
+instance Bounded Deka where
+  minBound = Deka $ fromBCD (Decoded Sign1 (Finite oneCoeff minBound))
+    where
+      oneCoeff = succ minBound
+  maxBound = Deka $ fromBCD (Decoded Sign0 (Finite maxBound maxBound))
 
 
 -- | Decimals with a total ordering.
@@ -135,29 +124,45 @@ newtype DekaT = DekaT { unDekaT :: Deka }
 
 -- | Eq compares by a total ordering.
 instance Eq DekaT where
-  DekaT (Deka x) == DekaT (Deka y) = evalEither $ eqDecTotal x y
+  DekaT (Deka x) == DekaT (Deka y)
+    | r == EQ = True
+    | otherwise = False
+    where
+      r = compareTotal x y
 
 -- | Ord compares by a total ordering.
 instance Ord DekaT where
-  compare (DekaT (Deka x)) (DekaT (Deka y)) = evalEither $ cmpDecTotal x y
+  compare (DekaT (Deka x)) (DekaT (Deka y)) = compareTotal x y
 
 
-integralToDeka :: Integral a => a -> Either String Deka
+-- | Convert any integral to a Deka.  Returns 'Nothing' if the
+-- integer is too big to fit into a Deka (34 digits).
+integralToDeka :: Integral a => a -> Maybe Deka
 integralToDeka i = do
-  coe <- maybe (Left "coefficient too long") Right
-      . P.coefficient . P.integralToDigits $ i
+  coe <- P.coefficient . P.integralToDigits $ i
   let d = Decoded sgn (Finite coe zeroExponent)
       sgn = if i < 0 then Sign1 else Sign0
   return . Deka $ fromBCD d
 
-strToDeka :: String -> Either String Deka
-strToDeka s =
-  fmap Deka . fst . runCtx $ do
-    d <- fromByteString (BS8.pack s)
-    fl <- getStatus
-    case flagsErrorMessage fl of
-      Left e -> return $ Left e
-      Right _ -> do
-        let fin = isFinite d
-        return $ if not fin then (Left "result not finite")
-          else Right d
+-- | Convert a string to a Deka.  You can use ordinary numeric
+-- strings, such as @3.25@, or exponential notation, like @325E-2@.
+-- More infomration on your choices is at:
+--
+-- <http://speleotrove.com/decimal/daconvs.html#reftonum>
+--
+-- You cannot use strings that represent an NaN or an infinity.  If
+-- you do that, or use an otherwise invalid string, this function
+-- returns 'Nothing'.
+strToDeka :: String -> Maybe Deka
+strToDeka s
+  | fl /= emptyFlags = Nothing
+  | not (isFinite r) = Nothing
+  | otherwise = Just (Deka r)
+  where
+    (r, fl) = runCtx . fromByteString . BS8.pack $ s
+
+-- | Change a Quad to a Deka.  Only succeeds for finite Quad.
+quadToDeka :: Quad -> Maybe Deka
+quadToDeka q
+  | isFinite q = Just $ Deka q
+  | otherwise = Nothing

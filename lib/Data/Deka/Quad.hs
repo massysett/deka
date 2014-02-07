@@ -1,4 +1,4 @@
-{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE Trustworthy, DeriveDataTypeable #-}
 
 -- | Floating-point decimals.
 --
@@ -59,11 +59,11 @@ module Data.Deka.Quad
   , conversionSyntax
 
   , Flags
+  , unFlags
   , setFlag
   , clearFlag
   , checkFlag
   , emptyFlags
-  , flagList
 
   -- * Ctx monad
   , Ctx
@@ -230,6 +230,7 @@ module Data.Deka.Quad
   , toBCD
   , scientific
   , ordinary
+  , decodedToRational
 
   -- ** Decoded predicates
 
@@ -266,11 +267,12 @@ module Data.Deka.Quad
 
 -- # Imports
 
+import Control.Exception
 import Control.Monad
-import Control.Monad.Trans.Writer
 import qualified Data.ByteString.Char8 as BS8
-import Data.List (intersperse)
 import Data.Maybe
+import Data.Ratio
+import Data.Typeable
 import Foreign.Safe hiding
   ( void
   , isSigned
@@ -300,7 +302,19 @@ import Data.Deka.Internal
 -- # Rounding
 
 newtype Round = Round { unRound :: C'rounding }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show Round where
+  show (Round r)
+    | r == c'DEC_ROUND_CEILING = "roundCeiling"
+    | r == c'DEC_ROUND_UP = "roundUp"
+    | r == c'DEC_ROUND_HALF_UP = "roundHalfUp"
+    | r == c'DEC_ROUND_HALF_EVEN = "roundHalfEven"
+    | r == c'DEC_ROUND_HALF_DOWN = "roundHalfDown"
+    | r == c'DEC_ROUND_DOWN = "roundDown"
+    | r == c'DEC_ROUND_FLOOR = "roundFloor"
+    | r == c'DEC_ROUND_05UP = "round05Up"
+    | otherwise = error "Deka.Quad.Round.show: unrecognized rounding"
 
 -- | Round toward positive infinity.
 roundCeiling :: Round
@@ -339,7 +353,19 @@ round05Up = Round c'DEC_ROUND_05UP
 -- | A single error or warning condition that may be set in the
 -- 'Ctx'.
 newtype Flag = Flag C'uint32_t
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show Flag where
+  show (Flag f)
+    | f == c'DEC_Division_undefined = "disivionUndefined"
+    | f == c'DEC_Division_by_zero = "divisionByZero"
+    | f == c'DEC_Division_impossible = "divisionImpossible"
+    | f == c'DEC_Inexact = "inexact"
+    | f == c'DEC_Invalid_operation = "invalidOperation"
+    | f == c'DEC_Underflow = "underflow"
+    | f == c'DEC_Overflow = "overflow"
+    | f == c'DEC_Conversion_syntax = "conversionSyntax"
+    | otherwise = error "Deka.Quad: show flag: unrecogized flag"
 
 -- Docs are a bit unclear about what status flags can actually be
 -- set; the source code reveals that these can be set.
@@ -383,14 +409,25 @@ conversionSyntax = Flag c'DEC_Conversion_syntax
 -- Invalid Context is not recreated here; it should never happen
 
 -- | A container for multiple 'Flag' indicating which are set and
--- which are not.
-newtype Flags = Flags { unFlags :: C'uint32_t }
-  deriving (Eq, Ord)
+-- which are not.  An instance of 'Exception' so you can throw it if
+-- you want (no functions in this module throw.)
+newtype Flags = Flags C'uint32_t
+  deriving (Eq, Ord, Typeable)
+
+instance Exception Flags
+
+unFlags :: Flags -> [Flag]
+unFlags fs = mapMaybe getFlag allFlags
+  where
+    getFlag fl = if checkFlag fl fs then Just fl else Nothing
+    allFlags = [ divisionUndefined, divisionByZero,
+      divisionImpossible, invalidOperation, inexact, underflow,
+      overflow, conversionSyntax]
 
 -- | Show gives you a comma-separated list of flags that are set, or
 -- an empty string if no flags are set.
 instance Show Flags where
-  show = concat . intersperse ", " . flagList
+  show = show . unFlags
 
 setFlag :: Flag -> Flags -> Flags
 setFlag (Flag f1) (Flags fA) = Flags (f1 .|. fA)
@@ -406,22 +443,6 @@ checkFlag (Flag f1) (Flags fA) = (f1 .&. fA) /= 0
 emptyFlags :: Flags
 emptyFlags = Flags 0
 
--- | Gives a list of strings, one for each flag that is set.
-flagList :: Flags -> [String]
-flagList fl = execWriter $ do
-  let f s g
-        | checkFlag g fl = tell [s]
-        | otherwise = return ()
-  f "divisionUndefined" divisionUndefined
-  f "divisionByZero" divisionByZero
-  f "divisionImpossible" divisionImpossible
-  f "invalidOperation" invalidOperation
-  f "inexact" inexact
-  f "underflow" underflow
-  f "overflow" overflow
-  f "conversionSyntax" conversionSyntax
-
-
 -- | The current status flags, which indicate results from previous
 -- computations.
 getStatus :: Ctx Flags
@@ -431,9 +452,9 @@ getStatus = Ctx $ \cPtr -> do
 
 -- | Set the current status to whatever you wish.
 setStatus :: Flags -> Ctx ()
-setStatus f = Ctx $ \cPtr -> do
+setStatus (Flags f) = Ctx $ \cPtr -> do
   let pSt = p'decContext'status cPtr
-  poke pSt . unFlags $ f
+  poke pSt f
 
 mapStatus :: (Flags -> Flags) -> Ctx ()
 mapStatus f = do
@@ -1209,6 +1230,21 @@ minNormalExp c = adjustedToExponent c $ minNormalAdj
 newtype Exponent = Exponent { unExponent :: Int }
   deriving (Eq, Ord, Show)
 
+instance Bounded Exponent where
+  minBound = Exponent . fst $ minMaxExp
+  maxBound = Exponent . snd $ minMaxExp
+
+instance Enum Exponent where
+  toEnum i
+    | r < minBound = error e
+    | r > maxBound = error e
+    | otherwise = r
+    where
+      r = Exponent i
+      e = "Deka.Exponent.toEnum: integer out of range"
+
+  fromEnum (Exponent i) = i
+
 -- | Ensures that the exponent is within the range allowed by
 -- 'minMaxExp'.
 exponent :: Int -> Maybe Exponent
@@ -1380,6 +1416,18 @@ onyFinite c e
     aex = Prelude.abs ex
     lCoe = length coe
 
+-- | Converts a Decoded to a Rational.  Returns Nothing if the
+-- Decoded is not finite.
+decodedToRational :: Decoded -> Maybe Rational
+decodedToRational d = case dValue d of
+  (Finite c e) ->
+    let int = digitsToInteger . unCoefficient $ c
+        ex = unExponent e
+        mkSgn = if dSign d == Sign0 then id else negate
+        mult = if ex < 0 then 1 % (10 ^ Prelude.abs ex) else 10 ^ ex
+    in Just . mkSgn $ fromIntegral int * mult
+  _ -> Nothing
+
 -- ## Digits
 
 -- | A single decimal digit.
@@ -1408,6 +1456,28 @@ digitToChar d = case d of
 newtype Coefficient = Coefficient { unCoefficient :: [Digit] }
   deriving (Eq, Ord, Show)
 
+instance Bounded Coefficient where
+  minBound = Coefficient [D0]
+  maxBound = Coefficient $ replicate coefficientLen D9
+
+instance Enum Coefficient where
+  toEnum i
+    | i < 0 = error $ "Deka.Quad.Coefficient.toEnum: argument "
+      ++ "out of range; is negative"
+    | length r > coefficientLen = error $ "Deka.Quad.Coefficient."
+        ++ "toEnum: argument too large"
+    | otherwise = Coefficient r
+    where
+      r = integralToDigits i
+
+  fromEnum i
+    | r > (fromIntegral (maxBound :: Int)) =
+        error $ "Deka.Quad.Coefficient.fromEnum:"
+          ++ " argument too large to fit into Int"
+    | otherwise = fromIntegral r
+    where
+      r = digitsToInteger . unCoefficient $ i
+
 -- | Creates a 'Coefficient'.  Checks to ensure it is not null and
 -- that it is not longer than 'coefficientLen' and that it does not
 -- have leading zeroes (if it is 0, a single 'D0' is allowed).
@@ -1432,6 +1502,28 @@ oneCoefficient = Coefficient [D1]
 -- this.)
 newtype Payload = Payload { unPayload :: [Digit] }
   deriving (Eq, Ord, Show)
+
+instance Bounded Payload where
+  minBound = Payload [D0]
+  maxBound = Payload $ replicate payloadLen D9
+
+instance Enum Payload where
+  toEnum i
+    | i < 0 = error $ "Deka.Quad.Payload.toEnum: argument "
+      ++ "out of range; is negative"
+    | length r > payloadLen = error $ "Deka.Quad.Payload."
+        ++ "toEnum: argument too large"
+    | otherwise = Payload r
+    where
+      r = integralToDigits i
+
+  fromEnum i
+    | r > (fromIntegral (maxBound :: Int)) =
+        error $ "Deka.Quad.Payload.fromEnum:"
+          ++ " argument too large to fit into Int"
+    | otherwise = fromIntegral r
+    where
+      r = digitsToInteger . unPayload $ i
 
 -- | Creates a 'Payload'.  Checks to ensure it is not null, not
 -- longer than 'payloadLen' and that it does not have leading zeroes
@@ -1572,8 +1664,23 @@ dDigits (Coefficient ds) = case dropWhile (== D0) ds of
 -- when that number is expressed as though in scientific notation
 -- with one digit before any decimal point.  This is the finite
 -- exponent + (number of significant digits - 1).
-data AdjustedExp = AdjustedExp { unAdjustedExp :: Int }
+newtype AdjustedExp = AdjustedExp { unAdjustedExp :: Int }
   deriving (Eq, Show, Ord)
+
+instance Bounded AdjustedExp where
+  minBound = AdjustedExp $ fst minMaxExp
+  maxBound = AdjustedExp $ snd minMaxExp + coefficientLen - 1
+
+instance Enum AdjustedExp where
+  toEnum i
+    | r < minBound = error e
+    | r > maxBound = error e
+    | otherwise = r
+    where
+      r = AdjustedExp i
+      e = "Deka.AdjustedExp.toEnum: integer out of range"
+
+  fromEnum (AdjustedExp i) = i
 
 adjustedExp :: Coefficient -> Exponent -> AdjustedExp
 adjustedExp ds e = AdjustedExp $ unExponent e

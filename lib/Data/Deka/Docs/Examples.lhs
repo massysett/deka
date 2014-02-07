@@ -31,6 +31,7 @@ names.
 > module Data.Deka.Docs.Examples where
 
 > import Data.Deka
+> import Data.Maybe
 > import qualified Data.Deka.Quad as Q
 
 We need Char8 ByteStrings when working with the Pure and IO modules:
@@ -111,18 +112,10 @@ You get a Left with an error message if your Deka could not be
 created; otherwise, you get a Right with the Deka.  The input string
 can be in regular or scientific notation.
 
-Lots of functions in the Deka module return an `Either String`,
-where the String is an error message if a computation failed.  For
-the purposes of this example, let's make a simple function that will
-extract successful values while giving an error message for failed
-ones:
-
-> let { fromRight = either fail return };
-
 So, the following snippet will not give you incorrectly rounded
 results:
 
-> oneTenth <- fromRight . strToDeka $ "0.1";
+> let { oneTenth = fromJust . strToDeka $ "0.1" };
 > print $ oneTenth + oneTenth + oneTenth;
 
 Deka is not an instance of other numeric typeclasses, such as
@@ -276,7 +269,7 @@ a list of flags that are set.
 > putStr "result: ";
 > BS8.putStrLn r;
 > putStr "flags set: ";
-> print . Q.flagList $ fl;
+> print fl;
 
 The above example also shows that computations may return a Quad
 that is not finite--that is, it might be inifite, or it might be a

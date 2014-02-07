@@ -253,7 +253,27 @@ genSmallFinite = maxSize 5 genFinite
 
 genEquivalent :: Gen (E.Decoded, E.Decoded)
 genEquivalent = do
-  ds <- sizedDigits (E.coefficientLen - 1) decimalDigs
+  let genCoeff1 = sizedDigits (E.coefficientLen - 1) decimalDigs
+      genExp1 c =
+        let (l, h) = E.minMaxExp
+            l' = l + (E.coefficientLen - (length . E.unCoefficient $ c))
+        in choose (l', h)
+  d1 <- genFiniteDcd genSign genCoeff1 genExp1
+  let (c1, e1) = case E.dValue d1 of
+        E.Finite c e -> (E.unCoefficient c, E.unExponent e)
+        _ -> error "genEquivalent failed"
+      maxMore = E.coefficientLen - length c1
+  more <- choose (1, maxMore)
+  let coeff2 = case E.coefficient (c1 ++ replicate more E.D0) of
+        Nothing -> error "genEquivalent: coefficient failed"
+        Just r -> r
+      exp2 = case E.exponent (e1 - more) of
+        Nothing -> error "genEquivalent: exponent failed"
+        Just r -> r
+      d2 = E.Decoded (E.dSign d1) (E.Finite coeff2 exp2)
+  b <- arbitrary
+  let r = if b then (d1, d2) else (d2, d1)
+  return r
 
 
 
@@ -997,8 +1017,8 @@ tests = testGroup "Quad"
           (q', fl) = E.runCtx . E.fromByteString $ bs
           cmpRes = E.compareOrd q q' == Just EQ
           cmpResTot = E.compareTotal q q' == EQ
-          res = if E.isNormal q then cmpRes else cmpResTot
-      in res && fl == E.emptyFlags
+          res = if E.isFinite q then cmpRes else cmpResTot
+      in fl == E.emptyFlags ==> res
     ] -- string conversions
 
   , testGroup "integer conversions"
