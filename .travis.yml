@@ -12,7 +12,7 @@ before_install:
 install:
   - cabal sdist --output-directory playpen
   - cd playpen
-  - cabal install --only-dependencies
+  - cabal install --only-dependencies --enable-tests
 
 
 script:
