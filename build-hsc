@@ -1,4 +1,0 @@
-#!/bin/sh
-dir=$HOME/.cabal/lib/x86_64-linux-ghc-7.6.3/bindings-DSL-1.0.20/include
-
-hsc2hs -I$dir lib/Data/Deka/Decnumber.hsc
