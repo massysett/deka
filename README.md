@@ -14,7 +14,7 @@ deka uses the decQuad functions in decNumber.  This means that deka
 is limited to 34 digits of precision.  Because 1 quadrillion (that
 is, one thousand trillion) has only 16 digits of precision, I figure
 that 34 should be sufficient for many uses.  Also, you are limited
-to exponents no smaller than -6143 and no greater than 6144.  deka
+to exponents no smaller than -6176 and no greater than 6111.  deka
 will notify you if you perform calculations that must be rounded in
 order to fit within the 34 digits of precision or within the size
 limits for the exponent.
