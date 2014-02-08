@@ -190,10 +190,10 @@ Example - using `do` notation
 Following is an example of how you would add one tenth using the
 Quad type:
 
-> let { oneTenth = Q.evalCtx . Q.fromByteString . BS8.pack $ "0.1" };
-> BS8.putStrLn . Q.toByteString . Q.evalCtx $ do
->   r1 <- Q.add oneTenth oneTenth
->   Q.add r1 oneTenth
+> let { oneTenth = evalCtx . fromByteString . BS8.pack $ "0.1" };
+> BS8.putStrLn . toByteString . evalCtx $ do
+>   r1 <- add oneTenth oneTenth
+>   add r1 oneTenth
 > ;
 
 As you can see this is much more cumbersome than using `Deka`.  But
@@ -208,11 +208,11 @@ available, which you can set.  This can be useful with division, for
 example, where you will not get exact results.  All results are
 computed to 34 digits of precision.
 
-> let tenSixths = Q.evalCtx $ do
+> let tenSixths = evalCtx $ do
 >         setRound roundDown
->         ten <- Q.fromByteString . BS8.pack $ "10"
->         three <- Q.fromByteString . BS8.pack $ "6"
->         Q.divide ten three
+>         ten <- fromByteString . BS8.pack $ "10"
+>         three <- fromByteString . BS8.pack $ "6"
+>         divide ten three
 > ;
 
 Perhaps you want to round the result to a particular number of
@@ -221,9 +221,9 @@ two `Quad`: one that you want to round, and another that has the
 number of decimal places you want to round to.
 
 > putStrLn "This is 10 / 6, rounded to two places:";
-> BS8.putStrLn . Q.toByteString . Q.evalCtx $ do
->   twoPlaces <- Q.fromByteString . BS8.pack $ "1e-2"
->   Q.quantize tenSixths twoPlaces
+> BS8.putStrLn . toByteString . evalCtx $ do
+>   twoPlaces <- fromByteString . BS8.pack $ "1e-2"
+>   quantize tenSixths twoPlaces
 > ;
 
 By default, rounding is done using the "roundHalfEven" method.  You
@@ -231,10 +231,10 @@ can set a different rounding method if you wish; the rounding
 methods are listed in the Haddock documentation for `Data.Deka.Quad`.
 
 > putStrLn "This is 10 / 6, rounded using the 'roundDown' method.";
-> BS8.putStrLn . Q.toByteString . Q.evalCtx $ do
->   twoPlaces <- Q.fromByteString . BS8.pack $ "1e-2"
->   Q.setRound Q.roundDown
->   Q.quantize tenSixths twoPlaces
+> BS8.putStrLn . toByteString . evalCtx $ do
+>   twoPlaces <- fromByteString . BS8.pack $ "1e-2"
+>   setRound roundDown
+>   quantize tenSixths twoPlaces
 > ;
 
 
@@ -251,11 +251,11 @@ them.  You have to clear them yourself.
 In addition to flags being available for inspection within the `Ctx`
 monad, you can get the final flags using `runCtx`.  
 
-> let (r, fl) = Q.runCtx $ do
->       big1 <- Q.fromByteString . BS8.pack $ "987e3000"
->       big2 <- Q.fromByteString . BS8.pack $ "322e6000"
->       rslt <- Q.multiply big1 big2
->       return $ Q.toByteString rslt
+> let (r, fl) = runCtx $ do
+>       big1 <- fromByteString . BS8.pack $ "987e3000"
+>       big2 <- fromByteString . BS8.pack $ "322e6000"
+>       rslt <- multiply big1 big2
+>       return $ toByteString rslt
 > ; 
 > putStr "result: ";
 > BS8.putStrLn r;
