@@ -78,7 +78,6 @@ library
   build-depends:
       base >=4.6 && <4.7
     , bytestring ==0.10.*
-    , transformers ==0.3.*
     , bindings-DSL ==1.0.*
 
   ghc-options: -Wall
@@ -96,7 +95,6 @@ Test-Suite tasty-test
     , tasty ==0.7.*
     , QuickCheck ==2.6.*
     , bytestring ==0.10.*
-    , transformers ==0.3.*
 
   extra-libraries: decnumber
 
