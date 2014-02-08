@@ -1,20 +1,12 @@
 Examples for the Deka library
 =============================
 
-For very simple arithmetic, just import Data.Deka.  It contains a
-Deka type, which is an instance of Num.
-
-For work that goes beyond very simple arithmetic, you will
-typically import Data.Deka.Pure.  This allows you to run all the
-code in pure functions.  "Under the covers" things happen in the
-IO monad; however, it is safe to do this work in pure code
-because there are no visible side effects.  However, all the Safe
-code (that is, Safe in a Safe Haskell sense) is included in
-Data.Deka.IO, so you can import that if you wish.
-
-Usually you will want to perform a qualified import, because
-Data.Deka.Pure exports a lot of functions that clash with Prelude
-names.
+For very simple arithmetic, just import `Data.Deka`.  It contains a
+`Deka` type, which is an instance of Num.  For more control over your
+arithmetic, import `Data.Deka.Quad`.  Be aware that `Quad` exports some
+functions that clash with Prelude names, so you might want to do a
+qualified `import`; however we will just import them unqualified
+here.
 
 > -- Examples will deliberately shadow some names
 > {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
@@ -32,9 +24,9 @@ names.
 
 > import Data.Deka
 > import Data.Maybe
-> import qualified Data.Deka.Quad as Q
+> import Data.Deka.Quad
 
-We need Char8 ByteStrings when working with the Pure and IO modules:
+We need Char8 ByteStrings when working with the `Quad` module:
 
 > import qualified Data.ByteString.Char8 as BS8
 
@@ -60,8 +52,8 @@ This sort of imprecision adds up quickly and makes your life as a
 programmer harder in many ways.  It also produces results that are
 simply incorrect if you needed an exact answer.
 
-For simple arithmetic like this, Deka provides the Deka type.  It is
-an instance of Num.  Results with the Deka type are never, ever
+For simple arithmetic like this, deka provides the `Deka` type.  It is
+an instance of `Num`.  Results with the `Deka` type are never, ever
 rounded.  You are limited to 34 digits of precision.  If you need
 more than 34 digits of precision, you can afford to pay someone to
 develop your own library :) For example, these numbers all have 5
@@ -72,7 +64,7 @@ digits of precision:
     0.12345
     0.00012345
 
-All numbers in Deka are stored as a "coefficient" and an "exponent".
+All numbers in deka are stored as a "coefficient" and an "exponent".
 The coefficient is an integer, and the exponent is an
 integer that may be negative, zero, or positive.  Here, the
 coefficient is always 12345, but the exponent varies:
@@ -100,17 +92,17 @@ http://speleotrove.com/decimal/decarith.html
 
 It's written in a very clear style.
 
-OK, so back to Deka.  We said that `print $ 0.1 + 0.1 + 0.1` yields
-an inaccurate result.  How to do it with Deka?
+OK, so back to `Deka`.  We said that `print $ 0.1 + 0.1 + 0.1` yields
+an inaccurate result.  How to do it with `Deka`?
 
-First we have to create a Deka. Deka is not an instance of Read.
-However you can use strToDeka, which has the type
+First we have to create a `Deka`. `Deka` is not an instance of
+`Read`.  However you can use `strToDeka`, which has the type
 
-    strToDeka :: String -> Either String Deka
+    strToDeka :: String -> Maybe Deka
 
-You get a Left with an error message if your Deka could not be
-created; otherwise, you get a Right with the Deka.  The input string
-can be in regular or scientific notation.
+If you give a bad input string, you get `Nothing`; otherwise you get
+a `Just` with your `Deka`. The input string can be in regular or
+scientific notation.
 
 So, the following snippet will not give you incorrectly rounded
 results:
@@ -118,35 +110,35 @@ results:
 > let { oneTenth = fromJust . strToDeka $ "0.1" };
 > print $ oneTenth + oneTenth + oneTenth;
 
-Deka is not an instance of other numeric typeclasses, such as
-Real or Fractional.  That's because Deka never ever rounds, no
-matter what.  For Deka to be a member of Fractional, it would need
-to implement division, and division without rounding can't do very
-much.
+`Deka` is not an instance of other numeric typeclasses, such as
+`Real` or `Fractional`.  That's because `Deka` never ever rounds, no
+matter what.  For `Deka` to be a member of `Fractional`, it would
+need to implement division, and division without rounding can't do
+very much.
 
-Sometimes it will be impossible for Deka to do its math without
-rounding.  In that case, the functions in the Deka module will apply
-"error" and quit.  That way you are assured that if you have a
+Sometimes it will be impossible for `Deka` to do its math without
+rounding.  In that case, the functions in the `Deka` module will
+apply `error` and quit.  That way you are assured that if you have a
 result, it is not rounded.
 
 
-More flexibility with the Data.Deka.Pure module
+More flexibility with the `Data.Deka.Quad` module
 ===============================================
 
-Though the Deka type provides you with some flexibility--and it's
-easy to use because it's an instance of Num--sometimes you need more
-flexibility.  If you want to perform division, for example, Deka is
+Though the `Deka` type provides you with some flexibility--and it's
+easy to use because it's an instance of `Num`--sometimes you need more
+flexibility.  If you want to perform division, for example, `Deka` is
 no good.  For more flexibility, but more cumbersome use, turn to the
-Data.Deka.Pure module.
+`Data.Deka.Quad` module.
 
-The main type of the Pure module is called Quad, after decQuad in
+The main type of the `Quad` module is called `Quad`, after decQuad in
 the decNumber library.  It exposes the full power of the decNumber
-library.  The disadvantage is that all computations must be
-performed in the Ctx monad.  This monad carries the state that
+library.  The disadvantage is that many computations must be
+performed in the `Ctx` monad.  This monad carries the state that
 decNumber needs to do its work.  It provides you with a lot of
 information about any errors that have occurred during computations.
 
-If you are getting into the Pure module, you really need to read the
+If you are getting into the `Quad` module, you really need to read the
 decimal arithmetic specification at
 
 http://speleotrove.com/decimal/decarith.html
@@ -166,21 +158,31 @@ The context of the decimal arithmetic specification is represented
 in Deka by the `Ctx` type.  `Ctx` provides computations with the
 context that they need, and it allows computations to record errors
 that may arise.  `Ctx` is a `Monad` so you can use the usual monad
-functions and `do` notation to combine your computations.  Deka has
-functions you can use to change the context's rounding, see what
-errors have been set, and clear errors.  Once an error flag is set,
-you have to clear it; Deka won't clear it for you.  However,
-computations can proceed normally even if an error flag was set in a
-previous computation.
+functions and `do` notation to combine your computations.
+`Data.Deka.Quad` has functions you can use to change the context's
+rounding, see what errors have been set, and clear errors.  Once an
+error flag is set, you have to clear it; the functions in `Quad`
+won't clear it for you.  However, computations can proceed normally
+even if an error flag was set in a previous computation.
+
+After building up a computation in the `Ctx` monad, you need a way
+to get the results and use them elsewhere in your program.  Two
+functions do this: `runCtx` and `evalCtx`.  `runCtx` has type
+
+    runCtx :: Ctx a -> (a, Flags)
+
+It gives you the result of the computation, as well as any flags
+that may have arisen.  Later we'll talk more about flags; they
+indicate any errors or warnings that arose during a computation.
+`evalCtx` has type
+
+    evalCtx :: Ctx a -> a
+
+so it does not tell you any flags that may have arisen.
 
 Not all computations need a context.  For example, `compareTotal`
 does not need a context, and it can never return an error.  These
-context-free computations are done in the `Env` type.  `Env` is also
-a monad.  `Env` computations never fail, unlike `Ctx` computations
-which sometimes may fail and set a flag.  You can turn any `Env`
-computation into a `Ctx` computation with the `liftEnv` function:
-
-    liftEnv :: Env a -> Ctx a
+functions are pure like any other Haskell function.
 
 Example - using `do` notation
 -----------------------------
@@ -194,38 +196,28 @@ Quad type:
 >   Q.add r1 oneTenth
 > ;
 
-As you can see this is much more cumbersome.  But it does give you
-the full power of decNumber.
+As you can see this is much more cumbersome than using `Deka`.  But
+it does give you the full power of decNumber.
 
 Rounding
 --------
 
-One reason to use the Pure module is because you want greater
+One reason to use the `Deka` module is because you want greater
 control over rounding.  There are many varieties of rounding
 available, which you can set.  This can be useful with division, for
 example, where you will not get exact results.  All results are
 computed to 34 digits of precision.
 
 > let tenSixths = Q.evalCtx $ do
+>         setRound roundDown
 >         ten <- Q.fromByteString . BS8.pack $ "10"
 >         three <- Q.fromByteString . BS8.pack $ "6"
 >         Q.divide ten three
 > ;
 
-Now you want to see the result.  The above computation was in the
-`Ctx` type.  The type of `toByteString` is
-
-    toByteString :: Quad -> Env ByteString
-
-so it's in the `Env` type, not the `Ctx` type.  To run computations
-of this type, use `runEnv`:
-
-> putStrLn "This is the result of 10 / 6:";
-> BS8.putStrLn . Q.toByteString $ tenSixths;
-
 Perhaps you want to round the result to a particular number of
-decimal places.  You do this with the "quantize" function.  It takes
-two Quad: one that you want to round, and another that has the
+decimal places.  You do this with the `quantize` function.  It takes
+two `Quad`: one that you want to round, and another that has the
 number of decimal places you want to round to.
 
 > putStrLn "This is 10 / 6, rounded to two places:";
@@ -236,7 +228,7 @@ number of decimal places you want to round to.
 
 By default, rounding is done using the "roundHalfEven" method.  You
 can set a different rounding method if you wish; the rounding
-methods are listed in the Haddock documentation for `Data.Deka.IO`.
+methods are listed in the Haddock documentation for `Data.Deka.Quad`.
 
 > putStrLn "This is 10 / 6, rounded using the 'roundDown' method.";
 > BS8.putStrLn . Q.toByteString . Q.evalCtx $ do
@@ -250,15 +242,14 @@ Flags
 -----
 
 A computation may set any number of flags.  These are listed in the
-Data.Deka.IO module.  They indicate errors (like division by zero)
+`Data.Deka.Quad` module.  They indicate errors (like division by zero)
 or give information (such as the fact that a computation was
-inexact.)  Functions in Data.Deka.IO manipulate which flags are
+inexact.)  Functions in `Data.Deka.Quad` manipulate which flags are
 currently set.  Though computations set flags, they never clear
 them.  You have to clear them yourself.
 
-In addition to flags being available for inspection within the Ctx
-monad, you can get the final flags using runCtx.  FlagList gives you
-a list of flags that are set.
+In addition to flags being available for inspection within the `Ctx`
+monad, you can get the final flags using `runCtx`.  
 
 > let (r, fl) = Q.runCtx $ do
 >       big1 <- Q.fromByteString . BS8.pack $ "987e3000"
