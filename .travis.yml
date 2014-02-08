@@ -1,9 +1,9 @@
 language: haskell
 
 before_install:
-  - wget https://github.com/massysett/decnumber/releases/download/v368-3/libdecnumber-368-3.tar.gz
-  - tar xf libdecnumber-368-3.tar.gz
-  - cd libdecnumber-368-3
+  - wget https://github.com/massysett/decnumber/releases/download/v368-3/libdecnumber-368-4.tar.gz
+  - tar xf libdecnumber-368-4.tar.gz
+  - cd libdecnumber-368-4
   - ./configure && make && sudo make install
   - sudo ldconfig
   - cd ..
