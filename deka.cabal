@@ -6,7 +6,7 @@ name:                deka
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.3.0.0
+version:             0.2.0.2
 synopsis:            Decimal floating point arithmetic
 
 description:
@@ -56,7 +56,7 @@ build-type:          Simple
 
 -- Extra files to be distributed with the package, such as examples or a 
 -- README.
-extra-source-files:  README.md
+extra-source-files:  README.md ChangeLog
 
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
