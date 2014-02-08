@@ -79,7 +79,6 @@ library
       base >=4.6 && <4.7
     , bytestring ==0.10.*
     , transformers ==0.3.*
-    , either ==4.1.*
     , bindings-DSL ==1.0.*
 
   ghc-options: -Wall
@@ -93,7 +92,6 @@ library
 Test-Suite tasty-test
   Build-depends:
       base ==4.6.*
-    , either ==4.1.*
     , tasty-quickcheck ==0.3.*
     , tasty ==0.7.*
     , QuickCheck ==2.6.*
