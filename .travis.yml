@@ -8,9 +8,14 @@ before_install:
   - sudo ldconfig
   - cd ..
 
-script:
+# Install build dependencies
+install:
   - cabal sdist --output-directory playpen
   - cd playpen
+  - cabal install --only-dependencies
+
+
+script:
   - cabal configure --enable-tests
   - cabal build
-  - dist/build/tasty-test/tasty-test --quickcheck-max-size=100 --quickcheck-tests=5000
+  - dist/build/tasty-test/tasty-test --quickcheck-max-size=100 --quickcheck-tests=10000
