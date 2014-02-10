@@ -48,7 +48,7 @@ type C'int32_t = #type int32_t
 type C'uint8_t = #type uint8_t
 type C'uint16_t = #type uint16_t
 type C'uint32_t = #type uint32_t
-type C'uint64_t = #type uint16_t
+type C'uint64_t = #type uint64_t
 
 data C'decContext = C'decContext
   { c'decContext'digits :: C'int32_t
