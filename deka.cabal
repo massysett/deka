@@ -6,7 +6,7 @@ name:                deka
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.4.0.0
+version:             0.5.0.0
 synopsis:            Decimal floating point arithmetic
 
 description:
