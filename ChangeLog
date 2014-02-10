@@ -1,3 +1,9 @@
+version 0.4.0.0:
+
+* removed bindings-dsl; see comments in git log
+
+* made Quad an instance of Eq and Ord
+
 version 0.2.0.2:
 
 * updated .travis.yml for decnumber dependency
