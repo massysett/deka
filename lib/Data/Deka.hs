@@ -146,7 +146,7 @@ integralToDeka i = do
 
 -- | Convert a string to a Deka.  You can use ordinary numeric
 -- strings, such as @3.25@, or exponential notation, like @325E-2@.
--- More infomration on your choices is at:
+-- More information on your choices is at:
 --
 -- <http://speleotrove.com/decimal/daconvs.html#reftonum>
 --
