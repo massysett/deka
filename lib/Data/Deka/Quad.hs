@@ -94,6 +94,8 @@ module Data.Deka.Quad
   , toEngByteString
 
   -- * Converting to and from integers
+  , C'int32_t
+  , C'uint32_t
   , fromInt32
   , fromUInt32
   , toInt32
