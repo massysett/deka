@@ -27,7 +27,6 @@ module Data.Deka.Quad
   (
     -- * Quad
     Quad
-  , QuadT(..)
 
     -- * Rounding
     -- | For more on the rounding algorithms, see
@@ -556,33 +555,7 @@ instance Show DecClass where
     | otherwise = error "decClass show: invalid value"
 
 
--- | A Quad is not a member of 'Eq' or 'Ord' because the semantics
--- of the 'compare' function do not easily allow for this.  However,
--- if you want to compare using a total ordering, you can wrap your
--- 'Quad' in 'QuadT'.  For more on what a total ordering is, see
---
--- <http://speleotrove.com/decimal/decifaq4.html>
---
--- and look under @Which is larger? 7.5 or 7.500?@.  As this
--- title suggests, when using a total ordering, @7.5@ and @7.500@
--- are not equal.
-
-newtype QuadT = QuadT { unQuadT :: Quad }
-  deriving Show
-
-instance Eq QuadT where
-  QuadT x == QuadT y = compareTotal x y == EQ
-
-instance Ord QuadT where
-  compare (QuadT x) (QuadT y) = compareTotal x y
-
-
 -- # Helpers.  Do not export these.
-
--- | Creates a new Quad.  Uninitialized, so don't export this
--- function.
-newQuad :: IO Quad
-newQuad = fmap Quad mallocForeignPtr
 
 type Unary
   = Ptr C'decQuad
@@ -621,25 +594,6 @@ binary f x y = Ctx $ \pC ->
   f pR pX pY pC >>
   return r
 
-type BinaryCtxFree
-  = Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> IO (Ptr C'decQuad)
-
-binaryCtxFree
-  :: BinaryCtxFree
-  -> Quad
-  -> Quad
-  -> Quad
-binaryCtxFree f x y = unsafePerformIO $
-  newQuad >>= \r ->
-  withForeignPtr (unQuad r) $ \pR ->
-  withForeignPtr (unQuad x) $ \pX ->
-  withForeignPtr (unQuad y) $ \pY ->
-  f pR pX pY >>
-  return r
-
 type UnaryGet a
   = Ptr C'decQuad
   -> IO a
@@ -673,22 +627,6 @@ ternary f x y z = Ctx $ \pC ->
   withForeignPtr (unQuad z) $ \pZ ->
   f pR pX pY pZ pC
   >> return r
-
-type Boolean
-  = Ptr C'decQuad
-  -> IO C'uint32_t
-
-boolean
-  :: Boolean
-  -> Quad
-  -> Bool
-boolean f d = unsafePerformIO $
-  withForeignPtr (unQuad d) $ \pD ->
-  f pD >>= \r ->
-  return $ case r of
-    1 -> True
-    0 -> False
-    _ -> error "boolean: bad return value"
 
 -- MkString and mkString - moved to Internal so that toByteString
 -- can use them
@@ -766,20 +704,6 @@ compareOrd x y = evalCtx $ do
 -- NaN (sets 'invalidOperation').
 compareSignal :: Quad -> Quad -> Ctx Quad
 compareSignal = binary unsafe'c'decQuadCompareSignal
-
--- | Compares using an IEEE 754 total ordering, which takes into
--- account the exponent.  IEEE 754 says that this function might
--- return different results depending upon whether the operands are
--- canonical; 'Quad' are always canonical so you don't need to worry
--- about that here.
-compareTotal :: Quad -> Quad -> Ordering
-compareTotal x y =
-  let c = binaryCtxFree unsafe'c'decQuadCompareTotal x y
-      r | isNegative c = LT
-        | isZero c = EQ
-        | isPositive c = GT
-        | otherwise = error "compareTotal: unknown result"
-  in r
 
 -- | Same as 'compareTotal' but compares the absolute value of the
 -- two arguments.
@@ -902,17 +826,9 @@ isLogical = boolean unsafe'c'decQuadIsLogical
 isNaN :: Quad -> Bool
 isNaN = boolean unsafe'c'decQuadIsNaN
 
--- | True only if @x@ is less than zero and is not an NaN.
-isNegative :: Quad -> Bool
-isNegative = boolean unsafe'c'decQuadIsNegative
-
 -- | True only if @x@ is finite, non-zero, and not subnormal.
 isNormal :: Quad -> Bool
 isNormal = boolean unsafe'c'decQuadIsNormal
-
--- | True only if @x@ is greater than zero and is not an NaN.
-isPositive :: Quad -> Bool
-isPositive = boolean unsafe'c'decQuadIsPositive
 
 -- | True only if @x@ is a signaling NaN.
 isSignaling :: Quad -> Bool
@@ -927,10 +843,6 @@ isSigned = boolean unsafe'c'decQuadIsSigned
 -- with a magnitude less than 10 ^ emin.
 isSubnormal :: Quad -> Bool
 isSubnormal = boolean unsafe'c'decQuadIsSubnormal
-
--- | True only if @x@ is a zero.
-isZero :: Quad -> Bool
-isZero = boolean unsafe'c'decQuadIsZero
 
 -- | @logB x@ Returns the adjusted exponent of x, according to IEEE
 -- 754 rules.  If @x@ is infinite, returns +Infinity.  If @x@ is

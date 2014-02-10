@@ -14,6 +14,48 @@ import Control.Applicative
 import Control.Monad
 import System.IO.Unsafe (unsafePerformIO)
 
+-- # Helpers
+
+type Boolean
+  = Ptr C'decQuad
+  -> IO C'uint32_t
+
+boolean
+  :: Boolean
+  -> Quad
+  -> Bool
+boolean f d = unsafePerformIO $
+  withForeignPtr (unQuad d) $ \pD ->
+  f pD >>= \r ->
+  return $ case r of
+    1 -> True
+    0 -> False
+    _ -> error "boolean: bad return value"
+
+-- | Creates a new Quad.  Uninitialized, so don't export this
+-- function.
+newQuad :: IO Quad
+newQuad = fmap Quad mallocForeignPtr
+
+type BinaryCtxFree
+  = Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> IO (Ptr C'decQuad)
+
+binaryCtxFree
+  :: BinaryCtxFree
+  -> Quad
+  -> Quad
+  -> Quad
+binaryCtxFree f x y = unsafePerformIO $
+  newQuad >>= \r ->
+  withForeignPtr (unQuad r) $ \pR ->
+  withForeignPtr (unQuad x) $ \pX ->
+  withForeignPtr (unQuad y) $ \pY ->
+  f pR pX pY >>
+  return r
+
 -- | The Ctx monad
 --
 -- The General Decimal Arithmetic specification states that most
@@ -47,6 +89,21 @@ instance Monad Ctx where
 -- particular 'Quad'.
 newtype Quad = Quad { unQuad :: ForeignPtr C'decQuad }
 
+-- | The Eq instance depends on an IEEE 754 total ordering.  In
+-- particular, note that, for example, @7.5@ is not equal to @7.50@.
+-- See
+--
+-- <http://speleotrove.com/decimal/decifaq4.html#order>
+
+instance Eq Quad where
+  x == y = case compareTotal x y of
+    EQ -> True
+    _ -> False
+
+-- | Like the 'Eq' instance, this uses an IEEE 754 total ordering.
+instance Ord Quad where
+  compare = compareTotal
+
 -- | The Show instance uses 'toByteString'.
 instance Show Quad where
   show = BS8.unpack . toByteString
@@ -75,4 +132,32 @@ mkString f d = unsafePerformIO $
   allocaBytes c'DECQUAD_String $ \pS ->
   f pD pS
   >> BS8.packCString pS
+
+-- | Compares using an IEEE 754 total ordering, which takes into
+-- account the exponent.  IEEE 754 says that this function might
+-- return different results depending upon whether the operands are
+-- canonical; 'Quad' are always canonical so you don't need to worry
+-- about that here.
+compareTotal :: Quad -> Quad -> Ordering
+compareTotal x y
+  | isNegative c = LT
+  | isZero c = EQ
+  | isPositive c = GT
+  | otherwise = error "compareTotal: unknown result"
+  where
+    c = binaryCtxFree unsafe'c'decQuadCompareTotal x y
+
+-- # Tests
+
+-- | True only if @x@ is less than zero and is not an NaN.
+isNegative :: Quad -> Bool
+isNegative = boolean unsafe'c'decQuadIsNegative
+
+-- | True only if @x@ is a zero.
+isZero :: Quad -> Bool
+isZero = boolean unsafe'c'decQuadIsZero
+
+-- | True only if @x@ is greater than zero and is not an NaN.
+isPositive :: Quad -> Bool
+isPositive = boolean unsafe'c'decQuadIsPositive
 
