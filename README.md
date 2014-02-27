@@ -1,7 +1,6 @@
-deka provides correctly rounded decimal arithmetic for Haskell.
+# deka
 
-Currently the library is nearly done, but it needs more tests and
-documentation, which I'm working on.  Use at your own risk.
+deka provides correctly rounded decimal arithmetic for Haskell.
 
 The core of deka is a binding to the C library decNumber. As the
 author of deka, I have no association with the author of decNumber,
@@ -33,6 +32,10 @@ and more about decimal arithmetic generally at
 
 http://speleotrove.com/decimal/
 
+## Dependencies
+
+### decNumber C library
+
 You will need to have the decNumber library installed in order to
 use this library.  I have packaged decNumber for easy installation,
 as the original decNumber files are distributed as plain C files
@@ -43,6 +46,15 @@ downloadable by clicking on the big green button here:
 
 https://github.com/massysett/decnumber/releases
 
+### Haskell dependencies
+
+The main deka library depends only on `base` and `bytestring`, so it
+shouldn't be difficult to build.  The
+tests use [tasty](http://documentup.com/feuerbach/tasty) and
+[QuickCheck](http://hackage.haskell.org/package/QuickCheck).
+
+## More documentation
+
 Much more documentation is available in the Haddock comments in the
 source files.  There is also a file of examples to get you started.
 It has copious comments.  It is written in literate Haskell, so the
@@ -52,7 +64,11 @@ file is easy to view on Github:
 
 [Examples](lib/Data/Deka/Docs/Examples.lhs)
 
+## License
+
 deka is licensed under the BSD license, see the LICENSE file.
+
+## Build status
 
 [![Build Status](https://travis-ci.org/massysett/deka.png?branch=master)](https://travis-ci.org/massysett/deka)
 
