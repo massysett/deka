@@ -1,3 +1,11 @@
+version 0.4.0.2:
+
+* remove version upper bounds
+
+* lower version lower bounds to allow building with GHC 7.4
+
+* add Sunlight tests
+
 version 0.4.0.0:
 
 * removed bindings-dsl; see comments in git log

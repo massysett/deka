@@ -37,7 +37,7 @@ noNonFinite n f = testProperty
             r <- evaluate $ f xD yD
             return . Just $ r
           catcher e = let _types = e :: DekaError in return Nothing
-      in catch outer catcher
+      in Control.Exception.catch outer catcher
 
 -- | Puts finite Quad into a Deka.  Calls "error" if it fails.
 
