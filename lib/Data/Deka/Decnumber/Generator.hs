@@ -1,5 +1,9 @@
 module Main where
 
+import Text.Parsec hiding (optional, space)
+import Control.Applicative (optional)
+import Text.Parsec.String
+
 ccall
   :: String
   -- ^ Return type
@@ -43,7 +47,50 @@ functions =
   , (ctxt, dc "ZeroStatus", [ctxt])
   ]
 
+-- # Parsec
+
+prototype :: Parser (String, String, [String])
+prototype = do
+  _ <- many space
+  rtn <- typeDecl
+  _ <- many space
+  fn <- name
+  _ <- char '('
+  args <- typeDecl `sepBy` (string ", ")
+  _ <- string ");\n"
+  return (rtn, fn, args)
+
+typeDecl :: Parser String
+typeDecl = try enumType <|> otherType
+
+space :: Parser ()
+space = char ' ' >> return ()
+
+name :: Parser String
+name = many (letter <|> digit <|> (char '_'))
+
+enumType :: Parser String
+enumType = do
+  _ <- try $ string "enum"
+  _ <- space
+  n <- name
+  return $ "C'" ++ n
+
+otherType :: Parser String
+otherType = do
+  _ <- optional (try (string "const") >> space)
+  n <- name
+  _ <- many space
+  ptr <- optional (char '*')
+  let r = ptrStr ++ "C'" ++ n
+      ptrStr = maybe "" (const "Ptr ") ptr
+  return r
+
 main :: IO ()
-main = putStr . concat . map mkCall $ functions
-  where
-    mkCall (rtn, fn, as) = ccall rtn fn as
+main = do
+  c <- readFile "decNumPrototypes.txt"
+  parsed <- case parse (many prototype) "" c of
+    Left e -> putStrLn (show e) >> fail "parse failed"
+    Right g -> return g
+  let mkCall (rtn, fn, as) = ccall rtn fn as
+  putStr . concat . map mkCall $ parsed

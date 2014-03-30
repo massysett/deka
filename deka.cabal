@@ -51,6 +51,7 @@ library
       Data.Deka.Decnumber
     , Data.Deka.Internal
     , Data.Deka.Decnumber.Types
+    , Data.Deka.Decnumber.DecNumber
     , Data.Deka.Decnumber.Context
   
   build-depends:
