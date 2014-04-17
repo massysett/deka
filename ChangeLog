@@ -1,3 +1,9 @@
+version 0.4.0.4:
+
+* test with GHC 7.8.2
+
+* bundle in decNumber for easier building.
+
 version 0.4.0.2:
 
 * remove version upper bounds

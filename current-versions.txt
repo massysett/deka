@@ -1,7 +1,7 @@
 This package was tested to work with these dependency
 versions and compiler version.
 These are the default versions fetched by cabal install.
-Tested as of: 2014-04-17 14:49:24.998837 UTC
+Tested as of: 2014-04-17 19:37:00.007331 UTC
 Path to compiler: ghc-7.8.2
 Compiler description: 7.8.2
 
@@ -33,12 +33,12 @@ Compiler description: 7.8.2
     transformers-0.3.0.0
     unix-2.7.0.1
 
-/home/massysett/deka/sunlight-24185/db:
+/home/massysett/deka/sunlight-20121/db:
     QuickCheck-2.7.3
     ansi-terminal-0.6.1.1
     ansi-wl-pprint-0.6.7.1
     async-2.0.1.5
-    deka-0.4.0.6
+    deka-0.4.0.4
     mtl-2.1.3.1
     optparse-applicative-0.8.0.1
     parsec-3.1.5

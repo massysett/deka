@@ -1,7 +1,7 @@
 This package was tested to work with these dependency
 versions and compiler version.
 These are the minimum versions given in the .cabal file.
-Tested as of: 2014-04-17 14:49:24.998837 UTC
+Tested as of: 2014-04-17 19:37:00.007331 UTC
 Path to compiler: ghc-7.4.1
 Compiler description: 7.4.1
 
@@ -33,7 +33,7 @@ Compiler description: 7.4.1
     time-1.4
     unix-2.5.1.0
 
-/home/massysett/deka/sunlight-24185/db:
+/home/massysett/deka/sunlight-20121/db:
     MonadRandom-0.1.13
     QuickCheck-2.6
     ansi-terminal-0.6.1.1
@@ -41,7 +41,7 @@ Compiler description: 7.4.1
     base-unicode-symbols-0.2.2.4
     comonad-4.0.1
     contravariant-0.4.4
-    deka-0.4.0.6
+    deka-0.4.0.4
     distributive-0.4.3.1
     either-4.1.1
     hashable-1.2.1.0
