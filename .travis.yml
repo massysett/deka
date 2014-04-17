@@ -1,21 +1,28 @@
-language: haskell
+# Don't set language:haskell
+
+env:
+  - GHCVER=7.4.1
+  - GHCVER=7.6.3
+  - GHCVER=7.8.2
 
 before_install:
-  - wget https://github.com/massysett/decnumber/releases/download/v368-4/libdecnumber-368-4.tar.gz
-  - tar xf libdecnumber-368-4.tar.gz
-  - cd libdecnumber-368-4
-  - ./configure && make && sudo make install
-  - sudo ldconfig
-  - cd ..
+  # Get Ubuntu GHC packages
+  - travis_retry sudo apt-add-repository -y ppa:hvr/ghc
+  - travis_retry sudo apt-get update
+  - travis_retry sudo apt-get install cabal-install-1.18 ghc-$GHCVER happy
+  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
 
 # Install build dependencies
 install:
-  - cabal sdist --output-directory playpen
+  - autoconf
+  - cabal-1.18 update
+  - cabal-1.18 sdist --output-directory playpen
   - cd playpen
-  - cabal install --only-dependencies --enable-tests
+  - cabal-1.18 install --only-dependencies --enable-tests
 
 
 script:
-  - cabal configure --enable-tests
-  - cabal build
+  - cabal-1.18 configure --enable-tests
+  - cabal-1.18 build
   - dist/build/tasty-test/tasty-test --quickcheck-max-size=100 --quickcheck-tests=10000
+

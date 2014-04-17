@@ -1,38 +1,44 @@
-License for deka:
+This takes the decNumber C library and packages it up using the GNU autotools
+so that they are easily installed on any machine.  I have no association with
+the author of decNumber and I have not communicated with him.  Any errors in the
+packaging are mine and should be reported to me at omari@smileystation.com.
+Use at your own risk.
 
-Copyright (c) 2014, Omari Norman
+decNumber must be configured at compile time with the endianness of the target
+machine.  By default, the autotools packaging that I have added will detect the
+endianness of the build machine and configure decNumber accordingly.  To
+override this detection, add
 
-All rights reserved.
+CPPFLAGS=-DDECLITEND=1
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
+at the end of your ./configure command to make the library build for little
+endian.  Replace the 1 with a 0 for big endian.
 
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
+decNumber is available from
 
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
+http://speleotrove.com/decimal/decnumber.html
 
-    * Neither the name of Omari Norman nor the names of other
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
+This packaging is available from
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+http://www.github.com/massysett/decnumber
 
-Deka includes code from the decNumber C library.  The license
-for decNumber is as follows:
+If you get the files straight from Github, you will need to have autoconf,
+automake, and libtool installed on your system.  Then you run
+
+autoreconf --install
+
+in the root directory, and then you can ./configure as usual.
+
+The latest release on Github should have a fully autotooled tarball.
+Then you just untar it and do "./configure && make && make install"
+as you would normally expect.  From the decnumber Github home click
+on "Releases".  You should then get a page with a big green button
+for the autotooled tarball.
+
+This packaging is licensed under the BSD license; see the LICENSE file.
+
+decNumber is distributed under the terms of the ICU license, which is in the
+file src/ICU-license.html. It also appears below:
 
 COPYRIGHT AND PERMISSION NOTICE
 

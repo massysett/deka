@@ -34,24 +34,12 @@ http://speleotrove.com/decimal/
 
 ## Dependencies
 
-### decNumber C library
-
-You will need to have the decNumber library installed in order to
-use this library.  I have packaged decNumber for easy installation,
-as the original decNumber files are distributed as plain C files
-without any provision for installation as a library.  This packaging
-was done without any collaboration with the author of decNumber, so
-use it at your own risk.  The latest version of the package is
-downloadable by clicking on the big green button here:
-
-https://github.com/massysett/decnumber/releases
-
-### Haskell dependencies
-
 The main deka library depends only on `base` and `bytestring`, so it
 shouldn't be difficult to build.  The
 tests use [tasty](http://documentup.com/feuerbach/tasty) and
-[QuickCheck](http://hackage.haskell.org/package/QuickCheck).
+[QuickCheck](http://hackage.haskell.org/package/QuickCheck).  The
+decNumber C library is bundled in; GHC will build it and link it for
+you when you install deka.
 
 ## More documentation
 
