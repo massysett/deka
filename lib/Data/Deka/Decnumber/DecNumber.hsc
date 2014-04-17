@@ -1,6 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface, OverloadedStrings #-}
 
 #include <decNumber.h>
+#include <decNumberMacros.h>
 #let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
 
 module Data.Deka.Decnumber.DecNumber where
@@ -447,4 +448,44 @@ foreign import ccall unsafe "decNumberIsSubnormal" c'decNumberIsSubnormal
   :: Ptr C'decNumber
   -> Ptr C'decContext
   -> C'int32_t
+
+foreign import ccall unsafe "m_decNumberIsCanonical" c'decNumberIsCanonical
+  :: Ptr C'decNumber
+  -> CInt
+
+foreign import ccall unsafe "m_decNumberIsFinite" c'decNumberIsFinite
+  :: Ptr C'decNumber
+  -> CInt
+
+foreign import ccall unsafe "m_decNumberIsInfinite" c'decNumberIsInfinite
+  :: Ptr C'decNumber
+  -> CInt
+
+foreign import ccall unsafe "m_decNumberIsNaN" c'decNumberIsNaN
+  :: Ptr C'decNumber
+  -> CInt
+
+foreign import ccall unsafe "m_decNumberIsNegative" c'decNumberIsNegative
+  :: Ptr C'decNumber
+  -> CInt
+
+foreign import ccall unsafe "m_decNumberIsQNaN" c'decNumberIsQNaN
+  :: Ptr C'decNumber
+  -> CInt
+
+foreign import ccall unsafe "m_decNumberIsSNaN" c'decNumberIsSNaN
+  :: Ptr C'decNumber
+  -> CInt
+
+foreign import ccall unsafe "m_decNumberIsSpecial" c'decNumberIsSpecial
+  :: Ptr C'decNumber
+  -> CInt
+
+foreign import ccall unsafe "m_decNumberIsZero" c'decNumberIsZero
+  :: Ptr C'decNumber
+  -> CInt
+
+foreign import ccall unsafe "m_decNumberRadix" c'decNumberRadix
+  :: Ptr C'decNumber
+  -> CInt
 
