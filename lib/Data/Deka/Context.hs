@@ -44,6 +44,34 @@ module Data.Deka.Context
   -- * Digits
   , setDigits
   , getDigits
+
+  -- * Rounding
+  -- ** Rounding types
+  , Round
+  , roundCeiling
+  , roundUp
+  , roundHalfUp
+  , roundHalfEven
+  , roundHalfDown
+  , roundFloor
+  , round05Up
+  , roundMax
+
+  -- ** Getting and setting
+  , getRound
+  , setRound
+
+  -- * Emax and Emin
+  , getEmax
+  , setEmax
+  , getEmin
+  , setEmin
+
+  -- * Clamp and extended
+  , getClamp
+  , setClamp
+  , getExtended
+  , setExtended
   ) where
 
 import Foreign.Safe
@@ -184,13 +212,107 @@ getStatus = Ctx $ \ptr -> do
 
 -- # Digits
 
-setDigits :: C'int32_t -> Ctx Bool
-setDigits d = Ctx f
+setDigits :: Int -> Ctx Bool
+setDigits int = Ctx f
   where
-    f p | d < c'DEC_MIN_DIGITS = return False
-        | d > c'DEC_MAX_DIGITS = return False
+    f p | int < c'DEC_MIN_DIGITS = return False
+        | int > c'DEC_MAX_DIGITS = return False
         | otherwise = poke (p'decContext'digits p) d
               >> return True
+    d = fromIntegral int
 
-getDigits :: Ctx C'int32_t
-getDigits = Ctx $ peek . p'decContext'digits
+getDigits :: Ctx Int
+getDigits = Ctx $ fmap fromIntegral . peek . p'decContext'digits
+
+-- # Rounding
+
+newtype Round = Round { _unRound :: C'rounding }
+  deriving (Eq, Ord)
+
+roundCeiling :: Round
+roundCeiling = Round c'DEC_ROUND_CEILING
+
+roundUp :: Round
+roundUp = Round c'DEC_ROUND_UP
+
+roundHalfUp :: Round
+roundHalfUp = Round c'DEC_ROUND_HALF_UP
+
+roundHalfEven :: Round
+roundHalfEven = Round c'DEC_ROUND_HALF_EVEN
+
+roundHalfDown :: Round
+roundHalfDown = Round c'DEC_ROUND_HALF_DOWN
+
+roundFloor :: Round
+roundFloor = Round c'DEC_ROUND_FLOOR
+
+round05Up :: Round
+round05Up = Round c'DEC_ROUND_05UP
+
+roundMax :: Round
+roundMax = Round c'DEC_ROUND_MAX
+
+instance Show Round where
+  show r
+    | r == roundCeiling = "ceiling"
+    | r == roundUp = "up"
+    | r == roundHalfUp = "half up"
+    | r == roundHalfEven = "half even"
+    | r == roundHalfDown = "half down"
+    | r == roundFloor = "floor"
+    | r == round05Up = "05up"
+    | r == roundMax = "max"
+    | otherwise = error "show: unknown rounding value"
+
+getRound :: Ctx Round
+getRound = Ctx $ fmap Round . peek . p'decContext'round
+
+setRound :: Round -> Ctx ()
+setRound (Round r) = Ctx $ \ptr -> poke (p'decContext'round ptr) r
+
+-- # Emax, Emin
+
+getEmax :: Ctx Int
+getEmax = Ctx $ fmap fromIntegral . peek . p'decContext'emax
+
+setEmax :: Int -> Ctx Bool
+setEmax i = Ctx f
+  where
+    f ptr
+      | i < c'DEC_MIN_EMAX = return False
+      | i > c'DEC_MAX_EMAX = return False
+      | otherwise = poke (p'decContext'emax ptr) (fromIntegral i)
+          >> return True
+
+getEmin :: Ctx Int
+getEmin = Ctx $ fmap fromIntegral . peek . p'decContext'emin
+
+setEmin :: Int -> Ctx Bool
+setEmin i = Ctx f
+  where
+    f ptr
+      | i < c'DEC_MIN_EMIN = return False
+      | i > c'DEC_MAX_EMIN = return False
+      | otherwise = poke (p'decContext'emin ptr) (fromIntegral i)
+          >> return True
+
+-- # Clamp and extended
+
+getClamp :: Ctx Bool
+getClamp = Ctx $ fmap (/= 0) . peek . p'decContext'clamp
+
+setClamp :: Bool -> Ctx ()
+setClamp b = Ctx f
+  where
+    f ptr = poke (p'decContext'clamp ptr) v
+    v = if b then 1 else 0
+
+getExtended :: Ctx Bool
+getExtended = Ctx $ fmap (/= 0) . peek . p'decContext'extended
+
+setExtended :: Bool -> Ctx ()
+setExtended b = Ctx f
+  where
+    f ptr = poke (p'decContext'extended ptr) v
+    v = if b then 1 else 0
