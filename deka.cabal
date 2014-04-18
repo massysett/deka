@@ -45,13 +45,13 @@ library
   exposed-modules:     
       Data.Deka
     , Data.Deka.Quad
+    , Data.Deka.DecNum
     , Data.Deka.Docs
     , Data.Deka.Docs.Examples
     , Data.Deka.Context
 
   other-modules:
       Data.Deka.Decnumber
-    , Data.Deka.DecNum
     , Data.Deka.Internal
     , Data.Deka.Context.Internal
     , Data.Deka.Decnumber.Types
