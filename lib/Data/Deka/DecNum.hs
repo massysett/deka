@@ -158,3 +158,120 @@ abs = unary c'decNumberAbs
 
 add :: DecNum -> DecNum -> Ctx DecNum
 add = binary c'decNumberAdd
+and :: DecNum -> DecNum -> Ctx DecNum
+and = binary c'decNumberAnd
+
+compare :: DecNum -> DecNum -> Ctx DecNum
+compare = binary c'decNumberCompare
+
+compareSignal :: DecNum -> DecNum -> Ctx DecNum
+compareSignal = binary c'decNumberCompareSignal
+
+compareTotal :: DecNum -> DecNum -> Ctx DecNum
+compareTotal = binary c'decNumberCompareTotal
+
+compareTotalMag :: DecNum -> DecNum -> Ctx DecNum
+compareTotalMag = binary c'decNumberCompareTotalMag
+
+divide :: DecNum -> DecNum -> Ctx DecNum
+divide = binary c'decNumberDivide
+
+divideInteger :: DecNum -> DecNum -> Ctx DecNum
+divideInteger = binary c'decNumberDivideInteger
+
+exp :: DecNum -> Ctx DecNum
+exp = unary c'decNumberExp
+
+fma :: DecNum -> DecNum -> DecNum -> Ctx DecNum
+fma = ternary c'decNumberFMA
+
+invert :: DecNum -> Ctx DecNum
+invert = unary c'decNumberInvert
+
+ln :: DecNum -> Ctx DecNum
+ln = unary c'decNumberLn
+
+logB :: DecNum -> Ctx DecNum
+logB = unary c'decNumberLogB
+
+log10 :: DecNum -> Ctx DecNum
+log10 = unary c'decNumberLog10
+
+max :: DecNum -> DecNum -> Ctx DecNum
+max = binary c'decNumberMax
+
+maxMag :: DecNum -> DecNum -> Ctx DecNum
+maxMag = binary c'decNumberMaxMag
+
+min :: DecNum -> DecNum -> Ctx DecNum
+min = binary c'decNumberMin
+
+minMag :: DecNum -> DecNum -> Ctx DecNum
+minMag = binary c'decNumberMinMag
+
+minus :: DecNum -> Ctx DecNum
+minus = unary c'decNumberMinus
+
+multiply :: DecNum -> DecNum -> Ctx DecNum
+multiply = binary c'decNumberMultiply
+
+normalize :: DecNum -> Ctx DecNum
+normalize = unary c'decNumberNormalize
+
+or :: DecNum -> DecNum -> Ctx DecNum
+or = binary c'decNumberOr
+
+plus :: DecNum -> Ctx DecNum
+plus = unary c'decNumberPlus
+
+power :: DecNum -> DecNum -> Ctx DecNum
+power = binary c'decNumberPower
+
+quantize :: DecNum -> DecNum -> Ctx DecNum
+quantize = binary c'decNumberQuantize
+
+reduce :: DecNum -> Ctx DecNum
+reduce = unary c'decNumberReduce
+
+remainder :: DecNum -> DecNum -> Ctx DecNum
+remainder = binary c'decNumberRemainder
+
+remainderNear :: DecNum -> DecNum -> Ctx DecNum
+remainderNear = binary c'decNumberRemainderNear
+
+rescale :: DecNum -> DecNum -> Ctx DecNum
+rescale = binary c'decNumberRescale
+
+rotate :: DecNum -> DecNum -> Ctx DecNum
+rotate = binary c'decNumberRotate
+
+scaleB :: DecNum -> DecNum -> Ctx DecNum
+scaleB = binary c'decNumberScaleB
+
+shift :: DecNum -> DecNum -> Ctx DecNum
+shift = binary c'decNumberShift
+
+squareRoot :: DecNum -> Ctx DecNum
+squareRoot = unary c'decNumberSquareRoot
+
+subtract :: DecNum -> DecNum -> Ctx DecNum
+subtract = binary c'decNumberSubtract
+
+toIntegralExact :: DecNum -> Ctx DecNum
+toIntegralExact = unary c'decNumberToIntegralExact
+
+toIntegralValue :: DecNum -> Ctx DecNum
+toIntegralValue = unary c'decNumberToIntegralValue
+
+xor :: DecNum -> DecNum -> Ctx DecNum
+xor = binary c'decNumberXor
+
+nextMinus :: DecNum -> Ctx DecNum
+nextMinus = unary c'decNumberNextMinus
+
+nextPlus :: DecNum -> Ctx DecNum
+nextPlus = unary c'decNumberNextPlus
+
+nextToward :: DecNum -> DecNum -> Ctx DecNum
+nextToward = binary c'decNumberNextToward
+
