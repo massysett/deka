@@ -27,7 +27,7 @@ module Data.Deka.Context
   -- ** Set
   , setAllTraps
   , setTrap
-  , clearTrap
+  , clearTraps
 
   -- ** Query
   , isTrapSet
@@ -138,8 +138,8 @@ setTrap f = Ctx $ \ptr -> do
   ts <- peek pTr
   poke pTr (ts .|. unFlag f)
 
-clearTrap :: [Flag] -> Ctx ()
-clearTrap fs = Ctx $ \ptr -> do
+clearTraps :: [Flag] -> Ctx ()
+clearTraps fs = Ctx $ \ptr -> do
   let pTr = p'decContext'traps ptr
   ts <- peek pTr
   poke pTr (ts .&. complement (combineFlags fs))
