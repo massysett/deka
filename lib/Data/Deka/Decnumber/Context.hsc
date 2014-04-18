@@ -344,71 +344,71 @@ c'DEC_INIT_DECQUAD = #const DEC_INIT_DECQUAD
 foreign import ccall unsafe "decContextClearStatus" c'decContextClearStatus
   :: Ptr C'decContext
   -> C'uint32_t
-  -> Ptr C'decContext
+  -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextDefault" c'decContextDefault
   :: Ptr C'decContext
   -> C'int32_t
-  -> Ptr C'decContext
+  -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextGetRounding" c'decContextGetRounding
   :: Ptr C'decContext
-  -> C'rounding
+  -> IO C'rounding
 
 foreign import ccall unsafe "decContextGetStatus" c'decContextGetStatus
   :: Ptr C'decContext
-  -> C'uint32_t
+  -> IO C'uint32_t
 
 foreign import ccall unsafe "decContextRestoreStatus" c'decContextRestoreStatus
   :: Ptr C'decContext
   -> C'uint32_t
   -> C'uint32_t
-  -> Ptr C'decContext
+  -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextSaveStatus" c'decContextSaveStatus
   :: Ptr C'decContext
   -> C'uint32_t
-  -> C'uint32_t
+  -> IO C'uint32_t
 
 foreign import ccall unsafe "decContextSetRounding" c'decContextSetRounding
   :: Ptr C'decContext
   -> C'rounding
-  -> Ptr C'decContext
+  -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextSetStatus" c'decContextSetStatus
   :: Ptr C'decContext
   -> C'uint32_t
-  -> Ptr C'decContext
+  -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextSetStatusFromString" c'decContextSetStatusFromString
   :: Ptr C'decContext
   -> CString
-  -> Ptr C'decContext
+  -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextSetStatusFromStringQuiet" c'decContextSetStatusFromStringQuiet
   :: Ptr C'decContext
   -> CString
-  -> Ptr C'decContext
+  -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextSetStatusToString" c'decContextSetStatusToString
   :: Ptr C'decContext
-  -> CString
+  -> IO CString
 
 foreign import ccall unsafe "decContextTestEndian" c'decContextTestEndian
   :: C'uint8_t
-  -> C'int32_t
+  -> IO C'int32_t
 
 foreign import ccall unsafe "decContextTestSavedStatus" c'decContextTestSavedStatus
   :: C'uint32_t
   -> C'uint32_t
-  -> C'uint32_t
+  -> IO C'uint32_t
 
 foreign import ccall unsafe "decContextTestStatus" c'decContextTestStatus
   :: Ptr C'decContext
   -> C'uint32_t
-  -> C'uint32_t
+  -> IO C'uint32_t
 
 foreign import ccall unsafe "decContextZeroStatus" c'decContextZeroStatus
   :: Ptr C'decContext
-  -> Ptr C'decContext
+  -> IO (Ptr C'decContext)
 
