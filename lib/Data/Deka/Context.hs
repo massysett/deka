@@ -1,13 +1,10 @@
+{-# LANGUAGE Trustworthy #-}
 module Data.Deka.Context
   ( 
-
-    -- * Types
-    C'int32_t
-
     -- * Ctx
-  , Ctx
+    Ctx
 
-   -- * Flags
+    -- * Flags
   , Flag
   , allFlags
   , conversionSyntax
@@ -72,9 +69,20 @@ module Data.Deka.Context
   , setClamp
   , getExtended
   , setExtended
+
+  -- * Initializers
+  , Initializer
+  , initBase
+  , initDecimal32
+  , initDecimal64
+  , initDecimal128
+
+  -- * Running a Ctx
+  , runCtx
   ) where
 
 import Foreign.Safe
+import System.IO.Unsafe (unsafePerformIO)
 import Data.Deka.Context.Internal
 import Data.Deka.Decnumber.Context
 import Data.Deka.Decnumber.Types
@@ -316,3 +324,37 @@ setExtended b = Ctx f
   where
     f ptr = poke (p'decContext'extended ptr) v
     v = if b then 1 else 0
+
+-- # Initializers
+
+newtype Initializer = Initializer { _unInitializer :: C'int32_t }
+  deriving (Eq, Ord)
+
+initBase :: Initializer
+initBase = Initializer c'DEC_INIT_BASE
+
+initDecimal32 :: Initializer
+initDecimal32 = Initializer c'DEC_INIT_DECIMAL32
+
+initDecimal64 :: Initializer
+initDecimal64 = Initializer c'DEC_INIT_DECIMAL64
+
+initDecimal128 :: Initializer
+initDecimal128 = Initializer c'DEC_INIT_DECIMAL128
+
+instance Show Initializer where
+  show i
+    | i == initBase = "base"
+    | i == initDecimal32 = "decimal32"
+    | i == initDecimal64 = "decimal64"
+    | i == initDecimal128 = "decimal128"
+    | otherwise = error "show initializer: unknown value"
+
+-- # Run
+
+runCtx :: Initializer -> Ctx a -> a
+runCtx (Initializer i) (Ctx f) = unsafePerformIO $ do
+  fp <- mallocForeignPtr
+  withForeignPtr fp $ \ptr -> do
+    _ <- c'decContextDefault ptr i
+    f ptr
