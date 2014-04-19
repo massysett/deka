@@ -10,6 +10,7 @@ import Data.Deka.Decnumber.DecNumber
 import Data.Deka.Decnumber.Types
 import Data.Deka.Decnumber.Context
 import Data.Deka.Context.Internal
+import Data.Deka.Class.Internal
 
 -- | How many bytes must be malloc'ed to hold this many
 -- digits?
@@ -42,6 +43,14 @@ newDecNum p = do
   let sz = mallocAmount digits
   fp <- mallocForeignPtrBytes sz
   return $ DecNum fp
+
+copyDecNum :: DecNum -> IO DecNum
+copyDecNum (DecNum p) = withForeignPtr p $ \dp ->
+  peek (p'decNumber'digits (castPtr dp)) >>= \dgts ->
+  newDecNumSize dgts >>= \dn' ->
+  withForeignPtr (unDecNum dn') $ \dp' ->
+  c'decNumberCopy (castPtr dp') (castPtr dp) >>
+  return dn'
 
 newDecNumSize :: C'int32_t -> IO DecNum
 newDecNumSize i = do
@@ -288,4 +297,82 @@ nextPlus = unary c'decNumberNextPlus
 
 nextToward :: DecNum -> DecNum -> Ctx DecNum
 nextToward = binary c'decNumberNextToward
+
+numClass :: DecNum -> Ctx Class
+numClass (DecNum fp) = Ctx $ \pCtx ->
+  withForeignPtr fp $ \pd ->
+  c'decNumberClass (castPtr pd) pCtx >>= \cl ->
+  return (Class cl)
+
+-- skipped: ClassToString, Copy
+
+copyAbs
+  :: DecNum
+  -- ^ Source of sign
+  -> DecNum
+  -- ^ Copy sign to this destination
+  -> DecNum
+  -- ^ Result
+copyAbs src dest = unsafePerformIO $
+  copyDecNum dest >>= \r ->
+  withForeignPtr (unDecNum r) $ \pr ->
+  withForeignPtr (unDecNum src) $ \ps ->
+  c'decNumberCopyAbs (castPtr pr) (castPtr ps) >>
+  return r
+
+-- CopyNegate, CopySign
+
+negate :: DecNum -> DecNum
+negate src = unsafePerformIO $
+  copyDecNum src >>= \r ->
+  withForeignPtr (unDecNum r) $ \pr ->
+  withForeignPtr (unDecNum src) $ \ps ->
+  c'decNumberCopyNegate (castPtr pr) (castPtr ps) >>
+  return r
+
+copySign
+  :: DecNum
+  -- ^ Source of content (except sign)
+  -> DecNum
+  -- ^ Source of sign
+  -> DecNum
+copySign src sgn = unsafePerformIO $
+  withForeignPtr (unDecNum src) $ \pc ->
+  peek (p'decNumber'digits (castPtr pc)) >>= \dgts ->
+  newDecNumSize dgts >>= \dn' ->
+  withForeignPtr (unDecNum dn') $ \dp' ->
+  withForeignPtr (unDecNum sgn) $ \pn ->
+  c'decNumberCopySign (castPtr dp') (castPtr pc) (castPtr pn) >>
+  return dn'
+
+trim :: DecNum -> DecNum
+trim src = unsafePerformIO $
+  copyDecNum src >>= \dest ->
+  withForeignPtr (unDecNum dest) $ \pd ->
+  c'decNumberTrim (castPtr pd) >>
+  return dest
+
+version :: BS8.ByteString
+version = unsafePerformIO $
+  c'decNumberVersion >>= \pv ->
+  BS8.packCString pv
+
+zero :: DecNum
+zero = unsafePerformIO $
+  oneDigitDecNum >>= \od ->
+  withForeignPtr (unDecNum od) $ \pod ->
+  c'decNumberZero (castPtr pod) >>
+  return od
+
+isNormal :: DecNum -> Ctx Bool
+isNormal (DecNum d) = Ctx $ \pCtx ->
+  withForeignPtr d $ \pd ->
+  c'decNumberIsNormal (castPtr pd) pCtx >>= \int ->
+  return (toBool int)
+
+isNormal :: DecNum -> Ctx Bool
+isNormal (DecNum d) = Ctx $ \pCtx ->
+  withForeignPtr d $ \pd ->
+  c'decNumberIsNormal (castPtr pd) pCtx >>= \int ->
+  return (toBool int)
 

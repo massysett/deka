@@ -49,6 +49,7 @@ library
     , Data.Deka.Docs
     , Data.Deka.Docs.Examples
     , Data.Deka.Context
+    , Data.Deka.Class
 
   other-modules:
       Data.Deka.Decnumber
@@ -57,6 +58,7 @@ library
     , Data.Deka.Decnumber.Types
     , Data.Deka.Decnumber.DecNumber
     , Data.Deka.Decnumber.Context
+    , Data.Deka.Class.Internal
   
   build-depends:
       base >=4.5.0.0 && < 4.8

@@ -81,6 +81,7 @@ module Data.Deka.Context
 
   -- * Running a Ctx
   , runCtx
+
   ) where
 
 import Foreign.Safe
@@ -364,3 +365,4 @@ runCtx (Initializer i) (Ctx f) = unsafePerformIO $ do
   withForeignPtr fp $ \ptr -> do
     _ <- c'decContextDefault ptr i
     f ptr
+
