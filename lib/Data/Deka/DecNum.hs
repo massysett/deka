@@ -117,6 +117,7 @@ import qualified Prelude as P
 import qualified Data.ByteString.Char8 as BS8
 import System.IO.Unsafe (unsafePerformIO)
 import Foreign.Safe hiding (rotate, shift, xor)
+import Data.Deka.DecNum.Internal
 import Data.Deka.Decnumber.DecNumber
 import Data.Deka.Decnumber.Types
 import Data.Deka.Decnumber.Context
@@ -141,13 +142,6 @@ mallocAmount s = base + extra
     totUnits = (s + c'DECDPUN - 1) `quot` c'DECDPUN
     extraUnits = P.max 0 $ totUnits - baseUnits
     extra = sizeOf (undefined :: C'decNumberUnit) * fromIntegral extraUnits
-
-data DPtr
-
-newtype DecNum = DecNum { unDecNum :: ForeignPtr DPtr }
-
-instance Show DecNum where
-  show = BS8.unpack . toByteString
 
 oneDigitDecNum :: IO DecNum
 oneDigitDecNum = do
@@ -196,15 +190,6 @@ fromByteString bs = Ctx $ \pCtx ->
   BS8.useAsCString bs $ \cstr ->
   c'decNumberFromString (castPtr pDn) cstr pCtx >>
   return dn
-
-toByteString :: DecNum -> BS8.ByteString
-toByteString dn = unsafePerformIO $
-  withForeignPtr (unDecNum dn) $ \pDn ->
-  peek (p'decNumber'digits (castPtr pDn)) >>= \digs ->
-  let digsTot = fromIntegral digs + 14 in
-  allocaBytes digsTot $ \pStr ->
-  c'decNumberToString (castPtr pDn) pStr >>
-  BS8.packCString pStr
 
 toEngByteString :: DecNum -> BS8.ByteString
 toEngByteString dn = unsafePerformIO $

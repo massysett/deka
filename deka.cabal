@@ -47,6 +47,7 @@ library
     , Data.Deka.Digit
     , Data.Deka.Quad
     , Data.Deka.DecNum
+    , Data.Deka.DecNum.Internal
     , Data.Deka.Docs
     , Data.Deka.Docs.Examples
     , Data.Deka.Context
