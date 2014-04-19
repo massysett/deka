@@ -58,6 +58,15 @@ data C'decNumber = C'decNumber
 p'decNumber'digits :: Ptr C'decNumber -> Ptr C'int32_t
 p'decNumber'digits = #ptr decNumber, digits
 
+p'decNumber'bits :: Ptr C'decNumber -> Ptr C'uint8_t
+p'decNumber'bits = #ptr decNumber, bits
+
+p'decNumber'exponent :: Ptr C'decNumber -> Ptr C'int32_t
+p'decNumber'exponent = #ptr decNumber, exponent
+
+p'decNumber'lsu :: Ptr C'decNumber -> Ptr C'decNumberUnit
+p'decNumber'lsu = #ptr decNumber, lsu
+
 instance Storable C'decNumber where
   sizeOf _ = #size decNumber
   alignment _ = #alignment decNumber

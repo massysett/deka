@@ -39,10 +39,12 @@ module Data.Deka.Context
   , getStatus
 
   -- * Digits
-  , NumDigits
-  , numDigits
-  , setNumDigits
-  , getNumDigits
+  , C'int32_t
+  , Precision
+  , precision
+  , unPrecision
+  , setPrecision
+  , getPrecision
 
   -- * Rounding
   -- ** Rounding types
@@ -223,21 +225,21 @@ getStatus = Ctx $ \ptr -> do
 
 -- # Digits
 
-newtype NumDigits = NumDigits { _unNumDigits :: C'int32_t }
+newtype Precision = Precision { unPrecision :: C'int32_t }
   deriving (Eq, Ord, Show)
 
-numDigits :: Int -> Maybe NumDigits
-numDigits i
+precision :: C'int32_t -> Maybe Precision
+precision i
   | i < c'DEC_MIN_DIGITS = Nothing
   | i > c'DEC_MAX_DIGITS = Nothing
-  | otherwise = Just . NumDigits . fromIntegral $ i
+  | otherwise = Just . Precision $ i
 
-setNumDigits :: NumDigits -> Ctx ()
-setNumDigits (NumDigits d) = Ctx $ \ptr ->
+setPrecision :: Precision -> Ctx ()
+setPrecision (Precision d) = Ctx $ \ptr ->
   poke (p'decContext'digits ptr) d
 
-getNumDigits :: Ctx NumDigits
-getNumDigits = Ctx $ fmap NumDigits . peek . p'decContext'digits
+getPrecision :: Ctx Precision
+getPrecision = Ctx $ fmap Precision . peek . p'decContext'digits
 
 -- # Rounding
 
