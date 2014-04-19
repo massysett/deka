@@ -78,21 +78,25 @@ module Data.Deka.DecNum
   , isZero
 
   -- * Decoding and encoding
-  -- ** Decoded data types
-  , Exponent
-  , unExponent
-  , AdjExponent
-  , unAdjExponent
-  , adjExponent
+
+  -- | /Encoding/ takes Haskell types and converts them to a C
+  -- decNumber type so you can perform arithmetic on them.
+  -- /Decoding/ takes a C decNumber type and converts it to Haskell
+  -- types.
+
+  -- ** Number components
   , Coefficient
   , coefficient
   , unCoefficient
   , zeroCoefficient
   , oneCoefficient
+  , Exponent(..)
   , Sign(..)
   , NaNtype(..)
-  , Info(..)
+  , Payload(..)
   , Decoded(..)
+
+  -- ** Decoding
   , decode
 
   -- ** Encoding
@@ -100,6 +104,11 @@ module Data.Deka.DecNum
   , notANumber
   , nonSpecialCtxFree
   , nonSpecial
+
+  -- * Adjusted exponents
+  , AdjExponent
+  , unAdjExponent
+  , adjExponent
   ) where
 
 import Prelude hiding (abs, and, or, max, min, compare, exp,
@@ -527,9 +536,12 @@ isZero = testBool c'decNumberIsZero
 -- # Native conversions
 --
 
+-- | The unadjusted, non-biased exponent of a floating point number.
 newtype Exponent = Exponent { unExponent :: C'int32_t }
   deriving (Eq, Ord, Show)
 
+-- | The adjusted exponent; that is, the exponent that results if
+-- only one digit is to the left of the decimal point.
 newtype AdjExponent = AdjExponent { unAdjExponent :: C'int32_t }
   deriving (Eq, Ord, Show)
 
@@ -537,18 +549,18 @@ adjExponent :: Exponent -> Coefficient -> AdjExponent
 adjExponent (Exponent ex) (Coefficient ds) =
   AdjExponent $ ex + (fromIntegral . length $ ds) - 1
 
-exponent
+-- | Is this exponent valid?
+checkExp
   :: Maybe Precision
-  -> C'int32_t
-  -- ^ Exponent
+  -> Exponent
   -> Coefficient
-  -> Maybe Exponent
-exponent mnd i coe
-  | unAdjExponent adj > 999999999 = Nothing
-  | unAdjExponent adj < minAdjExp = Nothing
-  | otherwise = Just . Exponent $ i
+  -> Bool
+checkExp mnd i coe
+  | unAdjExponent adj > 999999999 = False
+  | unAdjExponent adj < minAdjExp = False
+  | otherwise = True
   where
-    adj = adjExponent (Exponent i) coe
+    adj = adjExponent i coe
     minAdjExp = case mnd of
       Nothing -> -999999999
       Just prc -> -999999999 - (unPrecision prc - 1)
@@ -556,12 +568,15 @@ exponent mnd i coe
 data Sign = NonNeg | Neg
   deriving (Eq, Ord, Show)
 
+-- | A fully decoded 'DecNum'.
 data Decoded = Decoded
   { dcdSign :: Sign
-  , dcdInfo :: Info
+  , dcdPayload :: Payload
   } deriving (Eq, Ord, Show)
 
-data Info
+-- | The bulk of the information from a fully decoded 'DecNum'
+-- (except the 'Sign').
+data Payload
   = Infinity
   | NaN NaNtype Coefficient
   | NotSpecial Exponent Coefficient
@@ -570,12 +585,15 @@ data Info
 data NaNtype = Quiet | Signaling
   deriving (Eq, Ord, Show)
 
+-- | The coefficient of a non-special number, or the diagnostic
+-- information of an NaN.  Consists of a list of 'Digit'.
 newtype Coefficient = Coefficient { unCoefficient :: [Digit] }
   deriving (Eq, Ord, Show)
 
 -- | Creates a 'Coefficient'.  Checks to ensure it is not null and
--- that it is not longer than 'coefficientLen' and that it does not
--- have leading zeroes (if it is 0, a single 'D0' is allowed).
+-- that it is not longer than the maximum coefficient length and
+-- that it does not have leading zeroes (if it is 0, a single 'D0'
+-- is allowed).
 coefficient :: [Digit] -> Maybe Coefficient
 coefficient ls
   | null ls = Nothing
@@ -592,6 +610,8 @@ oneCoefficient :: Coefficient
 oneCoefficient = Coefficient [D1]
 
 -- # Decoding
+
+-- | Take a C 'DecNum' and convert it to Haskell types.
 decode :: DecNum -> Decoded
 decode dn = Decoded (decodeSign dn) inf
   where
@@ -648,6 +668,7 @@ decodeExponent (DecNum fp) = unsafePerformIO $
 
 -- # Encoding
 
+-- | Encodes positive or negative infinities.
 infinity :: Sign -> DecNum
 infinity s = unsafePerformIO $
   oneDigitDecNum >>= \dn ->
@@ -662,6 +683,7 @@ infinity s = unsafePerformIO $
   poke (p'decNumber'bits p) bts >>
   return dn
 
+-- | Encodes quiet or signaling NaNs.
 notANumber :: Sign -> NaNtype -> Coefficient -> DecNum
 notANumber s nt coe = unsafePerformIO $
   let len = length . unCoefficient $ coe in
@@ -679,6 +701,9 @@ notANumber s nt coe = unsafePerformIO $
   encodeCoeff coe dn >>
   return dn
 
+-- | Encodes non-special numbers (also known as finite numbers.)
+-- Does not need the context; however, you will have to supply
+-- information about whether subnormal values are allowed.
 nonSpecialCtxFree
   :: Maybe Precision
   -- ^ If Just, allow subnormal values.  In that case, the maximum
@@ -687,13 +712,12 @@ nonSpecialCtxFree
 
   -> Sign
   -> Coefficient
-  -> C'int32_t
-  -- ^ Exponent
+  -> Exponent
   -> Maybe DecNum
-  -- ^ Fails if the exponent is out of range
-nonSpecialCtxFree mnd sgn coe rawEx = case exponent mnd rawEx coe of
-  Nothing -> Nothing
-  Just ex -> Just . unsafePerformIO $
+  -- ^ Fails if the exponent is out of range.
+nonSpecialCtxFree mnd sgn coe ex
+  | not $ checkExp mnd ex coe = Nothing
+  | otherwise = Just . unsafePerformIO $
     let len = length . unCoefficient $ coe in
     newDecNumSize (fromIntegral len) >>= \dn ->
     withForeignPtr (unDecNum dn) $ \dPtr ->
@@ -706,10 +730,12 @@ nonSpecialCtxFree mnd sgn coe rawEx = case exponent mnd rawEx coe of
     encodeCoeff coe dn >>
     return dn
 
+-- | Like 'nonSpecialCtxFree' but gets information about allowed
+-- subnormal values from the 'Ctx'.
 nonSpecial
   :: Sign
   -> Coefficient
-  -> C'int32_t
+  -> Exponent
   -> Ctx (Maybe DecNum)
   -- ^ Fails if the exponent is out of range
 nonSpecial sgn coe rawEx = do
