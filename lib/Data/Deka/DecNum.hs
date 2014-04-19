@@ -121,8 +121,8 @@ oneDigitDecNum = do
 
 newDecNum :: Ptr C'decContext -> IO DecNum
 newDecNum p = do
-  digits <- peek (p'decContext'digits p)
-  let sz = mallocAmount digits
+  dgts <- peek (p'decContext'digits p)
+  let sz = mallocAmount dgts
   fp <- mallocForeignPtrBytes sz
   return $ DecNum fp
 
@@ -496,3 +496,68 @@ isZero :: DecNum -> Bool
 isZero = testBool c'decNumberIsZero
 
 -- skipped: radix
+
+--
+-- # Native conversions
+--
+
+newtype Digits = Digits { unDigits :: C'int32_t }
+  deriving (Eq, Ord, Show)
+
+digits :: C'int32_t -> Maybe Digits
+digits d
+  | d < 1 = Nothing
+  | d > 999999999 = Nothing
+  | otherwise = Just . Digits $ d
+
+newtype Exponent = Exponent { unExponent :: C'int32_t }
+  deriving (Eq, Ord, Show)
+
+newtype AdjExponent = AdjExponent { unAdjExponent :: C'int32_t }
+  deriving (Eq, Ord, Show)
+
+adjExponent :: Exponent -> Digits -> AdjExponent
+adjExponent (Exponent ex) (Digits ds) = AdjExponent $ ex + ds - 1
+
+exponent
+  :: Bool
+  -- ^ Extended?
+  -> C'int32_t
+  -- ^ Exponent
+  -> Digits
+  -- ^ Length of coefficient
+  -> C'int32_t
+  -- ^ Digits setting from context
+  -> Maybe Exponent
+exponent ext i (Digits ds) ctxDigs
+  | unAdjExponent adj > 999999999 = Nothing
+  | unAdjExponent adj < minAdjExp = Nothing
+  | otherwise = Just . Exponent $ i
+  where
+    adj = adjExponent (Exponent i) (Digits ds)
+    minAdjExp = -999999999 - (ctxDigs - 1)
+
+data Sign = Pos | Neg
+  deriving (Eq, Ord, Show)
+
+data Header = Header
+  { hdrSign :: Sign
+  , hdrInfo :: Info
+  } deriving (Eq, Ord, Show)
+
+data Info
+  = Infinity
+  | NaN NaNtype Coefficient
+  | NotSpecial Exponent Coefficient
+  deriving (Eq, Ord, Show)
+
+data NaNtype = Quiet | Signaling
+  deriving (Eq, Ord, Show)
+
+-- | A single decimal digit.
+data Digit = D0 | D1 | D2 | D3 | D4 | D5 | D6 | D7 | D8 | D9
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+newtype Coefficient = Coefficient { unCoefficient :: [Digit] }
+  deriving (Eq, Ord, Show)
+
