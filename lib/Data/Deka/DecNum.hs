@@ -1,16 +1,95 @@
 {-# LANGUAGE EmptyDataDecls, Trustworthy #-}
-module Data.Deka.DecNum where
+module Data.Deka.DecNum
+  ( DecNum
 
-import Prelude hiding (abs, and, or, max, min)
+  -- * Conversions
+  , C'int32_t
+  , fromInt32
+  , toInt32
+  , C'uint32_t
+  , fromUInt32
+  , toUInt32
+  , fromByteString
+  , toByteString
+  , toEngByteString
+
+  -- * Arithmetic and logical functions
+  , abs
+  , add
+  , and
+  , compare
+  , compareSignal
+  , compareTotal
+  , compareTotalMag
+  , divide
+  , divideInteger
+  , exp
+  , fma
+  , invert
+  , ln
+  , logB
+  , log10
+  , max
+  , maxMag
+  , min
+  , minMag
+  , minus
+  , multiply
+  , normalize
+  , or
+  , plus
+  , power
+  , quantize
+  , reduce
+  , remainder
+  , remainderNear
+  , rescale
+  , rotate
+  , sameQuantum
+  , scaleB
+  , shift
+  , squareRoot
+  , subtract
+  , toIntegralExact
+  , toIntegralValue
+  , xor
+  , nextMinus
+  , nextPlus
+  , nextToward
+
+  -- * Utility functions
+  , numClass
+  , copyAbs
+  , negate
+  , copySign
+  , trim
+  , version
+  , zero
+  , isNormal
+  , isSubnormal
+  , isCanonical
+  , isFinite
+  , isInfinite
+  , isNaN
+  , isNegative
+  , isQNaN
+  , isSNaN
+  , isSpecial
+  , isZero
+  ) where
+
+import Prelude hiding (abs, and, or, max, min, compare, exp,
+  subtract, negate, isNaN, isInfinite)
 import qualified Prelude as P
 import qualified Data.ByteString.Char8 as BS8
 import System.IO.Unsafe (unsafePerformIO)
-import Foreign.Safe
+import Foreign.Safe hiding (rotate, shift, xor)
 import Data.Deka.Decnumber.DecNumber
 import Data.Deka.Decnumber.Types
 import Data.Deka.Decnumber.Context
 import Data.Deka.Context.Internal
 import Data.Deka.Class.Internal
+import Foreign.C
 
 -- | How many bytes must be malloc'ed to hold this many
 -- digits?
@@ -31,6 +110,9 @@ mallocAmount s = base + extra
 data DPtr
 
 newtype DecNum = DecNum { unDecNum :: ForeignPtr DPtr }
+
+instance Show DecNum where
+  show = BS8.unpack . toByteString
 
 oneDigitDecNum :: IO DecNum
 oneDigitDecNum = do
@@ -172,6 +254,7 @@ abs = unary c'decNumberAbs
 
 add :: DecNum -> DecNum -> Ctx DecNum
 add = binary c'decNumberAdd
+
 and :: DecNum -> DecNum -> Ctx DecNum
 and = binary c'decNumberAnd
 
@@ -370,9 +453,46 @@ isNormal (DecNum d) = Ctx $ \pCtx ->
   c'decNumberIsNormal (castPtr pd) pCtx >>= \int ->
   return (toBool int)
 
-isNormal :: DecNum -> Ctx Bool
-isNormal (DecNum d) = Ctx $ \pCtx ->
+isSubnormal :: DecNum -> Ctx Bool
+isSubnormal (DecNum d) = Ctx $ \pCtx ->
   withForeignPtr d $ \pd ->
-  c'decNumberIsNormal (castPtr pd) pCtx >>= \int ->
+  c'decNumberIsSubnormal (castPtr pd) pCtx >>= \int ->
   return (toBool int)
 
+testBool
+  :: (Ptr C'decNumber -> IO CInt)
+  -> DecNum
+  -> Bool
+testBool f (DecNum dn) = unsafePerformIO $
+  withForeignPtr dn $ \pn ->
+  f (castPtr pn) >>= \bl ->
+  return (toBool bl)
+
+isCanonical :: DecNum -> Bool
+isCanonical = testBool c'decNumberIsCanonical
+
+isFinite :: DecNum -> Bool
+isFinite = testBool c'decNumberIsFinite
+
+isInfinite :: DecNum -> Bool
+isInfinite = testBool c'decNumberIsInfinite
+
+isNaN :: DecNum -> Bool
+isNaN = testBool c'decNumberIsNaN
+
+isNegative :: DecNum -> Bool
+isNegative = testBool c'decNumberIsNegative
+
+isQNaN :: DecNum -> Bool
+isQNaN = testBool c'decNumberIsQNaN
+
+isSNaN :: DecNum -> Bool
+isSNaN = testBool c'decNumberIsSNaN
+
+isSpecial :: DecNum -> Bool
+isSpecial = testBool c'decNumberIsSpecial
+
+isZero :: DecNum -> Bool
+isZero = testBool c'decNumberIsZero
+
+-- skipped: radix
