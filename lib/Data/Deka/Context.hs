@@ -39,8 +39,10 @@ module Data.Deka.Context
   , getStatus
 
   -- * Digits
-  , setDigits
-  , getDigits
+  , NumDigits
+  , numDigits
+  , setNumDigits
+  , getNumDigits
 
   -- * Rounding
   -- ** Rounding types
@@ -220,17 +222,21 @@ getStatus = Ctx $ \ptr -> do
 
 -- # Digits
 
-setDigits :: Int -> Ctx Bool
-setDigits int = Ctx f
-  where
-    f p | int < c'DEC_MIN_DIGITS = return False
-        | int > c'DEC_MAX_DIGITS = return False
-        | otherwise = poke (p'decContext'digits p) d
-              >> return True
-    d = fromIntegral int
+newtype NumDigits = NumDigits { _unNumDigits :: C'int32_t }
+  deriving (Eq, Ord, Show)
 
-getDigits :: Ctx Int
-getDigits = Ctx $ fmap fromIntegral . peek . p'decContext'digits
+numDigits :: Int -> Maybe NumDigits
+numDigits i
+  | i < c'DEC_MIN_DIGITS = Nothing
+  | i > c'DEC_MAX_DIGITS = Nothing
+  | otherwise = Just . NumDigits . fromIntegral $ i
+
+setNumDigits :: NumDigits -> Ctx ()
+setNumDigits (NumDigits d) = Ctx $ \ptr ->
+  poke (p'decContext'digits ptr) d
+
+getNumDigits :: Ctx NumDigits
+getNumDigits = Ctx $ fmap NumDigits . peek . p'decContext'digits
 
 -- # Rounding
 

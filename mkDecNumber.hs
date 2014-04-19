@@ -58,7 +58,6 @@ fns =
   , binary "RemainderNear" "remainderNear"
   , binary "Rescale" "rescale"
   , binary "Rotate" "rotate"
-  -- skip: sameQuantum
   , binary "ScaleB" "scaleB"
   , binary "Shift" "shift"
   , unary "SquareRoot" "squareRoot"

@@ -31,6 +31,11 @@ data DPtr
 
 newtype DecNum = DecNum { unDecNum :: ForeignPtr DPtr }
 
+oneDigitDecNum :: IO DecNum
+oneDigitDecNum = do
+  fp <- mallocForeignPtrBytes (sizeOf (undefined :: C'decNumber))
+  return $ DecNum (castForeignPtr fp)
+
 newDecNum :: Ptr C'decContext -> IO DecNum
 newDecNum p = do
   digits <- peek (p'decContext'digits p)
@@ -244,6 +249,15 @@ rescale = binary c'decNumberRescale
 
 rotate :: DecNum -> DecNum -> Ctx DecNum
 rotate = binary c'decNumberRotate
+
+sameQuantum :: DecNum -> DecNum -> DecNum
+sameQuantum (DecNum x) (DecNum y) = unsafePerformIO $
+  withForeignPtr x $ \px ->
+  withForeignPtr y $ \py ->
+  oneDigitDecNum >>= \o ->
+  withForeignPtr (unDecNum o) $ \po ->
+  c'decNumberSameQuantum (castPtr po) (castPtr px) (castPtr py) >>
+  return o
 
 scaleB :: DecNum -> DecNum -> Ctx DecNum
 scaleB = binary c'decNumberScaleB
