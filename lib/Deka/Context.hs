@@ -249,9 +249,6 @@ getStatus = Ctx $ \ptr -> do
 
 -- # Digits
 
-newtype Precision = Precision { unPrecision :: C'int32_t }
-  deriving (Eq, Ord, Show)
-
 precision :: C'int32_t -> Maybe Precision
 precision i
   | i < c'DEC_MIN_DIGITS = Nothing

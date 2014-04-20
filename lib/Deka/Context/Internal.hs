@@ -5,6 +5,7 @@ import Deka.Decnumber.Context
 import Foreign.Safe
 import Control.Applicative
 import Control.Monad
+import Deka.Decnumber.Types
 
 -- | The Ctx monad
 --
@@ -86,4 +87,9 @@ getRound = Ctx $ fmap Round . peek . p'decContext'round
 
 setRound :: Round -> Ctx ()
 setRound (Round r) = Ctx $ \ptr -> poke (p'decContext'round ptr) r
+
+-- # Precision
+
+newtype Precision = Precision { unPrecision :: C'int32_t }
+  deriving (Eq, Ord, Show)
 
