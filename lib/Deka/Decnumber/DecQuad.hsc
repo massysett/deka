@@ -11,6 +11,7 @@ module Deka.Decnumber.DecQuad where
 import Foreign.Safe
 import Foreign.C
 import Control.Applicative
+import Deka.Decnumber.Types
 
 c'NULL :: Num a => a
 c'NULL = #const NULL
@@ -43,12 +44,6 @@ c'DEC_ROUND_05UP = #const DEC_ROUND_05UP
 
 c'DEC_ROUND_MAX :: Num a => a
 c'DEC_ROUND_MAX = #const DEC_ROUND_MAX
-
-type C'int32_t = #type int32_t
-type C'uint8_t = #type uint8_t
-type C'uint16_t = #type uint16_t
-type C'uint32_t = #type uint32_t
-type C'uint64_t = #type uint64_t
 
 data C'decContext = C'decContext
   { c'decContext'digits :: C'int32_t

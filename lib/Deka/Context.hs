@@ -13,6 +13,8 @@ module Deka.Context
   , divisionUndefined
   , insufficientStorage
   , inexact
+  , invalidContext
+  , invalidOperation
   , lostDigits
   , overflow
   , clamped
@@ -54,9 +56,9 @@ module Deka.Context
   , roundHalfUp
   , roundHalfEven
   , roundHalfDown
+  , roundDown
   , roundFloor
   , round05Up
-  , roundMax
 
   -- ** Getting and setting
   , getRound
@@ -102,6 +104,8 @@ instance Show Flag where
     | f == divisionImpossible = "Division impossible"
     | f == insufficientStorage = "Insufficient storage"
     | f == inexact = "Inexact"
+    | f == invalidContext = "Invalid context"
+    | f == invalidOperation = "Invalid operation"
     | f == lostDigits = "Lost digits"
     | f == overflow = "Overflow"
     | f == clamped = "Clamped"
@@ -129,27 +133,44 @@ combineFlags = foldl f 0
   where
     f a (Flag b) = a .|. b
 
+-- | A source string (for instance, in 'fromByteString') contained
+-- errors.
 conversionSyntax :: Flag
 conversionSyntax = Flag c'DEC_Conversion_syntax
 
+-- | A non-zero dividend is divided by zero.  Unlike @0/0@, it has a
+-- defined result (a signed Infinity).
 divisionByZero :: Flag
 divisionByZero = Flag c'DEC_Division_by_zero
 
+-- | Sometimes raised by 'divideInteger' and 'remainder'.
 divisionImpossible :: Flag
 divisionImpossible = Flag c'DEC_Division_impossible
 
+-- | @0/0@ is undefined.  It sets this flag and returns a quiet NaN.
 divisionUndefined :: Flag
 divisionUndefined = Flag c'DEC_Division_undefined
 
 insufficientStorage :: Flag
 insufficientStorage = Flag c'DEC_Insufficient_storage
 
+-- | One or more non-zero coefficient digits were discarded during
+-- rounding.
 inexact :: Flag
 inexact = Flag c'DEC_Inexact
+
+invalidContext :: Flag
+invalidContext = Flag c'DEC_Invalid_context
+
+-- | Raised on a variety of invalid operations, such as an attempt
+-- to use 'compareSignal' on an operand that is an NaN.
+invalidOperation :: Flag
+invalidOperation = Flag c'DEC_Invalid_operation
 
 lostDigits :: Flag
 lostDigits = Flag c'DEC_Lost_digits
 
+-- | The exponent of a result is too large to be represented.
 overflow :: Flag
 overflow = Flag c'DEC_Overflow
 
@@ -162,6 +183,7 @@ rounded = Flag c'DEC_Clamped
 subnormal :: Flag
 subnormal = Flag c'DEC_Subnormal
 
+-- | A result is both subnormal and inexact.
 underflow :: Flag
 underflow = Flag c'DEC_Underflow
 
@@ -240,53 +262,6 @@ setPrecision (Precision d) = Ctx $ \ptr ->
 
 getPrecision :: Ctx Precision
 getPrecision = Ctx $ fmap Precision . peek . p'decContext'digits
-
--- # Rounding
-
-newtype Round = Round { _unRound :: C'rounding }
-  deriving (Eq, Ord)
-
-roundCeiling :: Round
-roundCeiling = Round c'DEC_ROUND_CEILING
-
-roundUp :: Round
-roundUp = Round c'DEC_ROUND_UP
-
-roundHalfUp :: Round
-roundHalfUp = Round c'DEC_ROUND_HALF_UP
-
-roundHalfEven :: Round
-roundHalfEven = Round c'DEC_ROUND_HALF_EVEN
-
-roundHalfDown :: Round
-roundHalfDown = Round c'DEC_ROUND_HALF_DOWN
-
-roundFloor :: Round
-roundFloor = Round c'DEC_ROUND_FLOOR
-
-round05Up :: Round
-round05Up = Round c'DEC_ROUND_05UP
-
-roundMax :: Round
-roundMax = Round c'DEC_ROUND_MAX
-
-instance Show Round where
-  show r
-    | r == roundCeiling = "ceiling"
-    | r == roundUp = "up"
-    | r == roundHalfUp = "half up"
-    | r == roundHalfEven = "half even"
-    | r == roundHalfDown = "half down"
-    | r == roundFloor = "floor"
-    | r == round05Up = "05up"
-    | r == roundMax = "max"
-    | otherwise = error "show: unknown rounding value"
-
-getRound :: Ctx Round
-getRound = Ctx $ fmap Round . peek . p'decContext'round
-
-setRound :: Round -> Ctx ()
-setRound (Round r) = Ctx $ \ptr -> poke (p'decContext'round ptr) r
 
 -- # Emax, Emin
 
