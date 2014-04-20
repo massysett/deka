@@ -12,6 +12,7 @@ import qualified Data.ByteString.Char8 as BS8
 import Deka.Decnumber.DecQuad
 import System.IO.Unsafe (unsafePerformIO)
 import Deka.Decnumber.Types
+import Deka.Quad.Util
 
 -- # Helpers
 
