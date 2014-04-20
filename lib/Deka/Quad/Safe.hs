@@ -23,7 +23,7 @@
 -- might want to do
 --
 -- > import qualified Data.Deka.Quad as Q
-module Deka.Quad.Safe where
+module Deka.Quad.CtxFree where
 
 -- # Imports
 
