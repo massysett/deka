@@ -18,12 +18,14 @@ import Control.Exception (evaluate)
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad
 import Test.Tasty
+import qualified Deka.Class.Internal as E
 import qualified Deka.Quad as E
 import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck hiding (maxSize)
 import Test.QuickCheck.Monadic
 import Deka.Quad.Internal
-import Deka.Decnumber.DecQuad
+import Deka.Context.Internal
+import Deka.Decnumber.Context
 import Data.Maybe
 import Foreign
 
@@ -351,7 +353,7 @@ genFlag :: Gen E.Flag
 genFlag = elements allFlags
 
 onePointFive :: E.Quad
-onePointFive = E.evalCtx . E.fromByteString . BS8.pack $ "1.5"
+onePointFive = E.runQuad . E.fromByteString . BS8.pack $ "1.5"
 
 -- # Test builders
 
@@ -364,16 +366,16 @@ associativity n f = testProperty desc $
   forAll genSmallFinite $ \ dx ->
   forAll genSmallFinite $ \ dy ->
   forAll genSmallFinite $ \ dz ->
-  let (noFlags, resIsZero) = E.evalCtx $ do
+  let (noFlags, resIsZero) = E.runQuad $ do
         let x = E.fromBCD dx
             y = E.fromBCD dy
             z = E.fromBCD dz
         r1 <- f x y >>= f z
         r2 <- f y z >>= f x
-        let c = E.evalCtx $ E.compare r1 r2
+        let c = E.runQuad $ E.compare r1 r2
             isZ = E.isZero c
         fl <- E.getStatus
-        return (fl == E.emptyFlags, isZ)
+        return (null fl, isZ)
   in noFlags ==> resIsZero
   where
     desc = n ++ " is associative on finite numbers"
@@ -386,14 +388,14 @@ commutativity
 commutativity n f = testProperty desc $
   forAll genSmallFinite $ \dx ->
   forAll genSmallFinite $ \dy ->
-  let (noFlags, resIsZero) = E.evalCtx $ do
+  let (noFlags, resIsZero) = E.runQuad $ do
         let x = E.fromBCD dx
             y = E.fromBCD dy
         r1 <- f x y
         r2 <- f y x
         let isZ = E.compareTotal r1 r2 == EQ
         fl <- E.getStatus
-        return (fl == E.emptyFlags, isZ)
+        return (null fl, isZ)
   in noFlags ==> resIsZero
   where
     desc = n ++ " is commutative where there are no flags"
@@ -404,7 +406,7 @@ commutativity n f = testProperty desc $
 inContext :: (Ptr C'decContext -> IO Bool) -> PropertyM IO Bool
 inContext f =
   run $ alloca $ \pCtx -> do
-    _ <- unsafe'c'decContextDefault pCtx c'DEC_INIT_DECQUAD
+    _ <- c'decContextDefault pCtx c'DEC_INIT_DECQUAD
     f pCtx
 
 {- Also for below, consider this code snippet:
@@ -579,7 +581,7 @@ identity
   -> TestTree
 identity n g f = testProperty name $
   forAll genFinite $ \ad ->
-  forAll g $ \bd -> E.evalCtx $ do
+  forAll g $ \bd -> E.runQuad $ do
     let a = E.fromBCD ad
         b = E.fromBCD bd
     r <- f a b
@@ -608,28 +610,28 @@ comparison
 
 comparison n fB fS fC = testGroup (n ++ " comparisons")
   [ testProperty "x > y" $ forAll genNonZeroSmallFinite $
-    \da -> E.evalCtx $ do
+    \da -> E.runQuad $ do
       let a = E.fromBCD da
       b <- fB a
       c <- fC b a
       return $ eitherToOrd c == GT
 
   , testProperty "x < y" $ forAll genNonZeroSmallFinite $
-    \da -> E.evalCtx $ do
+    \da -> E.runQuad $ do
       let a = E.fromBCD da
       b <- fS a
       c <- fC b a
       return $ eitherToOrd c == LT
 
   , testProperty "x == x" $ forAll genNonZeroSmallFinite $
-    \da -> E.evalCtx $ do
+    \da -> E.runQuad $ do
       let a = E.fromBCD da
       c <- fC a a
       return $ eitherToOrd c == EQ
 
   , testProperty "transitive" $ forAll genNonZeroSmallFinite $
     \da ->
-    forAll genNonZeroSmallFinite $ \db -> E.evalCtx $ do
+    forAll genNonZeroSmallFinite $ \db -> E.runQuad $ do
       let a = E.fromBCD da
           b = E.fromBCD db
       c <- fC a b
@@ -654,7 +656,7 @@ testMinMax
   -> TestTree
 testMinMax n ab f = testProperty (n ++ " and compare") $
   forAll genSmallFinite $ \da ->
-  forAll genSmallFinite $ \db -> E.evalCtx $ do
+  forAll genSmallFinite $ \db -> E.runQuad $ do
     let aa = E.fromBCD da
         bb = E.fromBCD db
     (a, b) <- if ab
@@ -721,7 +723,7 @@ testBoolean n g pd f = testGroup n
 
 -- | Tests functions that deal with DecClass.
 testDecClass
-  :: E.DecClass
+  :: E.Class
   -- ^ Class being tested
   -> Gen E.Decoded
   -- ^ Generates Decoded that are in this class
@@ -742,11 +744,17 @@ testDecClass c ge f = testGroup (show c)
     let q = E.fromBCD dcd in E.decClass q /= c
   ]
 
-genInt32 :: Gen C'int32_t
+genInt32 :: Gen E.C'int32_t
 genInt32 = choose (minBound, maxBound)
 
-genUInt32 :: Gen C'uint32_t
+genUInt32 :: Gen E.C'uint32_t
 genUInt32 = choose (minBound, maxBound)
+
+runFlags :: Ctx a -> (a, [E.Flag])
+runFlags c = E.runQuad $ do
+  r <- c
+  f <- E.getStatus
+  return (r, f)
 
 intConversion
   :: (Show a, Eq a)
@@ -763,8 +771,8 @@ intConversion n gen fr to = testGroup (n ++ " conversions")
     forAll genRound $ \r ->
     forAll gen $ \i ->
     let q = fr i
-        (i', fl) = E.runCtx $ to r q
-    in fl == E.emptyFlags && i' == i
+        (i', fl) = runFlags $ to r q
+    in null fl && i' == i
   ]
 
 -- | Tests that what is returned by an operation has the same
@@ -774,7 +782,7 @@ sameSignExp
   -> TestTree
 sameSignExp f = testProperty
   "result has same sign and exponent as first argument" $
-  forAll genFinite $ \d -> E.evalCtx $ do
+  forAll genFinite $ \d -> E.runQuad $ do
     let x = E.fromBCD d
     r <- f x E.one
     let d' = E.toBCD r
@@ -909,12 +917,12 @@ tests = testGroup "Quad"
 
   , testGroup "rounding"
     [ testProperty "default rounding is half even" $
-      once . E.evalCtx $ do
+      once . E.runQuad $ do
         r <- E.getRound
         return $ r == E.roundHalfEven
 
     , testProperty "setRound works" $
-      forAll genRound $ \r -> E.evalCtx $ do
+      forAll genRound $ \r -> E.runQuad $ do
         E.setRound r
         r' <- E.getRound
         return $ r == r'
@@ -923,17 +931,17 @@ tests = testGroup "Quad"
 
   , testGroup "flags"
     [ testProperty "no flags set initially" . once
-      . E.evalCtx $ do
+      . E.runQuad $ do
         fl <- E.getStatus
-        return $ fl == E.emptyFlags
+        return $ null fl
     ]
 
   , testGroup "classes"
-    [ testDecClass E.sNan
+    [ testDecClass E.sNaN
       (genNaNDcd genSign (return E.Signaling) (payloadDigits decimalDigs))
       E.dIsNaN
 
-    , testDecClass E.qNan
+    , testDecClass E.qNaN
       (genNaNDcd genSign (return E.Quiet) (payloadDigits decimalDigs))
       E.dIsNaN
 
@@ -972,7 +980,7 @@ tests = testGroup "Quad"
       forAll genDecoded $ \d ->
         let q = E.fromBCD d
             bs = E.toByteString q
-            q' = E.evalCtx $ E.fromByteString bs
+            q' = E.runQuad $ E.fromByteString bs
             d' = E.toBCD q'
             desc = "toByteString: " ++ BS8.unpack bs
               ++ " toBCD: " ++ show d'
@@ -982,22 +990,22 @@ tests = testGroup "Quad"
         ++ "give same result") $
       forAll genDecoded $ \d ->
       let qD = E.fromBCD d
-          (qS, fl) = E.runCtx . E.fromByteString
+          (qS, fl) = runFlags . E.fromByteString
                       . BS8.pack . E.scientific $ d
           compared = E.compareTotal qD qS == EQ
-      in compared && fl == E.emptyFlags
+      in compared && null fl
 
     , testProperty ("fromBCD and (fromByteString . ordinary) "
         ++ "give results that compare equal") $
       forAll genDecoded $ \d ->
       let qD = E.fromBCD d
           str = E.ordinary d
-          (qS, fl) = E.runCtx . E.fromByteString
+          (qS, fl) = runFlags . E.fromByteString
                       . BS8.pack $ str
           cmpResult 
             | E.isNormal qD = E.compareOrd qD qS == Just EQ
             | otherwise = E.compareTotal qD qS == EQ
-          noFlags f = f == E.emptyFlags
+          noFlags f = null f
           desc = "string: " ++ str
             ++ " fromByteString result: " ++ show qS
       in noFlags fl ==> printTestCase desc cmpResult
@@ -1006,19 +1014,19 @@ tests = testGroup "Quad"
       forAll genDecoded $ \d ->
       let q = E.fromBCD d
           bs = E.toByteString q
-          (q', fl) = E.runCtx . E.fromByteString $ bs
+          (q', fl) = runFlags . E.fromByteString $ bs
           cmpRes = E.compareTotal q q' == EQ
-      in cmpRes && fl == E.emptyFlags
+      in cmpRes && null fl
 
     , testProperty "toEngByteString -> fromByteString" $
       forAll genDecoded $ \d ->
       let q = E.fromBCD d
           bs = E.toEngByteString q
-          (q', fl) = E.runCtx . E.fromByteString $ bs
+          (q', fl) = runFlags . E.fromByteString $ bs
           cmpRes = E.compareOrd q q' == Just EQ
           cmpResTot = E.compareTotal q q' == EQ
           res = if E.isFinite q then cmpRes else cmpResTot
-      in fl == E.emptyFlags ==> res
+      in null fl ==> res
     ] -- string conversions
 
   , testGroup "integer conversions"
@@ -1045,14 +1053,14 @@ tests = testGroup "Quad"
       [ testProperty "is the inverse of add" $
         forAll genSmallFinite $ \da ->
         forAll genSmallFinite $ \db ->
-        let (r, fl) = E.runCtx $ do
+        let (r, fl) = runFlags $ do
               let a = E.fromBCD da
                   b = E.fromBCD db
               r1 <- E.add a b
               r2 <- E.subtract r1 b
               c <- E.compare r2 a
               return $ E.isZero c
-        in fl == E.emptyFlags ==> r
+        in null fl ==> r
 
       , identity "zero" genZero E.subtract
       ]
@@ -1062,7 +1070,7 @@ tests = testGroup "Quad"
         forAll genSmallFinite $ \da ->
         forAll genSmallFinite $ \db ->
         forAll genSmallFinite $ \dc ->
-        let (r, fl) = E.runCtx $ do
+        let (r, fl) = runFlags $ do
               let a = E.fromBCD da
                   b = E.fromBCD db
                   c = E.fromBCD dc
@@ -1071,7 +1079,7 @@ tests = testGroup "Quad"
               r2' <- E.fma a b c
               cm <- E.compare r2 r2'
               return $ E.isZero cm
-        in fl == E.emptyFlags ==> r
+        in null fl ==> r
       ]
 
     , testGroup "divide"
@@ -1081,19 +1089,19 @@ tests = testGroup "Quad"
       [ testProperty "result has exponent 0" $
         forAll genSmallFinite $ \da ->
         forAll genSmallFinite $ \db ->
-        let (e, fl) = E.runCtx $ do
+        let (e, fl) = runFlags $ do
               let a = E.fromBCD da
                   b = E.fromBCD db
               c <- E.divideInteger a b
               return $ E.isInteger c
-        in fl == E.emptyFlags ==> e
+        in null fl ==> e
       ]
 
     , testGroup "remainder"
       [ testProperty "x = int * y + rem" $
         forAll genSmallFinite $ \dx ->
         forAll genSmallFinite $ \dy ->
-        let (r, fl) = E.runCtx $ do
+        let (r, fl) = runFlags $ do
               let x = E.fromBCD dx
                   y = E.fromBCD dy
               it <- E.divideInteger x y
@@ -1102,7 +1110,7 @@ tests = testGroup "Quad"
               i2 <- E.add i1 rm
               c <- E.compare i2 x
               return $ E.isZero c
-        in fl == E.emptyFlags ==> r
+        in null fl ==> r
       ]
       -- remainderNear - no test - not sure I understand the
       -- semantics
@@ -1114,7 +1122,7 @@ tests = testGroup "Quad"
       [ testProperty "result has same quantum" $
         forAll genSmallFinite $ \dx ->
         forAll genSmallFinite $ \dy ->
-        let (r, fl) = E.runCtx $ do
+        let (r, fl) = runFlags $ do
               let x = E.fromBCD dx
                   y = E.fromBCD dy
               c <- E.quantize x y
@@ -1127,19 +1135,19 @@ tests = testGroup "Quad"
               exY <- getExp y
               let fin = E.isFinite c
               return $ fin && exC == exY
-        in fl == E.emptyFlags ==> r
+        in null fl ==> r
       ]
 
     , testGroup "reduce"
       [ testProperty "result is equivalent" $
-        forAll genSmallFinite $ \dx -> E.evalCtx $ do
+        forAll genSmallFinite $ \dx -> E.runQuad $ do
             let x = E.fromBCD dx
             r <- E.reduce x
             c <- E.compare r x
             return $ E.isZero c
 
       , testProperty "result has no trailing zeroes" $
-        forAll genSmallFinite $ \dx -> E.evalCtx $ do
+        forAll genSmallFinite $ \dx -> E.runQuad $ do
             let x = E.fromBCD dx
             r <- E.reduce x
             let dcd = E.toBCD r
@@ -1245,8 +1253,8 @@ tests = testGroup "Quad"
             z = E.fromBCD $ E.Decoded E.Sign0
                   (E.Finite E.zeroCoefficient e)
             q = E.fromBCD d
-            rAdd = E.evalCtx $ E.add z q
-            rPlus = E.evalCtx $ E.plus q
+            rAdd = E.runQuad $ E.add z q
+            rPlus = E.runQuad $ E.plus q
         in E.compareTotal rAdd rPlus == EQ
       ]
 
@@ -1259,8 +1267,8 @@ tests = testGroup "Quad"
             z = E.fromBCD $ E.Decoded E.Sign0
                   (E.Finite E.zeroCoefficient e)
             q = E.fromBCD d
-            rSubt = E.evalCtx $ E.subtract z q
-            rMinus = E.evalCtx $ E.minus q
+            rSubt = E.runQuad $ E.subtract z q
+            rMinus = E.runQuad $ E.minus q
         in E.compareTotal rSubt rMinus == EQ
       ]
 
@@ -1272,7 +1280,7 @@ tests = testGroup "Quad"
               E.Infinite -> E.Sign0
               E.NaN _ _ -> E.dSign d
             q = E.fromBCD d
-            actual = E.dSign . E.toBCD . E.evalCtx . E.abs $ q
+            actual = E.dSign . E.toBCD . E.runQuad . E.abs $ q
         in actual == expected
       ]
 
@@ -1291,25 +1299,25 @@ tests = testGroup "Quad"
     [ testProperty "nextMinus returns smaller result" $
       forAll genFinite $ \d ->
       let q = E.fromBCD d
-          (r, fl) = E.runCtx $ E.nextMinus q
-          cmp = E.evalCtx $ E.compare r q
-      in fl == E.emptyFlags ==> E.isNegative cmp
+          (r, fl) = runFlags $ E.nextMinus q
+          cmp = E.runQuad $ E.compare r q
+      in null fl ==> E.isNegative cmp
 
     , testProperty "nextPlus returns larger result" $
       forAll genFinite $ \d ->
       let q = E.fromBCD d
-          (r, fl) = E.runCtx $ E.nextPlus q
-          cmp = E.evalCtx $ E.compare r q
-      in fl == E.emptyFlags ==> E.isPositive cmp
+          (r, fl) = runFlags $ E.nextPlus q
+          cmp = E.runQuad $ E.compare r q
+      in null fl ==> E.isPositive cmp
 
     , testProperty "nextToward does not change sign of comparison" $
       forAll genFinite $ \dx ->
       forAll genFinite $ \dy ->
       let x = E.fromBCD dx
           y = E.fromBCD dy
-          cmp1 = E.evalCtx $ E.compare x y
-          x' = E.evalCtx $ E.nextToward x y
-          cmp2 = E.evalCtx $ E.compare x' y
+          cmp1 = E.runQuad $ E.compare x y
+          x' = E.runQuad $ E.nextToward x y
+          cmp2 = E.runQuad $ E.compare x' y
           r | E.isNegative cmp1 = E.isNegative cmp2 || E.isZero cmp2
             | E.isZero cmp1 = E.isZero cmp2
             | otherwise = E.isPositive cmp2 || E.isZero cmp2
@@ -1322,20 +1330,20 @@ tests = testGroup "Quad"
       [ testProperty "x & 0 == 0" $
         forAll genLogical $ \d ->
         let q = E.fromBCD d
-            r = E.evalCtx $ E.and q E.zero
+            r = E.runQuad $ E.and q E.zero
         in E.isZero r
       ]
 
     , testGroup "or"
       [ testProperty "x | 0 == x" $
         forAll genLogical $ \d ->
-        let r = E.evalCtx $ E.or x E.zero
+        let r = E.runQuad $ E.or x E.zero
             x = E.fromBCD d
         in E.compareOrd x r == Just EQ
 
       , testProperty "x | x == x" $
         forAll genLogical $ \d ->
-        let r = E.evalCtx $ E.or x x
+        let r = E.runQuad $ E.or x x
             cmp = E.compareTotal r x
             x = E.fromBCD d
         in cmp == EQ
@@ -1344,14 +1352,14 @@ tests = testGroup "Quad"
     , testGroup "xor"
       [ testProperty "x XOR 0 == x" $
         forAll genLogical $ \d ->
-        let r = E.evalCtx $ E.xor x E.zero
+        let r = E.runQuad $ E.xor x E.zero
             cmp = E.compareTotal r x
             x = E.fromBCD d
         in cmp == EQ
 
       , testProperty "x XOR x == 0" $
         forAll genLogical $ \d ->
-        let r = E.evalCtx $ E.xor x x
+        let r = E.runQuad $ E.xor x x
             x = E.fromBCD d
         in E.isZero r
 
@@ -1359,7 +1367,7 @@ tests = testGroup "Quad"
 
     , testGroup "invert"
       [ testProperty "invert twice is idempotent" $
-        forAll genLogical $ \d -> E.evalCtx $ do
+        forAll genLogical $ \d -> E.runQuad $ do
           let q = E.fromBCD d
           r1 <- E.invert q
           r2 <- E.invert r1
@@ -1378,7 +1386,7 @@ tests = testGroup "Quad"
   , testGroup "log and scale"
     [ testGroup "logB"
       [ testProperty "returns adjusted exponent of finite numbers" $
-        forAll genFinite $ \d -> E.evalCtx $ do
+        forAll genFinite $ \d -> E.runQuad $ do
           let q = E.fromBCD d
           lg <- E.logB q
           i <- E.toInt32 E.roundUp lg
@@ -1392,7 +1400,7 @@ tests = testGroup "Quad"
 
     , testGroup "scaleB"
       [ testProperty "scaleB x 0 == x" $
-        forAll genFinite $ \d -> E.evalCtx $ do
+        forAll genFinite $ \d -> E.runQuad $ do
           let q = E.fromBCD d
           b <- E.scaleB q E.zero
           return $ E.compareOrd q b == Just EQ

@@ -93,6 +93,8 @@ Test-Suite tasty-test
   other-modules:
       Deka
     , Deka.Decnumber.DecQuad
+    , Deka.Decnumber.Context
+    , Deka.Decnumber.Types
     , Deka.Quad.Internal
     , Deka.Docs
     , Deka.Docs.Examples

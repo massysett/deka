@@ -124,6 +124,7 @@ module Deka.Quad
 
   -- * Running a computation
   , runQuad
+  , runQuadStatus
 
   -- * Context
   , module Deka.Context
@@ -750,6 +751,14 @@ version = unsafePerformIO $
 -- | Runs a computation with the decimal128 default context.
 runQuad :: Ctx a -> a
 runQuad = runCtx initDecimal128
+
+-- | Runs a computation with the decimal128 default context, and
+-- returns any resulting flags.
+runQuadStatus :: Ctx a -> (a, [Flag])
+runQuadStatus a = runQuad $ do
+  r <- a
+  f <- getStatus
+  return (r, f)
 
 -- | Digit-wise logical exclusive or.  Operands must be:
 --

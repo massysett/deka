@@ -390,7 +390,7 @@ foreign import ccall unsafe "decContextSetStatusFromStringQuiet" c'decContextSet
   -> CString
   -> IO (Ptr C'decContext)
 
-foreign import ccall unsafe "decContextSetStatusToString" c'decContextSetStatusToString
+foreign import ccall unsafe "decContextStatusToString" c'decContextStatusToString
   :: Ptr C'decContext
   -> IO CString
 
