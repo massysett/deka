@@ -1,3 +1,4 @@
+{-# LANGUAGE Trustworthy #-}
 -- | Internal types - for Quad use only
 --
 -- This module is not listed for export in the cabal file.  It
@@ -10,8 +11,8 @@ import Foreign.Safe
 import Foreign.C
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Decnumber.DecQuad
-import System.IO.Unsafe (unsafePerformIO)
 import Deka.Decnumber.Types
+import Deka.Unsafe
 
 -- # Helpers
 
@@ -22,8 +23,8 @@ type Boolean
 boolean
   :: Boolean
   -> Quad
-  -> Bool
-boolean f d = unsafePerformIO $
+  -> IO Bool
+boolean f d =
   withForeignPtr (unQuad d) $ \pD ->
   f pD >>= \r ->
   return $ case r of
@@ -46,8 +47,8 @@ binaryCtxFree
   :: BinaryCtxFree
   -> Quad
   -> Quad
-  -> Quad
-binaryCtxFree f x y = unsafePerformIO $
+  -> IO Quad
+binaryCtxFree f x y =
   newQuad >>= \r ->
   withForeignPtr (unQuad r) $ \pR ->
   withForeignPtr (unQuad x) $ \pX ->
@@ -88,8 +89,11 @@ instance Show Quad where
 -- In the decNumber C library, this is called @toString@; the name
 -- was changed here because this function doesn't return a Haskell
 -- 'String'.
+toByteStringIO :: Quad -> IO BS8.ByteString
+toByteStringIO = mkString unsafe'c'decQuadToString
+
 toByteString :: Quad -> BS8.ByteString
-toByteString = mkString unsafe'c'decQuadToString
+toByteString = unsafe1 toByteStringIO
 
 type MkString
   = Ptr C'decQuad
@@ -99,8 +103,8 @@ type MkString
 mkString
   :: MkString
   -> Quad
-  -> BS8.ByteString
-mkString f d = unsafePerformIO $
+  -> IO BS8.ByteString
+mkString f d =
   withForeignPtr (unQuad d) $ \pD ->
   allocaBytes c'DECQUAD_String $ \pS ->
   f pD pS
@@ -111,26 +115,41 @@ mkString f d = unsafePerformIO $
 -- return different results depending upon whether the operands are
 -- canonical; 'Quad' are always canonical so you don't need to worry
 -- about that here.
-compareTotal :: Quad -> Quad -> Ordering
-compareTotal x y
-  | isNegative c = LT
-  | isZero c = EQ
-  | isPositive c = GT
-  | otherwise = error "compareTotal: unknown result"
+compareTotalIO :: Quad -> Quad -> IO Ordering
+compareTotalIO x y = f >>= getR
   where
-    c = binaryCtxFree unsafe'c'decQuadCompareTotal x y
+    f = binaryCtxFree unsafe'c'decQuadCompareTotal x y
+    getR c = switchM
+      [(isNegative c, LT), (isZero c, EQ), (isPositive c, GT)]
+      (error "compareTotal: unknown result")
+
+switchM
+  :: Monad m
+  => [(m Bool, a)]
+  -- ^ Test for truth; return a for first True value
+  -> a
+  -- ^ Return this if no true value found
+  -> m a
+switchM ls a = case ls of
+  [] -> return a
+  (act, r):ps -> do
+    b <- act
+    if b then return r else switchM ps a
+
+compareTotal :: Quad -> Quad -> Ordering
+compareTotal = unsafe2 compareTotalIO
 
 -- # Tests
 
 -- | True only if @x@ is less than zero and is not an NaN.
-isNegative :: Quad -> Bool
+isNegative :: Quad -> IO Bool
 isNegative = boolean unsafe'c'decQuadIsNegative
 
 -- | True only if @x@ is a zero.
-isZero :: Quad -> Bool
+isZero :: Quad -> IO Bool
 isZero = boolean unsafe'c'decQuadIsZero
 
 -- | True only if @x@ is greater than zero and is not an NaN.
-isPositive :: Quad -> Bool
+isPositive :: Quad -> IO Bool
 isPositive = boolean unsafe'c'decQuadIsPositive
 
