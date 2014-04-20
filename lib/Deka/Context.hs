@@ -85,6 +85,7 @@ module Deka.Context
 
   -- * Running a Ctx
   , runCtx
+  , runCtxStatus
 
   ) where
 
@@ -337,6 +338,8 @@ instance Show Initializer where
 
 -- # Run
 
+-- | Runs a Ctx computation; begins with the given Initializer to
+-- set up the context.
 runCtx :: Initializer -> Ctx a -> a
 runCtx (Initializer i) (Ctx f) = unsafePerformIO $ do
   fp <- mallocForeignPtr
@@ -344,3 +347,10 @@ runCtx (Initializer i) (Ctx f) = unsafePerformIO $ do
     _ <- c'decContextDefault ptr i
     f ptr
 
+-- | Like 'runCtx' but also returns any status flags resulting from
+-- the computation.
+runCtxStatus :: Initializer -> Ctx a -> (a, [Flag])
+runCtxStatus i c = runCtx i $ do
+  r <- c
+  f <- getStatus
+  return (r, f)
