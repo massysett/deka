@@ -122,6 +122,12 @@ module Deka.Quad
   , one
   , version
 
+  -- * Running a computation
+  , runQuad
+
+  -- * Context
+  , module Deka.Context
+
   -- * Complete encoding and decoding
 
   -- | These convert a 'Quad' to a 'Decoded', which is a pure
@@ -237,7 +243,7 @@ import qualified Prelude
 import System.IO.Unsafe (unsafePerformIO)
 import Deka.Digit
 import Deka.Class.Internal
-import Deka.Context
+import Deka.Context hiding (C'int32_t)
 import Deka.Context.Internal
 
 import Deka.Decnumber.DecQuad
@@ -740,6 +746,10 @@ toUInt32Exact = getRounded unsafe'c'decQuadToUInt32Exact
 version :: BS8.ByteString
 version = unsafePerformIO $
   unsafe'c'decQuadVersion >>= BS8.packCString
+
+-- | Runs a computation with the decimal128 default context.
+runQuad :: Ctx a -> a
+runQuad = runCtx initDecimal128
 
 -- | Digit-wise logical exclusive or.  Operands must be:
 --

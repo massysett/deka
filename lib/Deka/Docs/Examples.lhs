@@ -23,8 +23,8 @@ here.
 > module Deka.Docs.Examples where
 
 > import Deka
-> import Data.Maybe
 > import Deka.Quad
+> import Data.Maybe
 
 We need Char8 ByteStrings when working with the `Quad` module:
 
@@ -167,16 +167,16 @@ even if an error flag was set in a previous computation.
 
 After building up a computation in the `Ctx` monad, you need a way
 to get the results and use them elsewhere in your program.  Two
-functions do this: `runCtx` and `evalCtx`.  `runCtx` has type
+functions do this: `runQuad` and `runQuad`.  `runCtx` has type
 
     runCtx :: Ctx a -> (a, Flags)
 
 It gives you the result of the computation, as well as any flags
 that may have arisen.  Later we'll talk more about flags; they
 indicate any errors or warnings that arose during a computation.
-`evalCtx` has type
+`runQuad` has type
 
-    evalCtx :: Ctx a -> a
+    runQuad :: Ctx a -> a
 
 so it does not tell you any flags that may have arisen.
 
@@ -190,8 +190,8 @@ Example - using `do` notation
 Following is an example of how you would add one tenth using the
 Quad type:
 
-> let { oneTenth = evalCtx . fromByteString . BS8.pack $ "0.1" };
-> BS8.putStrLn . toByteString . evalCtx $ do
+> let { oneTenth = runQuad . fromByteString . BS8.pack $ "0.1" };
+> BS8.putStrLn . toByteString . runQuad $ do
 >   r1 <- add oneTenth oneTenth
 >   add r1 oneTenth
 > ;
@@ -208,7 +208,7 @@ available, which you can set.  This can be useful with division, for
 example, where you will not get exact results.  All results are
 computed to 34 digits of precision.
 
-> let tenSixths = evalCtx $ do
+> let tenSixths = runQuad $ do
 >         setRound roundDown
 >         ten <- fromByteString . BS8.pack $ "10"
 >         three <- fromByteString . BS8.pack $ "6"
@@ -221,7 +221,7 @@ two `Quad`: one that you want to round, and another that has the
 number of decimal places you want to round to.
 
 > putStrLn "This is 10 / 6, rounded to two places:";
-> BS8.putStrLn . toByteString . evalCtx $ do
+> BS8.putStrLn . toByteString . runQuad $ do
 >   twoPlaces <- fromByteString . BS8.pack $ "1e-2"
 >   quantize tenSixths twoPlaces
 > ;
@@ -231,7 +231,7 @@ can set a different rounding method if you wish; the rounding
 methods are listed in the Haddock documentation for `Data.Deka.Quad`.
 
 > putStrLn "This is 10 / 6, rounded using the 'roundDown' method.";
-> BS8.putStrLn . toByteString . evalCtx $ do
+> BS8.putStrLn . toByteString . runQuad $ do
 >   twoPlaces <- fromByteString . BS8.pack $ "1e-2"
 >   setRound roundDown
 >   quantize tenSixths twoPlaces
@@ -249,13 +249,14 @@ currently set.  Though computations set flags, they never clear
 them.  You have to clear them yourself.
 
 In addition to flags being available for inspection within the `Ctx`
-monad, you can get the final flags using `runCtx`.  
+monad, you can get the final flags using `runQuad`.  
 
-> let (r, fl) = runCtx $ do
+> let (r, fl) = runQuad $ do
 >       big1 <- fromByteString . BS8.pack $ "987e3000"
 >       big2 <- fromByteString . BS8.pack $ "322e6000"
 >       rslt <- multiply big1 big2
->       return $ toByteString rslt
+>       fl <- getStatus
+>       return $ (toByteString rslt, fl)
 > ; 
 > putStr "result: ";
 > BS8.putStrLn r;

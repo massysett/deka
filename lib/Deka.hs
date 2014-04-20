@@ -34,6 +34,7 @@ import Control.Exception
 import Data.Maybe
 import Data.Typeable
 import Deka.Quad
+import Deka.Context
 import qualified Deka.Quad as P
 import qualified Data.ByteString.Char8 as BS8
 
@@ -42,7 +43,7 @@ import qualified Data.ByteString.Char8 as BS8
 data DekaError
   = IntegerTooBig Integer
   -- ^ Could not convert an integer to a Deka; it is too big.
-  | Flagged Flags
+  | Flagged [Flag]
   -- ^ A computation set flags.  This will happen if, for example,
   -- you calculate a result that is out of range, such as
   --
@@ -67,10 +68,13 @@ newtype Deka = Deka { unDeka :: Quad }
 
 eval :: Ctx a -> a
 eval c
-  | fl == emptyFlags = r
+  | null fl = r
   | otherwise = throw . Flagged $ fl
   where
-    (r, fl) = runCtx c
+    (r, fl) = runCtx initDecimal128 $ do
+      res <- c
+      f <- getStatus
+      return (res, f)
 
 -- | Eq compares by value.  For instance, @3.5 == 3.500@.
 instance Eq Deka where
@@ -155,11 +159,14 @@ integralToDeka i = do
 -- returns 'Nothing'.
 strToDeka :: String -> Maybe Deka
 strToDeka s
-  | fl /= emptyFlags = Nothing
+  | not (null fl) = Nothing
   | not (isFinite r) = Nothing
   | otherwise = Just (Deka r)
   where
-    (r, fl) = runCtx . fromByteString . BS8.pack $ s
+    (r, fl) = runCtx initDecimal128 $ do
+      res <- fromByteString . BS8.pack $ s
+      f <- getStatus
+      return (res, f)
 
 -- | Change a Quad to a Deka.  Only succeeds for finite Quad.
 quadToDeka :: Quad -> Maybe Deka

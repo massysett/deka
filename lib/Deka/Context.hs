@@ -1,4 +1,4 @@
-{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE Trustworthy, DeriveDataTypeable #-}
 module Deka.Context
   ( 
     -- * Ctx
@@ -93,9 +93,10 @@ import System.IO.Unsafe (unsafePerformIO)
 import Deka.Context.Internal
 import Deka.Decnumber.Context
 import Deka.Decnumber.Types
+import Data.Typeable
 
 newtype Flag = Flag { unFlag :: C'uint32_t }
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Typeable)
 
 instance Show Flag where
   show f
