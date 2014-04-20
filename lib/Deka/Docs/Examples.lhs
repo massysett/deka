@@ -1,9 +1,9 @@
 Examples for the Deka library
 =============================
 
-For very simple arithmetic, just import `Data.Deka`.  It contains a
+For very simple arithmetic, just import `Deka`.  It contains a
 `Deka` type, which is an instance of Num.  For more control over your
-arithmetic, import `Data.Deka.Quad`.  Be aware that `Quad` exports some
+arithmetic, import `Deka.Quad`.  Be aware that `Quad` exports some
 functions that clash with Prelude names, so you might want to do a
 qualified `import`; however we will just import them unqualified
 here.
@@ -19,14 +19,14 @@ here.
 > -- rather oddly by default.  The easiest way to see it
 > -- is on Github:
 > --
-> -- <https://github.com/massysett/deka/blob/master/lib/Data/Deka/Docs/Examples.lhs>
+> -- <https://github.com/massysett/deka/blob/master/lib/Deka/Docs/Examples.lhs>
 > module Deka.Docs.Examples where
 
 > import Deka
 > import Deka.Quad
 > import Data.Maybe
 
-We need Char8 ByteStrings when working with the `Quad` module:
+We need Char8 ByteStrings when working with the `Deka.Quad` module:
 
 > import qualified Data.ByteString.Char8 as BS8
 
@@ -123,7 +123,7 @@ result, it is not rounded.
 
 
 More flexibility with the `Data.Deka.Quad` module
-===============================================
+=================================================
 
 Though the `Deka` type provides you with some flexibility--and it's
 easy to use because it's an instance of `Num`--sometimes you need more
@@ -159,30 +159,20 @@ in Deka by the `Ctx` type.  `Ctx` provides computations with the
 context that they need, and it allows computations to record errors
 that may arise.  `Ctx` is a `Monad` so you can use the usual monad
 functions and `do` notation to combine your computations.
-`Data.Deka.Quad` has functions you can use to change the context's
+`Deka.Quad` has functions you can use to change the context's
 rounding, see what errors have been set, and clear errors.  Once an
 error flag is set, you have to clear it; the functions in `Quad`
 won't clear it for you.  However, computations can proceed normally
 even if an error flag was set in a previous computation.
 
 After building up a computation in the `Ctx` monad, you need a way
-to get the results and use them elsewhere in your program.  Two
-functions do this: `runQuad` and `runQuad`.  `runCtx` has type
-
-    runCtx :: Ctx a -> (a, Flags)
-
-It gives you the result of the computation, as well as any flags
-that may have arisen.  Later we'll talk more about flags; they
-indicate any errors or warnings that arose during a computation.
-`runQuad` has type
+to get the results and use them elsewhere in your program.  For this
+you use the `runQuad` function:
 
     runQuad :: Ctx a -> a
 
-so it does not tell you any flags that may have arisen.
-
 Not all computations need a context.  For example, `compareTotal`
-does not need a context, and it can never return an error.  These
-functions are pure like any other Haskell function.
+does not need a context, and it can never return an error.
 
 Example - using `do` notation
 -----------------------------
@@ -242,14 +232,13 @@ Flags
 -----
 
 A computation may set any number of flags.  These are listed in the
-`Data.Deka.Quad` module.  They indicate errors (like division by zero)
+`Deka.Context` module.  They indicate errors (like division by zero)
 or give information (such as the fact that a computation was
-inexact.)  Functions in `Data.Deka.Quad` manipulate which flags are
+inexact.)  Functions in `Deka.Context` manipulate which flags are
 currently set.  Though computations set flags, they never clear
 them.  You have to clear them yourself.
 
-In addition to flags being available for inspection within the `Ctx`
-monad, you can get the final flags using `runQuad`.  
+To see which flags are set, use `getStatus`:
 
 > let (r, fl) = runQuad $ do
 >       big1 <- fromByteString . BS8.pack $ "987e3000"

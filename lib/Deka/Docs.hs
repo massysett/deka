@@ -9,7 +9,7 @@
 -- Of course much of it is in the Haddock comments in the source
 -- code itself.
 --
--- There is also a module here, "Data.Deka.Docs.Examples".  It is in
+-- There is also a module here, "Deka.Docs.Examples".  It is in
 -- literate Haskell and has many comments.  Unfortunately Haddock
 -- does not play well with Literate Haskell.  However, the style of
 -- the file would not play well with Haddock anyway so I'm not sure
@@ -18,6 +18,6 @@
 -- So if you link to the file from the Haddock docs, you will just
 -- get a blank page.  Fortunately it is easily readable in Github:
 --
--- <http://github.com/massysett/deka/blob/master/lib/Data/Deka/Docs/Examples.hs>
+-- <http://github.com/massysett/deka/blob/master/lib/Deka/Docs/Examples.hs>
 
 module Deka.Docs where
