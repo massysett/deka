@@ -115,12 +115,31 @@ import Prelude hiding (abs, and, or, max, min, compare, exp,
   subtract, negate, isNaN, isInfinite, exponent)
 import qualified Prelude as P
 import qualified Data.ByteString.Char8 as BS8
-import System.IO.Unsafe (unsafePerformIO)
 import Foreign.Safe hiding (rotate, shift, xor)
 import Deka.DecNum.Internal
-  ( DecNum(..), newDecNumSize,
-    oneDigitDecNum, newDecNum, unsafe0, unsafe1, unsafe2,
-    toByteString)
+  ( DecNum(..)
+  , newDecNum
+  , unsafe0
+  , unsafe1
+  , unsafe2
+  , unsafe3
+  , unsafe4
+  , toByteString
+  , Coefficient
+  , coefficient
+  , unCoefficient
+  , zeroCoefficient
+  , oneCoefficient
+  , Exponent(..)
+  , Sign(..)
+  , NaNtype(..)
+  , Payload(..)
+  , Decoded(..)
+  , AdjExponent
+  , unAdjExponent
+  , adjExponent
+  )
+
 import qualified Deka.DecNum.Internal as I
 import Deka.Decnumber.DecNumber
 import Deka.Decnumber.Types
@@ -128,7 +147,6 @@ import Deka.Decnumber.Context
 import Deka.Context
 import Deka.Context.Internal
 import Deka.Class.Internal
-import Deka.Digit
 
 fromByteString :: BS8.ByteString -> Ctx DecNum
 fromByteString bs = Ctx $ \pCtx ->
@@ -420,174 +438,17 @@ isZero = unsafe1 I.isZero
 
 -- skipped: radix
 
---
--- # Native conversions
---
-
--- | The unadjusted, non-biased exponent of a floating point number.
-newtype Exponent = Exponent { unExponent :: C'int32_t }
-  deriving (Eq, Ord, Show)
-
--- | The adjusted exponent; that is, the exponent that results if
--- only one digit is to the left of the decimal point.
-newtype AdjExponent = AdjExponent { unAdjExponent :: C'int32_t }
-  deriving (Eq, Ord, Show)
-
-adjExponent :: Exponent -> Coefficient -> AdjExponent
-adjExponent (Exponent ex) (Coefficient ds) =
-  AdjExponent $ ex + (fromIntegral . length $ ds) - 1
-
--- | Is this exponent valid?
-checkExp
-  :: Maybe Precision
-  -> Exponent
-  -> Coefficient
-  -> Bool
-checkExp mnd i coe
-  | unAdjExponent adj > 999999999 = False
-  | unAdjExponent adj < minAdjExp = False
-  | otherwise = True
-  where
-    adj = adjExponent i coe
-    minAdjExp = case mnd of
-      Nothing -> -999999999
-      Just prc -> -999999999 - (unPrecision prc - 1)
-
-data Sign = NonNeg | Neg
-  deriving (Eq, Ord, Show)
-
--- | A fully decoded 'DecNum'.
-data Decoded = Decoded
-  { dcdSign :: Sign
-  , dcdPayload :: Payload
-  } deriving (Eq, Ord, Show)
-
--- | The bulk of the information from a fully decoded 'DecNum'
--- (except the 'Sign').
-data Payload
-  = Infinity
-  | NaN NaNtype Coefficient
-  | NotSpecial Exponent Coefficient
-  deriving (Eq, Ord, Show)
-
-data NaNtype = Quiet | Signaling
-  deriving (Eq, Ord, Show)
-
--- | The coefficient of a non-special number, or the diagnostic
--- information of an NaN.  Consists of a list of 'Digit'.
-newtype Coefficient = Coefficient { unCoefficient :: [Digit] }
-  deriving (Eq, Ord, Show)
-
--- | Creates a 'Coefficient'.  Checks to ensure it is not null and
--- that it is not longer than the maximum coefficient length and
--- that it does not have leading zeroes (if it is 0, a single 'D0'
--- is allowed).
-coefficient :: [Digit] -> Maybe Coefficient
-coefficient ls
-  | null ls = Nothing
-  | length ls > 1 && head ls == D0 = Nothing
-  | length ls > 999999999 = Nothing
-  | otherwise = Just . Coefficient $ ls
-
--- | Coefficient of 'D0'
-zeroCoefficient :: Coefficient
-zeroCoefficient = Coefficient [D0]
-
--- | Coefficient of 'D1'
-oneCoefficient :: Coefficient
-oneCoefficient = Coefficient [D1]
-
--- # Decoding
-
 -- | Take a C 'DecNum' and convert it to Haskell types.
 decode :: DecNum -> Decoded
-decode dn = Decoded (decodeSign dn) inf
-  where
-    inf = unsafePerformIO $
-      withForeignPtr (unDecNum dn) $ \fp ->
-      let pdn = castPtr fp in
-      peek (p'decNumber'bits pdn) >>= \bits ->
-      let coe = decodeCoeff dn
-          ex = decodeExponent dn
-          getInf
-            | toBool (bits .&. c'DECNAN) = NaN Quiet coe
-            | toBool (bits .&. c'DECSNAN) = NaN Signaling coe
-            | toBool (bits .&. c'DECINF) = Infinity
-            | otherwise = NotSpecial ex coe
-      in return getInf
-
-decodeSign :: DecNum -> Sign
-decodeSign (DecNum fp) = unsafePerformIO $
-  withForeignPtr fp $ \ptr ->
-  peek (p'decNumber'bits (castPtr ptr)) >>= \bts ->
-  let isSet = toBool $ bts .&. c'DECNEG
-      r | isSet = Neg
-        | otherwise = NonNeg
-  in return r
-
-decodeCoeff :: DecNum -> Coefficient
-decodeCoeff (DecNum fp) = unsafePerformIO $
-  withForeignPtr fp $ \ptr ->
-  peek (p'decNumber'digits (castPtr ptr)) >>= \dgs ->
-  allocaBytes (fromIntegral dgs) $ \arr ->
-  let _types = arr :: Ptr C'uint8_t in
-  c'decNumberGetBCD (castPtr ptr) arr >>
-  peekArray (fromIntegral dgs) arr >>= \dgts ->
-  return . Coefficient . map intToDigit $ dgts
-
--- | The space for the DecNum must have already been allocated
--- properly.
-encodeCoeff :: Coefficient -> DecNum -> IO ()
-encodeCoeff (Coefficient ds) (DecNum fp) =
-  withForeignPtr fp $ \dptr ->
-  let pDn = castPtr dptr
-      len = length ds in
-  allocaArray len $ \arr ->
-  pokeArray arr (map digitToInt ds) >>
-  c'decNumberSetBCD pDn arr (fromIntegral len) >>
-  return ()
-
-
-decodeExponent :: DecNum -> Exponent
-decodeExponent (DecNum fp) = unsafePerformIO $
-  withForeignPtr fp $ \ptr ->
-  peek (p'decNumber'exponent (castPtr ptr)) >>= \ex ->
-  return (Exponent ex)
-
--- # Encoding
+decode = unsafe1 I.decode
 
 -- | Encodes positive or negative infinities.
 infinity :: Sign -> DecNum
-infinity s = unsafePerformIO $
-  oneDigitDecNum >>= \dn ->
-  withForeignPtr (unDecNum dn) $ \pd ->
-  let p = castPtr pd in
-  poke (p'decNumber'digits p) 1 >>
-  poke (p'decNumber'exponent p) 0 >>
-  poke (p'decNumber'lsu p) 0 >>
-  let bSgn | s == Neg = c'DECNEG
-           | otherwise = 0
-      bts = bSgn .|. c'DECINF in
-  poke (p'decNumber'bits p) bts >>
-  return dn
+infinity = unsafe1 I.infinity
 
 -- | Encodes quiet or signaling NaNs.
 notANumber :: Sign -> NaNtype -> Coefficient -> DecNum
-notANumber s nt coe = unsafePerformIO $
-  let len = length . unCoefficient $ coe in
-  newDecNumSize (fromIntegral len) >>= \dn ->
-  withForeignPtr (unDecNum dn) $ \dPtr ->
-  let pDn = castPtr dPtr in
-  poke (p'decNumber'digits pDn) (fromIntegral len) >>
-  poke (p'decNumber'exponent pDn) 0 >>
-  let bSgn | s == Neg = c'DECNEG
-           | otherwise = 0
-      bNaN | nt == Quiet = c'DECNAN
-           | otherwise = c'DECSNAN
-      bts = bSgn .|. bNaN in
-  poke (p'decNumber'bits pDn) bts >>
-  encodeCoeff coe dn >>
-  return dn
+notANumber = unsafe3 I.notANumber
 
 -- | Encodes non-special numbers (also known as finite numbers.)
 -- Does not need the context; however, you will have to supply
@@ -603,20 +464,7 @@ nonSpecialCtxFree
   -> Exponent
   -> Maybe DecNum
   -- ^ Fails if the exponent is out of range.
-nonSpecialCtxFree mnd sgn coe ex
-  | not $ checkExp mnd ex coe = Nothing
-  | otherwise = Just . unsafePerformIO $
-    let len = length . unCoefficient $ coe in
-    newDecNumSize (fromIntegral len) >>= \dn ->
-    withForeignPtr (unDecNum dn) $ \dPtr ->
-    let pDn = castPtr dPtr in
-    poke (p'decNumber'digits pDn) (fromIntegral len) >>
-    poke (p'decNumber'exponent pDn) (unExponent ex) >>
-    let bSgn | sgn == Neg = c'DECNEG
-             | otherwise = 0 in
-    poke (p'decNumber'bits pDn) bSgn >>
-    encodeCoeff coe dn >>
-    return dn
+nonSpecialCtxFree = unsafe4 I.nonSpecialCtxFree
 
 -- | Like 'nonSpecialCtxFree' but gets information about allowed
 -- subnormal values from the 'Ctx'.
