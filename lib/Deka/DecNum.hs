@@ -118,6 +118,10 @@ import qualified Data.ByteString.Char8 as BS8
 import System.IO.Unsafe (unsafePerformIO)
 import Foreign.Safe hiding (rotate, shift, xor)
 import Deka.DecNum.Internal
+  ( DecNum(..), newDecNumSize,
+    oneDigitDecNum, newDecNum, unsafe0, unsafe1, unsafe2,
+    toByteString)
+import qualified Deka.DecNum.Internal as I
 import Deka.Decnumber.DecNumber
 import Deka.Decnumber.Types
 import Deka.Decnumber.Context
@@ -125,63 +129,6 @@ import Deka.Context
 import Deka.Context.Internal
 import Deka.Class.Internal
 import Deka.Digit
-import Foreign.C
-
--- | How many bytes must be malloc'ed to hold this many
--- digits?
-
-mallocAmount
-  :: C'int32_t
-  -- ^ Number of digits
-  -> Int
-  -- ^ Malloc this many bytes total
-mallocAmount s = base + extra
-  where
-    base = sizeOf (undefined :: C'decNumber)
-    baseUnits = c'DECNUMUNITS
-    totUnits = (s + c'DECDPUN - 1) `quot` c'DECDPUN
-    extraUnits = P.max 0 $ totUnits - baseUnits
-    extra = sizeOf (undefined :: C'decNumberUnit) * fromIntegral extraUnits
-
-oneDigitDecNum :: IO DecNum
-oneDigitDecNum = do
-  fp <- mallocForeignPtrBytes (sizeOf (undefined :: C'decNumber))
-  return $ DecNum (castForeignPtr fp)
-
-newDecNum :: Ptr C'decContext -> IO DecNum
-newDecNum p = do
-  dgts <- peek (p'decContext'digits p)
-  let sz = mallocAmount dgts
-  fp <- mallocForeignPtrBytes sz
-  return $ DecNum fp
-
-copyDecNum :: DecNum -> IO DecNum
-copyDecNum (DecNum p) = withForeignPtr p $ \dp ->
-  peek (p'decNumber'digits (castPtr dp)) >>= \dgts ->
-  newDecNumSize dgts >>= \dn' ->
-  withForeignPtr (unDecNum dn') $ \dp' ->
-  c'decNumberCopy (castPtr dp') (castPtr dp) >>
-  return dn'
-
-newDecNumSize :: C'int32_t -> IO DecNum
-newDecNumSize i = do
-  let sz = mallocAmount i
-  fp <- mallocForeignPtrBytes sz
-  return $ DecNum fp
-
-fromInt32 :: C'int32_t -> DecNum
-fromInt32 i = unsafePerformIO $ do
-  dn <- newDecNumSize 10
-  withForeignPtr (unDecNum dn) $ \ptr -> do
-    _ <- c'decNumberFromInt32 (castPtr ptr) i
-    return dn
-
-fromUInt32 :: C'uint32_t -> DecNum
-fromUInt32 i = unsafePerformIO $ do
-  dn <- newDecNumSize 10
-  withForeignPtr (unDecNum dn) $ \ptr -> do
-    _ <- c'decNumberFromUInt32 (castPtr ptr) i
-    return dn
 
 fromByteString :: BS8.ByteString -> Ctx DecNum
 fromByteString bs = Ctx $ \pCtx ->
@@ -191,14 +138,14 @@ fromByteString bs = Ctx $ \pCtx ->
   c'decNumberFromString (castPtr pDn) cstr pCtx >>
   return dn
 
+fromInt32 :: C'int32_t -> DecNum
+fromInt32 = unsafe1 I.fromInt32
+
+fromUInt32 :: C'uint32_t -> DecNum
+fromUInt32 = unsafe1 I.fromUInt32
+
 toEngByteString :: DecNum -> BS8.ByteString
-toEngByteString dn = unsafePerformIO $
-  withForeignPtr (unDecNum dn) $ \pDn ->
-  peek (p'decNumber'digits (castPtr pDn)) >>= \digs ->
-  let digsTot = fromIntegral digs + 14 in
-  allocaBytes digsTot $ \pStr ->
-  c'decNumberToEngString (castPtr pDn) pStr >>
-  BS8.packCString pStr
+toEngByteString = unsafe1 I.toEngByteString
 
 toUInt32 :: DecNum -> Ctx C'uint32_t
 toUInt32 dn = Ctx $ \pCtx ->
@@ -363,13 +310,7 @@ rotate :: DecNum -> DecNum -> Ctx DecNum
 rotate = binary c'decNumberRotate
 
 sameQuantum :: DecNum -> DecNum -> DecNum
-sameQuantum (DecNum x) (DecNum y) = unsafePerformIO $
-  withForeignPtr x $ \px ->
-  withForeignPtr y $ \py ->
-  oneDigitDecNum >>= \o ->
-  withForeignPtr (unDecNum o) $ \po ->
-  c'decNumberSameQuantum (castPtr po) (castPtr px) (castPtr py) >>
-  return o
+sameQuantum = unsafe2 I.sameQuantum
 
 scaleB :: DecNum -> DecNum -> Ctx DecNum
 scaleB = binary c'decNumberScaleB
@@ -416,22 +357,10 @@ copyAbs
   -- ^ Copy sign to this destination
   -> DecNum
   -- ^ Result
-copyAbs src dest = unsafePerformIO $
-  copyDecNum dest >>= \r ->
-  withForeignPtr (unDecNum r) $ \pr ->
-  withForeignPtr (unDecNum src) $ \ps ->
-  c'decNumberCopyAbs (castPtr pr) (castPtr ps) >>
-  return r
-
--- CopyNegate, CopySign
+copyAbs = unsafe2 I.copyAbs
 
 negate :: DecNum -> DecNum
-negate src = unsafePerformIO $
-  copyDecNum src >>= \r ->
-  withForeignPtr (unDecNum r) $ \pr ->
-  withForeignPtr (unDecNum src) $ \ps ->
-  c'decNumberCopyNegate (castPtr pr) (castPtr ps) >>
-  return r
+negate = unsafe1 I.negate
 
 copySign
   :: DecNum
@@ -439,33 +368,16 @@ copySign
   -> DecNum
   -- ^ Source of sign
   -> DecNum
-copySign src sgn = unsafePerformIO $
-  withForeignPtr (unDecNum src) $ \pc ->
-  peek (p'decNumber'digits (castPtr pc)) >>= \dgts ->
-  newDecNumSize dgts >>= \dn' ->
-  withForeignPtr (unDecNum dn') $ \dp' ->
-  withForeignPtr (unDecNum sgn) $ \pn ->
-  c'decNumberCopySign (castPtr dp') (castPtr pc) (castPtr pn) >>
-  return dn'
+copySign = unsafe2 I.copySign
 
 trim :: DecNum -> DecNum
-trim src = unsafePerformIO $
-  copyDecNum src >>= \dest ->
-  withForeignPtr (unDecNum dest) $ \pd ->
-  c'decNumberTrim (castPtr pd) >>
-  return dest
+trim = unsafe1 I.trim
 
 version :: BS8.ByteString
-version = unsafePerformIO $
-  c'decNumberVersion >>= \pv ->
-  BS8.packCString pv
+version = unsafe0 I.version
 
 zero :: DecNum
-zero = unsafePerformIO $
-  oneDigitDecNum >>= \od ->
-  withForeignPtr (unDecNum od) $ \pod ->
-  c'decNumberZero (castPtr pod) >>
-  return od
+zero = unsafe0 I.zero
 
 isNormal :: DecNum -> Ctx Bool
 isNormal (DecNum d) = Ctx $ \pCtx ->
@@ -479,41 +391,32 @@ isSubnormal (DecNum d) = Ctx $ \pCtx ->
   c'decNumberIsSubnormal (castPtr pd) pCtx >>= \int ->
   return (toBool int)
 
-testBool
-  :: (Ptr C'decNumber -> IO CInt)
-  -> DecNum
-  -> Bool
-testBool f (DecNum dn) = unsafePerformIO $
-  withForeignPtr dn $ \pn ->
-  f (castPtr pn) >>= \bl ->
-  return (toBool bl)
-
 isCanonical :: DecNum -> Bool
-isCanonical = testBool c'decNumberIsCanonical
+isCanonical = unsafe1 I.isCanonical
 
 isFinite :: DecNum -> Bool
-isFinite = testBool c'decNumberIsFinite
+isFinite = unsafe1 I.isFinite
 
 isInfinite :: DecNum -> Bool
-isInfinite = testBool c'decNumberIsInfinite
+isInfinite = unsafe1 I.isInfinite
 
 isNaN :: DecNum -> Bool
-isNaN = testBool c'decNumberIsNaN
+isNaN = unsafe1 I.isNaN
 
 isNegative :: DecNum -> Bool
-isNegative = testBool c'decNumberIsNegative
+isNegative = unsafe1 I.isNegative
 
 isQNaN :: DecNum -> Bool
-isQNaN = testBool c'decNumberIsQNaN
+isQNaN = unsafe1 I.isQNaN
 
 isSNaN :: DecNum -> Bool
-isSNaN = testBool c'decNumberIsSNaN
+isSNaN = unsafe1 I.isSNaN
 
 isSpecial :: DecNum -> Bool
-isSpecial = testBool c'decNumberIsSpecial
+isSpecial = unsafe1 I.isSpecial
 
 isZero :: DecNum -> Bool
-isZero = testBool c'decNumberIsZero
+isZero = unsafe1 I.isZero
 
 -- skipped: radix
 
