@@ -136,7 +136,7 @@ import Deka.DecNum.Internal
 import qualified Deka.DecNum.Internal as I
 import Deka.Decnumber.Types
 import Deka.Context
-import Deka.DecNum.Safe
+import Deka.DecNum.Ctx
 
 unsafe0 :: IO a -> a
 unsafe0 = unsafePerformIO

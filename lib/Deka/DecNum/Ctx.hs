@@ -1,5 +1,5 @@
 {-# LANGUAGE Safe #-}
-module Deka.DecNum.Safe where
+module Deka.DecNum.Ctx where
 
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Context.Internal
