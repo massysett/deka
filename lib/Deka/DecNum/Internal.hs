@@ -3,6 +3,7 @@
 module Deka.DecNum.Internal where
 
 import Foreign.Safe
+import Deka.DecNum.DecNum
 import Deka.Decnumber.DecNumber
 import qualified Data.ByteString.Char8 as BS8
 import System.IO.Unsafe (unsafePerformIO)
@@ -13,10 +14,6 @@ import Deka.Context
 import Prelude
 import qualified Prelude as P
 import Foreign.C.Types
-
-data DPtr
-
-newtype DecNum = DecNum { unDecNum :: ForeignPtr DPtr }
 
 -- # Utilities
 
@@ -77,21 +74,6 @@ unsafe4 :: (a -> b -> c -> d -> IO e) -> a -> b -> c -> d -> e
 unsafe4 = fmap (fmap (fmap (fmap unsafePerformIO)))
 
 -- # Conversions
-
-toByteStringIO :: DecNum -> IO BS8.ByteString
-toByteStringIO dn =
-  withForeignPtr (unDecNum dn) $ \pDn ->
-  peek (p'decNumber'digits (castPtr pDn)) >>= \digs ->
-  let digsTot = fromIntegral digs + 14 in
-  allocaBytes digsTot $ \pStr ->
-  c'decNumberToString (castPtr pDn) pStr >>
-  BS8.packCString pStr
-
-toByteString :: DecNum -> BS8.ByteString
-toByteString = unsafe1 toByteStringIO
-
-instance Show DecNum where
-  show = BS8.unpack . toByteString
 
 fromInt32 :: C'int32_t -> IO DecNum
 fromInt32 i = do

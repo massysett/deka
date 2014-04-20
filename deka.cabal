@@ -59,6 +59,7 @@ library
     , Deka.Decnumber.Types
     , Deka.Decnumber.DecNumber
     , Deka.DecNum.Internal
+    , Deka.DecNum.DecNum
     , Deka.Decnumber.Context
     , Deka.Class.Internal
   

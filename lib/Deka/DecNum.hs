@@ -116,15 +116,14 @@ import Prelude hiding (abs, and, or, max, min, compare, exp,
 import qualified Prelude as P
 import qualified Data.ByteString.Char8 as BS8
 import Foreign.Safe hiding (rotate, shift, xor)
+import Deka.DecNum.DecNum
 import Deka.DecNum.Internal
-  ( DecNum(..)
-  , newDecNum
+  ( newDecNum
   , unsafe0
   , unsafe1
   , unsafe2
   , unsafe3
   , unsafe4
-  , toByteString
   , Coefficient
   , coefficient
   , unCoefficient
