@@ -1,3 +1,4 @@
+{-# LANGUAGE Safe #-}
 -- | Documentation for Deka.
 --
 -- At the moment, documentation is scattered about.  Some of it is

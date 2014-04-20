@@ -1,3 +1,4 @@
+{-# LANGUAGE Safe #-}
 module Deka.Digit where
 
 -- | A single decimal digit.

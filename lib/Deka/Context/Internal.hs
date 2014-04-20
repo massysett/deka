@@ -1,3 +1,4 @@
+{-# LANGUAGE Safe #-}
 module Deka.Context.Internal where
 
 import Deka.Decnumber.Context

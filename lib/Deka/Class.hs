@@ -1,3 +1,4 @@
+{-# LANGUAGE Safe #-}
 module Deka.Class
   ( Class
   , sNaN

@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, OverloadedStrings #-}
+{-# LANGUAGE ForeignFunctionInterface, OverloadedStrings, Safe #-}
 #define DECSUBSET 1
 #include <decContext.h>
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, OverloadedStrings #-}
+{-# LANGUAGE ForeignFunctionInterface, OverloadedStrings, Safe #-}
 
 #include <decNumber.h>
 #include <decNumberMacros.h>

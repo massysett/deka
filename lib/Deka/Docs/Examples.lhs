@@ -10,6 +10,7 @@ here.
 
 > -- Examples will deliberately shadow some names
 > {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+> {-# LANGUAGE Safe #-}
 >
 > -- | If you are viewing this module in Haddock and expecting to
 > -- see examples, you won't see anything.  The file is written in
