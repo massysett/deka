@@ -117,7 +117,7 @@ import qualified Prelude as P
 import qualified Data.ByteString.Char8 as BS8
 import System.IO.Unsafe (unsafePerformIO)
 import Deka.DecNum.DecNum
-import Deka.DecNum.Internal
+import Deka.DecNum.CtxFree
   ( Coefficient
   , coefficient
   , unCoefficient
@@ -133,7 +133,7 @@ import Deka.DecNum.Internal
   , adjExponent
   )
 
-import qualified Deka.DecNum.Internal as I
+import qualified Deka.DecNum.CtxFree as I
 import Deka.Decnumber.Types
 import Deka.Context
 import Deka.DecNum.Ctx

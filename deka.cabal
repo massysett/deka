@@ -58,8 +58,9 @@ library
     , Deka.Context.Internal
     , Deka.Decnumber.Types
     , Deka.Decnumber.DecNumber
-    , Deka.DecNum.Internal
+    , Deka.DecNum.CtxFree
     , Deka.DecNum.Ctx
+    , Deka.DecNum.Util
     , Deka.DecNum.DecNum
     , Deka.Decnumber.Context
     , Deka.Class.Internal

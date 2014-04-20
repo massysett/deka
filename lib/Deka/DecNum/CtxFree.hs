@@ -1,61 +1,18 @@
 {-# LANGUAGE EmptyDataDecls, Safe #-}
 
-module Deka.DecNum.Internal where
+module Deka.DecNum.CtxFree where
 
 import Foreign.Safe
 import Deka.DecNum.DecNum
 import Deka.Decnumber.DecNumber
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Decnumber.Types
-import Deka.Decnumber.Context
 import Deka.Digit
 import Deka.Context
 import Prelude
 import qualified Prelude as P
 import Foreign.C.Types
-
--- # Utilities
-
-newDecNumSize :: C'int32_t -> IO DecNum
-newDecNumSize i = do
-  let sz = mallocAmount i
-  fp <- mallocForeignPtrBytes sz
-  return $ DecNum fp
-
--- | How many bytes must be malloc'ed to hold this many
--- digits?
-mallocAmount
-  :: C'int32_t
-  -- ^ Number of digits
-  -> Int
-  -- ^ Malloc this many bytes total
-mallocAmount s = base + extra
-  where
-    base = sizeOf (undefined :: C'decNumber)
-    baseUnits = c'DECNUMUNITS
-    totUnits = (s + c'DECDPUN - 1) `quot` c'DECDPUN
-    extraUnits = P.max 0 $ totUnits - baseUnits
-    extra = sizeOf (undefined :: C'decNumberUnit) * fromIntegral extraUnits
-
-oneDigitDecNum :: IO DecNum
-oneDigitDecNum = do
-  fp <- mallocForeignPtrBytes (sizeOf (undefined :: C'decNumber))
-  return $ DecNum (castForeignPtr fp)
-
-newDecNum :: Ptr C'decContext -> IO DecNum
-newDecNum p = do
-  dgts <- peek (p'decContext'digits p)
-  let sz = mallocAmount dgts
-  fp <- mallocForeignPtrBytes sz
-  return $ DecNum fp
-
-copyDecNum :: DecNum -> IO DecNum
-copyDecNum (DecNum p) = withForeignPtr p $ \dp ->
-  peek (p'decNumber'digits (castPtr dp)) >>= \dgts ->
-  newDecNumSize dgts >>= \dn' ->
-  withForeignPtr (unDecNum dn') $ \dp' ->
-  c'decNumberCopy (castPtr dp') (castPtr dp) >>
-  return dn'
+import Deka.DecNum.Util
 
 -- # Conversions
 

@@ -3,7 +3,8 @@ module Deka.DecNum.Ctx where
 
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Context.Internal
-import Deka.DecNum.Internal
+import Deka.DecNum.Util
+import Deka.DecNum.CtxFree
 import Deka.Decnumber.DecNumber
 import Deka.Decnumber.Context
 import Deka.DecNum.DecNum
