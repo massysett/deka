@@ -48,13 +48,14 @@ library
     , Deka.Quad
     , Deka.DecNum
     , Deka.Docs
-    , Deka.Docs.Examples
+    --, Deka.Docs.Examples
     , Deka.Context
     , Deka.Class
 
   other-modules:
       Deka.Decnumber.DecQuad
     , Deka.Quad.Quad
+    , Deka.Quad.Safe
     , Deka.Unsafe
     , Deka.Context.Internal
     , Deka.Decnumber.Types
