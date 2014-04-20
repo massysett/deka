@@ -1,4 +1,4 @@
-{-# LANGUAGE EmptyDataDecls, Trustworthy #-}
+{-# LANGUAGE EmptyDataDecls, Safe #-}
 
 module Deka.DecNum.Internal where
 
@@ -6,7 +6,6 @@ import Foreign.Safe
 import Deka.DecNum.DecNum
 import Deka.Decnumber.DecNumber
 import qualified Data.ByteString.Char8 as BS8
-import System.IO.Unsafe (unsafePerformIO)
 import Deka.Decnumber.Types
 import Deka.Decnumber.Context
 import Deka.Digit
@@ -57,21 +56,6 @@ copyDecNum (DecNum p) = withForeignPtr p $ \dp ->
   withForeignPtr (unDecNum dn') $ \dp' ->
   c'decNumberCopy (castPtr dp') (castPtr dp) >>
   return dn'
-
-unsafe0 :: IO a -> a
-unsafe0 = unsafePerformIO
-
-unsafe1 :: (a -> IO b) -> a -> b
-unsafe1 = fmap unsafePerformIO
-
-unsafe2 :: (a -> b -> IO c) -> a -> b -> c
-unsafe2 = fmap (fmap unsafePerformIO)
-
-unsafe3 :: (a -> b -> c -> IO d) -> a -> b -> c -> d
-unsafe3 = fmap (fmap (fmap unsafePerformIO))
-
-unsafe4 :: (a -> b -> c -> d -> IO e) -> a -> b -> c -> d -> e
-unsafe4 = fmap (fmap (fmap (fmap unsafePerformIO)))
 
 -- # Conversions
 

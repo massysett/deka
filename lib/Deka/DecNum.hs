@@ -116,14 +116,10 @@ import Prelude hiding (abs, and, or, max, min, compare, exp,
 import qualified Prelude as P
 import qualified Data.ByteString.Char8 as BS8
 import Foreign.Safe hiding (rotate, shift, xor)
+import System.IO.Unsafe (unsafePerformIO)
 import Deka.DecNum.DecNum
 import Deka.DecNum.Internal
   ( newDecNum
-  , unsafe0
-  , unsafe1
-  , unsafe2
-  , unsafe3
-  , unsafe4
   , Coefficient
   , coefficient
   , unCoefficient
@@ -146,6 +142,21 @@ import Deka.Decnumber.Context
 import Deka.Context
 import Deka.Context.Internal
 import Deka.Class.Internal
+
+unsafe0 :: IO a -> a
+unsafe0 = unsafePerformIO
+
+unsafe1 :: (a -> IO b) -> a -> b
+unsafe1 = fmap unsafePerformIO
+
+unsafe2 :: (a -> b -> IO c) -> a -> b -> c
+unsafe2 = fmap (fmap unsafePerformIO)
+
+unsafe3 :: (a -> b -> c -> IO d) -> a -> b -> c -> d
+unsafe3 = fmap (fmap (fmap unsafePerformIO))
+
+unsafe4 :: (a -> b -> c -> d -> IO e) -> a -> b -> c -> d -> e
+unsafe4 = fmap (fmap (fmap (fmap unsafePerformIO)))
 
 fromByteString :: BS8.ByteString -> Ctx DecNum
 fromByteString bs = Ctx $ \pCtx ->
