@@ -57,6 +57,7 @@ library
       Deka.Decnumber.DecQuad
     , Deka.Quad.Quad
     , Deka.Quad.Safe
+    , Deka.Quad.Ctx
     , Deka.Unsafe
     , Deka.Context.Internal
     , Deka.Decnumber.Types
