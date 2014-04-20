@@ -34,7 +34,6 @@ import Control.Exception
 import Data.Maybe
 import Data.Typeable
 import Deka.Quad
-import Deka.Context
 import qualified Deka.Quad as P
 import qualified Data.ByteString.Char8 as BS8
 
