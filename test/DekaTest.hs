@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module DataDir.DekaTest where
+module DekaTest where
 
 import Data.Maybe
 import Control.Exception
@@ -9,7 +9,7 @@ import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import qualified Test.QuickCheck.Monadic as Q
-import DataDir.DekaDir.QuadTest
+import DekaDir.QuadTest
 import Data.Deka.Quad
 import Data.Deka
 import qualified Data.ByteString.Char8 as BS8

@@ -20,11 +20,11 @@ here.
 > -- is on Github:
 > --
 > -- <https://github.com/massysett/deka/blob/master/lib/Data/Deka/Docs/Examples.lhs>
-> module Data.Deka.Docs.Examples where
+> module Deka.Docs.Examples where
 
-> import Data.Deka
+> import Deka
 > import Data.Maybe
-> import Data.Deka.Quad
+> import Deka.Quad
 
 We need Char8 ByteStrings when working with the `Quad` module:
 

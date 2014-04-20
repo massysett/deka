@@ -1,6 +1,6 @@
-module Data.Deka.Context.Internal where
+module Deka.Context.Internal where
 
-import Data.Deka.Decnumber.Context
+import Deka.Decnumber.Context
 
 import Foreign.Safe
 import Control.Applicative

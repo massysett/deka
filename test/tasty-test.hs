@@ -3,11 +3,11 @@ module Main where
 
 import Test.Tasty
 
-import qualified DataDir
+import qualified DekaDir
 
 tests :: TestTree
 tests = testGroup "tasty-test"
-  [ DataDir.tests
+  [ DekaDir.tests
   ]
 
 main = defaultMain tests

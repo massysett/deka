@@ -20,7 +20,7 @@
 -- for many routine uses this module is sufficient and is more
 -- succinct because, unlike 'Quad', 'Deka' is a member of the 'Num'
 -- typeclass.
-module Data.Deka
+module Deka
   ( Deka
   , unDeka
   , DekaT(..)
@@ -33,8 +33,8 @@ module Data.Deka
 import Control.Exception
 import Data.Maybe
 import Data.Typeable
-import Data.Deka.Quad
-import qualified Data.Deka.Quad as P
+import Deka.Quad
+import qualified Deka.Quad as P
 import qualified Data.ByteString.Char8 as BS8
 
 -- | Thrown by arithmetic functions in the Num class, as this is the

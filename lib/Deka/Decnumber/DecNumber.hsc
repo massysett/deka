@@ -4,13 +4,13 @@
 #include <decNumberMacros.h>
 #let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
 
-module Data.Deka.Decnumber.DecNumber where
+module Deka.Decnumber.DecNumber where
 
 import Control.Applicative
 import Foreign.Safe
 import Foreign.C
-import Data.Deka.Decnumber.Context
-import Data.Deka.Decnumber.Types
+import Deka.Decnumber.Context
+import Deka.Decnumber.Types
 import Data.String
 
 c'DECNAME :: IsString a => a

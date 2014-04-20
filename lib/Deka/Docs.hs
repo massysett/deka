@@ -20,4 +20,4 @@
 --
 -- <http://github.com/massysett/deka/blob/master/lib/Data/Deka/Docs/Examples.hs>
 
-module Data.Deka.Docs where
+module Deka.Docs where

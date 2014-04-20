@@ -11,19 +11,19 @@
 --
 -- encoding and decoding must also be thoroughly tested as this can
 -- be quite error prone.
-module DataDir.DekaDir.QuadTest where
+module DekaDir.QuadTest where
 
 import Control.Applicative
 import Control.Exception (evaluate)
 import qualified Data.ByteString.Char8 as BS8
 import Control.Monad
 import Test.Tasty
-import qualified Data.Deka.Quad as E
+import qualified Deka.Quad as E
 import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck hiding (maxSize)
 import Test.QuickCheck.Monadic
-import Data.Deka.Internal
-import Data.Deka.Decnumber
+import Deka.Internal
+import Deka.Decnumber
 import Data.Maybe
 import Foreign
 

@@ -1,5 +1,5 @@
 {-# LANGUAGE EmptyDataDecls, Trustworthy #-}
-module Data.Deka.DecNum
+module Deka.DecNum
   ( DecNum
 
   -- * Conversions
@@ -117,14 +117,14 @@ import qualified Prelude as P
 import qualified Data.ByteString.Char8 as BS8
 import System.IO.Unsafe (unsafePerformIO)
 import Foreign.Safe hiding (rotate, shift, xor)
-import Data.Deka.DecNum.Internal
-import Data.Deka.Decnumber.DecNumber
-import Data.Deka.Decnumber.Types
-import Data.Deka.Decnumber.Context
-import Data.Deka.Context
-import Data.Deka.Context.Internal
-import Data.Deka.Class.Internal
-import Data.Deka.Digit
+import Deka.DecNum.Internal
+import Deka.Decnumber.DecNumber
+import Deka.Decnumber.Types
+import Deka.Decnumber.Context
+import Deka.Context
+import Deka.Context.Internal
+import Deka.Class.Internal
+import Deka.Digit
 import Foreign.C
 
 -- | How many bytes must be malloc'ed to hold this many

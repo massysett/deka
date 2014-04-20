@@ -1,5 +1,5 @@
 {-# LANGUAGE Trustworthy #-}
-module Data.Deka.Context
+module Deka.Context
   ( 
     -- * Ctx
     Ctx
@@ -88,9 +88,9 @@ module Data.Deka.Context
 
 import Foreign.Safe
 import System.IO.Unsafe (unsafePerformIO)
-import Data.Deka.Context.Internal
-import Data.Deka.Decnumber.Context
-import Data.Deka.Decnumber.Types
+import Deka.Context.Internal
+import Deka.Decnumber.Context
+import Deka.Decnumber.Types
 
 newtype Flag = Flag { unFlag :: C'uint32_t }
   deriving (Eq, Ord)

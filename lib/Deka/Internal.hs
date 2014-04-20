@@ -4,7 +4,7 @@
 -- contains types that library users have no access to, but which
 -- are needed by multiple Deka modules or that the test suite needs
 -- access to.
-module Data.Deka.Internal where
+module Deka.Internal where
 
 import Foreign.Safe
 import Foreign.C

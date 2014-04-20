@@ -23,7 +23,7 @@
 -- might want to do
 --
 -- > import qualified Data.Deka.Quad as Q
-module Data.Deka.Quad
+module Deka.Quad
   (
     -- * Quad
     Quad
@@ -296,10 +296,10 @@ import Prelude hiding
   )
 import qualified Prelude
 import System.IO.Unsafe (unsafePerformIO)
-import Data.Deka.Digit
+import Deka.Digit
 
-import Data.Deka.Decnumber
-import Data.Deka.Internal
+import Deka.Decnumber
+import Deka.Internal
 
 -- # Rounding
 

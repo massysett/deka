@@ -1,9 +1,9 @@
 {-# LANGUAGE EmptyDataDecls, Trustworthy #-}
 
-module Data.Deka.DecNum.Internal where
+module Deka.DecNum.Internal where
 
 import Foreign.Safe
-import Data.Deka.Decnumber.DecNumber
+import Deka.Decnumber.DecNumber
 import qualified Data.ByteString.Char8 as BS8
 import System.IO.Unsafe (unsafePerformIO)
 

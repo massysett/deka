@@ -4,12 +4,12 @@
 
 #let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
 
-module Data.Deka.Decnumber.Context where
+module Deka.Decnumber.Context where
 
 import Foreign.Safe
 import Foreign.C
 import Control.Applicative
-import Data.Deka.Decnumber.Types
+import Deka.Decnumber.Types
 import Data.String
 
 type C'rounding = #type enum rounding

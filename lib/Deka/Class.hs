@@ -1,4 +1,4 @@
-module Data.Deka.Class
+module Deka.Class
   ( Class
   , sNaN
   , qNaN
@@ -12,4 +12,4 @@ module Data.Deka.Class
   , posInf
   ) where
 
-import Data.Deka.Class.Internal
+import Deka.Class.Internal
