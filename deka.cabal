@@ -54,7 +54,7 @@ library
 
   other-modules:
       Deka.Decnumber.DecQuad
-    , Deka.Quad.Internal
+    , Deka.Quad.Quad
     , Deka.Context.Internal
     , Deka.Decnumber.Types
     , Deka.Decnumber.DecNumber

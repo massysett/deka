@@ -4,7 +4,7 @@
 -- contains types that library users have no access to, but which
 -- are needed by multiple Deka modules or that the test suite needs
 -- access to.
-module Deka.Quad.Internal where
+module Deka.Quad.Quad where
 
 import Foreign.Safe
 import Foreign.C
@@ -12,7 +12,6 @@ import qualified Data.ByteString.Char8 as BS8
 import Deka.Decnumber.DecQuad
 import System.IO.Unsafe (unsafePerformIO)
 import Deka.Decnumber.Types
-import Deka.Quad.Util
 
 -- # Helpers
 

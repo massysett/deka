@@ -250,7 +250,7 @@ import Deka.Context.Internal
 import Deka.Decnumber.DecQuad
 import Deka.Decnumber.Context
 import Deka.Decnumber.Types
-import Deka.Quad.Internal
+import Deka.Quad.Quad
 
 -- # Helpers.  Do not export these.
 
