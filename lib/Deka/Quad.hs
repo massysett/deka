@@ -298,8 +298,8 @@ import qualified Prelude
 import System.IO.Unsafe (unsafePerformIO)
 import Deka.Digit
 
-import Deka.Decnumber
-import Deka.Internal
+import Deka.Decnumber.DecQuad
+import Deka.Quad.Internal
 
 -- # Rounding
 

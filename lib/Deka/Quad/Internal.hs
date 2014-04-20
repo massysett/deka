@@ -1,15 +1,15 @@
--- | Internal types - for Deka use only
+-- | Internal types - for Quad use only
 --
 -- This module is not listed for export in the cabal file.  It
 -- contains types that library users have no access to, but which
 -- are needed by multiple Deka modules or that the test suite needs
 -- access to.
-module Deka.Internal where
+module Deka.Quad.Internal where
 
 import Foreign.Safe
 import Foreign.C
 import qualified Data.ByteString.Char8 as BS8
-import Deka.Decnumber
+import Deka.Decnumber.DecQuad
 import Control.Applicative
 import Control.Monad
 import System.IO.Unsafe (unsafePerformIO)

@@ -54,8 +54,8 @@ library
     , Deka.Class
 
   other-modules:
-      Deka.Decnumber
-    , Deka.Internal
+      Deka.Decnumber.DecQuad
+    , Deka.Quad.Internal
     , Deka.Context.Internal
     , Deka.Decnumber.Types
     , Deka.Decnumber.DecNumber
@@ -92,9 +92,8 @@ Test-Suite tasty-test
 
   other-modules:
       Deka
-    , Deka.Internal
-    , Deka.Decnumber
-    , Deka.Quad
+    , Deka.Decnumber.DecQuad
+    , Deka.Quad.Internal
     , Deka.Docs
     , Deka.Docs.Examples
 

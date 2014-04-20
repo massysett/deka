@@ -22,8 +22,8 @@ import qualified Deka.Quad as E
 import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck hiding (maxSize)
 import Test.QuickCheck.Monadic
-import Deka.Internal
-import Deka.Decnumber
+import Deka.Quad.Internal
+import Deka.Decnumber.DecQuad
 import Data.Maybe
 import Foreign
 

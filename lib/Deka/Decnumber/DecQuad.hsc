@@ -6,7 +6,7 @@
 #let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
 
 -- | Low-level bindings to the decNumber library.
-module Deka.Decnumber where
+module Deka.Decnumber.DecQuad where
 
 import Foreign.Safe
 import Foreign.C
