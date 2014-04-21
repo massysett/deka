@@ -25,7 +25,7 @@ import Prelude hiding
   , exponent
   )
 import qualified Prelude
-import Deka.Digit
+import Deka.Decoded
 
 import Deka.Internal.Decnumber.DecQuad
 import Deka.Internal.Decnumber.Types

@@ -47,7 +47,7 @@ library
     , Deka.Class
     , Deka.Context
     , Deka.DecNum
-    , Deka.Digit
+    , Deka.Decoded
     , Deka.Docs
     , Deka.Docs.Examples
     , Deka.Quad

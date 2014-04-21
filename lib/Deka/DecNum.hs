@@ -113,7 +113,6 @@ module Deka.DecNum
 
 import Prelude hiding (abs, and, or, max, min, compare, exp,
   subtract, negate, isNaN, isInfinite, exponent)
-import qualified Prelude as P
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.DecNum.CtxFree

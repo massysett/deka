@@ -192,7 +192,7 @@ module Deka.Quad
 
 import qualified Deka.Internal.Quad.CtxFree as C
 import Deka.Internal.Quad.Ctx
-import Deka.Digit
+import Deka.Decoded
 import qualified Deka.Internal.Quad.Decoding as D
 import Deka.Internal.Quad.Decoding hiding (fromBCD, toBCD, one)
 import Deka.Context hiding (C'int32_t)

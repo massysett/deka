@@ -1,5 +1,9 @@
 {-# LANGUAGE Safe #-}
-module Deka.Digit where
+-- | Components of decoded numbers that are common to DecNum and
+-- Quad.  Some components (such as Coefficient) are not here because
+-- the invariants for these components differ between DecNum and
+-- Quad.
+module Deka.Decoded where
 
 -- | A single decimal digit.
 data Digit = D0 | D1 | D2 | D3 | D4 | D5 | D6 | D7 | D8 | D9
