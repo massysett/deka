@@ -20,8 +20,7 @@
 -- for many routine uses this module is sufficient and is more
 -- succinct because, unlike 'Quad', 'Deka' is a member of the 'Num'
 -- typeclass.
-module Deka where
-{-
+module Deka
   ( Deka
   , unDeka
   , DekaT(..)
@@ -173,4 +172,3 @@ quadToDeka :: Quad -> Maybe Deka
 quadToDeka q
   | isFinite q = Just $ Deka q
   | otherwise = Nothing
--}

@@ -1,11 +1,12 @@
+{-# LANGUAGE Trustworthy #-}
 module Deka.Quad
   (
     -- * Quad
-    Quad
+    Q.Quad
 
   -- * Converting to and from strings
   , fromByteString
-  , toByteString
+  , Q.toByteString
   , toEngByteString
 
   -- * Converting to and from integers
@@ -36,7 +37,7 @@ module Deka.Quad
   , compare
   , compareOrd
   , compareSignal
-  , compareTotal
+  , Q.compareTotal
   , compareTotalMag
   , max
   , maxMag
@@ -192,12 +193,14 @@ module Deka.Quad
 import qualified Deka.Quad.CtxFree as C
 import Deka.Quad.Ctx
 import Deka.Digit
-import Deka.Quad.Decoding
+import qualified Deka.Quad.Decoding as D
+import Deka.Quad.Decoding hiding (fromBCD, toBCD, one)
 import Deka.Context
 import Deka.Decnumber.Types
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Class
-import Deka.Quad.Quad
+import qualified Deka.Quad.Quad as Q
+import Deka.Quad.Quad (Quad)
 import Deka.Unsafe
 import Prelude (Bool, Maybe, Ordering, Int)
 
@@ -309,3 +312,20 @@ version = unsafe0 C.version
 zero :: Quad
 zero = unsafe0 C.zero
 
+isNegative :: Quad -> Bool
+isNegative = unsafe1 Q.isNegative
+
+isZero :: Quad -> Bool
+isZero = unsafe1 Q.isZero
+
+isPositive :: Quad -> Bool
+isPositive = unsafe1 Q.isPositive
+
+one :: Quad
+one = unsafe0 D.one
+
+fromBCD :: Decoded -> Quad
+fromBCD = unsafe1 D.fromBCD
+
+toBCD :: Quad -> Decoded
+toBCD = unsafe1 D.toBCD
