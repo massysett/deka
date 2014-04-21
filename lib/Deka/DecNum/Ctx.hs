@@ -228,8 +228,9 @@ isSubnormal (DecNum d) = Ctx $ \pCtx ->
   c'decNumberIsSubnormal (castPtr pd) pCtx >>= \int ->
   return (toBool int)
 
--- | Like 'nonSpecialCtxFree' but gets information about allowed
--- subnormal values from the 'Ctx'.
+-- | Encodes non-special numbers (also known as finite numbers.)
+-- Uses information from the context to determine whether subnormal
+-- values are allowed.
 nonSpecial
   :: Sign
   -> Coefficient
