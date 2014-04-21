@@ -46,7 +46,6 @@ library
       Deka
     , Deka.Digit
     , Deka.Quad
-    , Deka.Quad.Decoding
     , Deka.DecNum
     , Deka.Docs
     --, Deka.Docs.Examples
@@ -58,6 +57,7 @@ library
     , Deka.Quad.Quad
     , Deka.Quad.CtxFree
     , Deka.Quad.Ctx
+    , Deka.Quad.Decoding
     , Deka.Unsafe
     , Deka.Context.Internal
     , Deka.Decnumber.Types

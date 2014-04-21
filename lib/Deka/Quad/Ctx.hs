@@ -24,7 +24,7 @@ import Prelude hiding
   , exponent
   )
 import qualified Prelude
-import Deka.Context hiding (C'int32_t)
+import Deka.Context
 import Deka.Context.Internal
 
 import Deka.Decnumber.DecQuad

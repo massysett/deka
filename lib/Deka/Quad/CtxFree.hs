@@ -52,7 +52,7 @@ import Prelude hiding
   )
 import qualified Prelude
 import Deka.Class.Internal
-import Deka.Context hiding (C'int32_t)
+import Deka.Context
 
 import Deka.Decnumber.DecQuad
 import Deka.Decnumber.Types

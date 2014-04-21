@@ -8,7 +8,6 @@ import Deka.DecNum.CtxFree
 import Deka.Decnumber.DecNumber
 import Deka.Decnumber.Context
 import Deka.DecNum.DecNum
-import Deka.Context
 import Deka.Class.Internal
 import Foreign.Safe
 import Deka.Decnumber.Types
