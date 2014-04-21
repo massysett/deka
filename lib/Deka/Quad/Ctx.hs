@@ -373,7 +373,7 @@ toUInt32Exact = getRounded unsafe'c'decQuadToUInt32Exact
 
 -- | Runs a computation with the decimal128 default context.
 runQuad :: Ctx a -> a
-runQuad = runCtx initDecimal128
+runQuad = Deka.Context.runCtx initDecimal128
 
 -- | Runs a computation with the decimal128 default context, and
 -- returns any resulting flags.
