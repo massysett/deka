@@ -1,16 +1,16 @@
 {-# LANGUAGE Safe #-}
-module Deka.DecNum.Ctx where
+module Deka.Internal.DecNum.Ctx where
 
 import qualified Data.ByteString.Char8 as BS8
-import Deka.Context.Internal
-import Deka.DecNum.Util
-import Deka.DecNum.CtxFree
-import Deka.Decnumber.DecNumber
-import Deka.Decnumber.Context
-import Deka.DecNum.DecNum
-import Deka.Class.Internal
+import Deka.Internal.Context
+import Deka.Internal.DecNum.Util
+import Deka.Internal.DecNum.CtxFree
+import Deka.Internal.Decnumber.DecNumber
+import Deka.Internal.Decnumber.Context
+import Deka.Internal.DecNum.DecNum
+import Deka.Internal.Class
 import Foreign.Safe
-import Deka.Decnumber.Types
+import Deka.Internal.Decnumber.Types
 
 fromByteString :: BS8.ByteString -> Ctx DecNum
 fromByteString bs = Ctx $ \pCtx ->

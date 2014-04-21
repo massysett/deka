@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-module Deka.Decnumber.Types where
+module Deka.Internal.Decnumber.Types where
 
 import Foreign.Safe
 

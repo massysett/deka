@@ -1,7 +1,7 @@
 {-# LANGUAGE Safe #-}
-module Deka.Class.Internal where
+module Deka.Internal.Class where
 
-import Deka.Decnumber.Context
+import Deka.Internal.Decnumber.Context
 
 newtype Class = Class { _unClass :: C'decClass }
   deriving (Eq, Ord)

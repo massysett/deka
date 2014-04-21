@@ -1,5 +1,5 @@
 {-# LANGUAGE Safe #-}
-module Deka.Quad.Decoding where
+module Deka.Internal.Quad.Decoding where
 
 import Control.Monad
 import Data.Maybe
@@ -27,9 +27,9 @@ import Prelude hiding
 import qualified Prelude
 import Deka.Digit
 
-import Deka.Decnumber.DecQuad
-import Deka.Decnumber.Types
-import Deka.Quad.Quad
+import Deka.Internal.Decnumber.DecQuad
+import Deka.Internal.Decnumber.Types
+import Deka.Internal.Quad.Quad
 
 -- ## Decoding and encoding helpers
 

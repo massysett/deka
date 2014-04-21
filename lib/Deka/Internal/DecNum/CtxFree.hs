@@ -1,18 +1,18 @@
 {-# LANGUAGE EmptyDataDecls, Safe #-}
 
-module Deka.DecNum.CtxFree where
+module Deka.Internal.DecNum.CtxFree where
 
 import Foreign.Safe
-import Deka.DecNum.DecNum
-import Deka.Decnumber.DecNumber
+import Deka.Internal.DecNum.DecNum
+import Deka.Internal.Decnumber.DecNumber
 import qualified Data.ByteString.Char8 as BS8
-import Deka.Decnumber.Types
+import Deka.Internal.Decnumber.Types
 import Deka.Digit
 import Deka.Context
 import Prelude
 import qualified Prelude as P
 import Foreign.C.Types
-import Deka.DecNum.Util
+import Deka.Internal.DecNum.Util
 
 -- # Conversions
 

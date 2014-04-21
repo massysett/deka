@@ -190,18 +190,18 @@ module Deka.Quad
 
   ) where
 
-import qualified Deka.Quad.CtxFree as C
-import Deka.Quad.Ctx
+import qualified Deka.Internal.Quad.CtxFree as C
+import Deka.Internal.Quad.Ctx
 import Deka.Digit
-import qualified Deka.Quad.Decoding as D
-import Deka.Quad.Decoding hiding (fromBCD, toBCD, one)
+import qualified Deka.Internal.Quad.Decoding as D
+import Deka.Internal.Quad.Decoding hiding (fromBCD, toBCD, one)
 import Deka.Context hiding (C'int32_t)
-import Deka.Decnumber.Types
+import Deka.Internal.Decnumber.Types
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Class
-import qualified Deka.Quad.Quad as Q
-import Deka.Quad.Quad (Quad)
-import Deka.Unsafe
+import qualified Deka.Internal.Quad.Quad as Q
+import Deka.Internal.Quad.Quad (Quad)
+import Deka.Internal.Unsafe
 import Prelude (Bool, Maybe, Ordering, Int)
 
 -- | More information about a particular 'Quad'.

@@ -89,10 +89,10 @@ module Deka.Context
 
   ) where
 
-import Deka.Context.Internal hiding (runCtx, runCtxStatus)
-import qualified Deka.Context.Internal as I
-import Deka.Decnumber.Types
-import Deka.Unsafe
+import Deka.Internal.Context hiding (runCtx, runCtxStatus)
+import qualified Deka.Internal.Context as I
+import Deka.Internal.Decnumber.Types
+import Deka.Internal.Unsafe
 
 runCtx :: Initializer -> Ctx a -> a
 runCtx = unsafe2 I.runCtx

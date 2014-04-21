@@ -6,12 +6,12 @@
 #let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
 
 -- | Low-level bindings to the decNumber library.
-module Deka.Decnumber.DecQuad where
+module Deka.Internal.Decnumber.DecQuad where
 
 import Foreign.Safe
 import Foreign.C
-import Deka.Decnumber.Types
-import Deka.Decnumber.Context
+import Deka.Internal.Decnumber.Types
+import Deka.Internal.Decnumber.Context
 
 c'NULL :: Num a => a
 c'NULL = #const NULL

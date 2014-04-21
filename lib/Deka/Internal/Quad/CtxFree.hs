@@ -23,7 +23,7 @@
 -- might want to do
 --
 -- > import qualified Data.Deka.Quad as Q
-module Deka.Quad.CtxFree where
+module Deka.Internal.Quad.CtxFree where
 
 -- # Imports
 
@@ -51,13 +51,13 @@ import Prelude hiding
   , exponent
   )
 import qualified Prelude
-import Deka.Class.Internal
+import Deka.Internal.Class
 import Deka.Context
 
-import Deka.Decnumber.DecQuad
-import Deka.Decnumber.Types
-import Deka.Quad.Quad
-import Deka.Quad.Ctx (compare)
+import Deka.Internal.Decnumber.DecQuad
+import Deka.Internal.Decnumber.Types
+import Deka.Internal.Quad.Quad
+import Deka.Internal.Quad.Ctx (compare)
 
 -- # Helpers.  Do not export these.
 

@@ -13,4 +13,4 @@ module Deka.Class
   , posInf
   ) where
 
-import Deka.Class.Internal
+import Deka.Internal.Class

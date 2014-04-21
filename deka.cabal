@@ -44,31 +44,31 @@ library
   
   exposed-modules:     
       Deka
-    , Deka.Digit
-    , Deka.Quad
+    , Deka.Class
+    , Deka.Context
     , Deka.DecNum
+    , Deka.Digit
     , Deka.Docs
     , Deka.Docs.Examples
-    , Deka.Context
-    , Deka.Class
+    , Deka.Quad
 
-  other-modules:
-      Deka.Decnumber.DecQuad
-    , Deka.Quad.Quad
-    , Deka.Quad.CtxFree
-    , Deka.Quad.Ctx
-    , Deka.Quad.Decoding
-    , Deka.Unsafe
-    , Deka.Context.Internal
-    , Deka.Decnumber.Types
-    , Deka.Decnumber.DecNumber
-    , Deka.DecNum.CtxFree
-    , Deka.DecNum.Ctx
-    , Deka.DecNum.Util
-    , Deka.DecNum.DecNum
-    , Deka.Decnumber.Context
-    , Deka.Class.Internal
-  
+    -- Internals
+    , Deka.Internal.Class
+    , Deka.Internal.Context
+    , Deka.Internal.DecNum.CtxFree
+    , Deka.Internal.DecNum.Ctx
+    , Deka.Internal.DecNum.DecNum
+    , Deka.Internal.DecNum.Util
+    , Deka.Internal.Decnumber.Context
+    , Deka.Internal.Decnumber.DecNumber
+    , Deka.Internal.Decnumber.DecQuad
+    , Deka.Internal.Decnumber.Types
+    , Deka.Internal.Quad.CtxFree
+    , Deka.Internal.Quad.Ctx
+    , Deka.Internal.Quad.Decoding
+    , Deka.Internal.Quad.Quad
+    , Deka.Internal.Unsafe
+
   build-depends:
       base >=4.5.0.0 && < 4.8
     , bytestring >=0.9.2.1 && < 0.11

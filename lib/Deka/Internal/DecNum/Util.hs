@@ -1,12 +1,12 @@
 {-# LANGUAGE Safe #-}
 
-module Deka.DecNum.Util where
+module Deka.Internal.DecNum.Util where
 
-import Deka.Decnumber.Types
-import Deka.Decnumber.DecNumber
-import Deka.Decnumber.Context
+import Deka.Internal.Decnumber.Types
+import Deka.Internal.Decnumber.DecNumber
+import Deka.Internal.Decnumber.Context
 import Foreign.Safe
-import Deka.DecNum.DecNum
+import Deka.Internal.DecNum.DecNum
 
 newDecNumSize :: C'int32_t -> IO DecNum
 newDecNumSize i = do

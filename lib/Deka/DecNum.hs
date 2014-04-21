@@ -115,8 +115,8 @@ import Prelude hiding (abs, and, or, max, min, compare, exp,
   subtract, negate, isNaN, isInfinite, exponent)
 import qualified Prelude as P
 import qualified Data.ByteString.Char8 as BS8
-import Deka.DecNum.DecNum
-import Deka.DecNum.CtxFree
+import Deka.Internal.DecNum.DecNum
+import Deka.Internal.DecNum.CtxFree
   ( Coefficient
   , coefficient
   , unCoefficient
@@ -132,11 +132,11 @@ import Deka.DecNum.CtxFree
   , adjExponent
   )
 
-import qualified Deka.DecNum.CtxFree as I
-import Deka.Decnumber.Types
+import qualified Deka.Internal.DecNum.CtxFree as I
+import Deka.Internal.Decnumber.Types
 import Deka.Context
-import Deka.DecNum.Ctx
-import Deka.Unsafe
+import Deka.Internal.DecNum.Ctx
+import Deka.Internal.Unsafe
 
 fromInt32 :: C'int32_t -> DecNum
 fromInt32 = unsafe1 I.fromInt32

@@ -1,12 +1,12 @@
 {-# LANGUAGE Safe, DeriveDataTypeable #-}
-module Deka.Context.Internal where
+module Deka.Internal.Context where
 
-import Deka.Decnumber.Context
+import Deka.Internal.Decnumber.Context
 
 import Foreign.Safe
 import Control.Applicative
 import Control.Monad
-import Deka.Decnumber.Types
+import Deka.Internal.Decnumber.Types
 import Control.Exception
 import Data.Typeable
 

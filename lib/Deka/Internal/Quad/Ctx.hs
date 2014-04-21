@@ -1,5 +1,5 @@
 {-# LANGUAGE Safe #-}
-module Deka.Quad.Ctx where
+module Deka.Internal.Quad.Ctx where
 
 import Control.Monad
 import qualified Data.ByteString.Char8 as BS8
@@ -25,12 +25,12 @@ import Prelude hiding
   )
 import qualified Prelude
 import Deka.Context
-import Deka.Context.Internal
+import Deka.Internal.Context
 
-import Deka.Decnumber.DecQuad
-import Deka.Decnumber.Context
-import Deka.Decnumber.Types
-import Deka.Quad.Quad
+import Deka.Internal.Decnumber.DecQuad
+import Deka.Internal.Decnumber.Context
+import Deka.Internal.Decnumber.Types
+import Deka.Internal.Quad.Quad
 
 type Unary
   = Ptr C'decQuad

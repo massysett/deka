@@ -1,4 +1,4 @@
-module Deka.Unsafe where
+module Deka.Internal.Unsafe where
 
 import System.IO.Unsafe (unsafePerformIO)
 
