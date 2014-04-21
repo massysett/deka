@@ -195,7 +195,7 @@ import Deka.Quad.Ctx
 import Deka.Digit
 import qualified Deka.Quad.Decoding as D
 import Deka.Quad.Decoding hiding (fromBCD, toBCD, one)
-import Deka.Context
+import Deka.Context hiding (C'int32_t)
 import Deka.Decnumber.Types
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Class
