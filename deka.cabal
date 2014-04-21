@@ -53,6 +53,7 @@ library
     , Deka.Quad
 
     -- Internals
+    , Deka.Internal
     , Deka.Internal.Class
     , Deka.Internal.Context
     , Deka.Internal.DecNum.CtxFree

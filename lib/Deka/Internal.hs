@@ -1,0 +1,14 @@
+-- | Deka internals.
+--
+-- Since Deka is a binding to the decNumber C library, most of the
+-- action happens in the IO monad.  Deka goes to great lengths to
+-- hide the IO using 'unsafePerformIO'.  Most of the user-facing API
+-- is a thin wrapper of code in the Deka.Internal tree.  By keeping
+-- the internals here, they are easier to view in Haddock, and by
+-- keeping most of the modules Safe (from a Safe Haskell
+-- perspective) they are easier to test.
+--
+-- You shouldn't need to use any of the functions in here; you
+-- shouldn't even need to look at them.  But here they are if you
+-- wish to examine them.
+module Deka.Internal where
