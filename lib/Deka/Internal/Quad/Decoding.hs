@@ -33,18 +33,6 @@ import Deka.Internal.Quad.Quad
 
 -- ## Decoding and encoding helpers
 
-data Sign
-  = Sign0
-  -- ^ The number is positive or is zero
-  | Sign1
-  -- ^ The number is negative or the negative zero
-  deriving (Eq, Ord, Show, Enum, Bounded)
-
-data NaN
-  = Quiet
-  | Signaling
-  deriving (Eq, Ord, Show, Enum, Bounded)
-
 -- | A pure Haskell type which holds information identical to that
 -- in a 'Quad'.
 data Decoded = Decoded
@@ -275,7 +263,7 @@ zeroExponent = Exponent 0
 toDecNumberBCD :: Decoded -> (C'int32_t, [C'uint8_t], C'int32_t)
 toDecNumberBCD (Decoded s v) = (e, ds, sgn)
   where
-    sgn = case s of { Sign0 -> 0; Sign1 -> c'DECFLOAT_Sign }
+    sgn = case s of { NonNeg -> 0; Neg -> c'DECFLOAT_Sign }
     (e, ds) = case v of
       Infinite -> (c'DECFLOAT_Inf, replicate c'DECQUAD_Pmax 0)
       NaN n (Payload ps) -> (ns, np)
@@ -300,10 +288,10 @@ fromBCD dcd =
   unsafe'c'decQuadFromBCD pD expn pArr sgn >>
   return d
 
--- | A Quad with coefficient 'D1', exponent 0, and sign 'Sign0'.
+-- | A Quad with coefficient 'D1', exponent 0, and sign 'NonNeg'.
 one :: IO Quad
 one = fromBCD
-  $ Decoded Sign0 (Finite (Coefficient [D1]) (Exponent 0))
+  $ Decoded NonNeg (Finite (Coefficient [D1]) (Exponent 0))
 
 -- | Decodes a 'Quad' to a pure Haskell type which holds identical
 -- information.
@@ -329,7 +317,7 @@ getDecoded
   -> Decoded
 getDecoded sgn ex coef = Decoded s v
   where
-    s = if sgn == 0 then Sign0 else Sign1
+    s = if sgn == 0 then NonNeg else Neg
     v | ex == c'DECFLOAT_qNaN = NaN Quiet pld
       | ex == c'DECFLOAT_sNaN = NaN Signaling pld
       | ex == c'DECFLOAT_Inf = Infinite
@@ -359,8 +347,8 @@ scientific :: Decoded -> String
 scientific d = sign ++ rest
   where
     sign = case dSign d of
-      Sign0 -> ""
-      Sign1 -> "-"
+      NonNeg -> ""
+      Neg -> "-"
     rest = case dValue d of
       Infinite -> "Infinity"
       Finite c e -> sciFinite c e
@@ -397,8 +385,8 @@ ordinary :: Decoded -> String
 ordinary d = sign ++ rest
   where
     sign = case dSign d of
-      Sign0 -> ""
-      Sign1 -> "-"
+      NonNeg -> ""
+      Neg -> "-"
     rest = case dValue d of
       Infinite -> "Infinity"
       Finite c e -> onyFinite c e
@@ -427,7 +415,7 @@ decodedToRational d = case dValue d of
   (Finite c e) ->
     let int = digitsToInteger . unCoefficient $ c
         ex = unExponent e
-        mkSgn = if dSign d == Sign0 then id else negate
+        mkSgn = if dSign d == NonNeg then id else negate
         mult = if ex < 0 then 1 % (10 ^ Prelude.abs ex) else 10 ^ ex
     in Just . mkSgn $ fromIntegral int * mult
   _ -> Nothing
@@ -451,11 +439,11 @@ dIsInteger (Decoded _ v) = case v of
 
 -- | True only if @x@ is zero or positive, an integer (finite with
 -- exponent of 0), and the coefficient is only zeroes and/or ones.
--- The sign must be Sign0 (that is, you cannot have a negative
+-- The sign must be NonNeg (that is, you cannot have a negative
 -- zero.)
 dIsLogical :: Decoded -> Bool
 dIsLogical (Decoded s v) = fromMaybe False $ do
-  guard $ s == Sign0
+  guard $ s == NonNeg
   (d, e) <- case v of
     Finite ds ex -> return (ds, ex)
     _ -> Nothing
@@ -470,11 +458,11 @@ dIsNaN (Decoded _ v) = case v of
   _ -> False
 
 -- | True only if @x@ is less than zero and is not an NaN.  It's not
--- enough for the sign to be Sign1; the coefficient (if finite) must
+-- enough for the sign to be Neg; the coefficient (if finite) must
 -- be greater than zero.
 dIsNegative :: Decoded -> Bool
 dIsNegative (Decoded s v) = fromMaybe False $ do
-  guard $ s == Sign1
+  guard $ s == Neg
   return $ case v of
     Finite d _ -> any (/= D0) . unCoefficient $ d
     Infinite -> True
@@ -489,7 +477,7 @@ dIsNormal (Decoded _ v) = case v of
 
 dIsPositive :: Decoded -> Bool
 dIsPositive (Decoded s v)
-  | s == Sign1 = False
+  | s == Neg = False
   | otherwise = case v of
       Finite d _ -> any (/= D0) . unCoefficient $ d
       Infinite -> True
@@ -502,7 +490,7 @@ dIsSignaling (Decoded _ v) = case v of
 
 
 dIsSigned :: Decoded -> Bool
-dIsSigned (Decoded s _) = s == Sign1
+dIsSigned (Decoded s _) = s == Neg
 
 dIsSubnormal :: Decoded -> Bool
 dIsSubnormal (Decoded _ v) = case v of
@@ -529,54 +517,54 @@ dIsQNaN d = case dValue d of
 
 dIsNegInf :: Decoded -> Bool
 dIsNegInf d
-  | dSign d == Sign0 = False
+  | dSign d == NonNeg = False
   | otherwise = dValue d == Infinite
 
 dIsNegNormal :: Decoded -> Bool
 dIsNegNormal d
-  | dSign d == Sign0 = False
+  | dSign d == NonNeg = False
   | otherwise = case dValue d of
       Finite c e -> e >= minNormalExp c
       _ -> False
 
 dIsNegSubnormal :: Decoded -> Bool
 dIsNegSubnormal d
-  | dSign d == Sign0 = False
+  | dSign d == NonNeg = False
   | otherwise = case dValue d of
       Finite c e -> e < minNormalExp c
       _ -> False
 
 dIsNegZero :: Decoded -> Bool
 dIsNegZero d
-  | dSign d == Sign0 = False
+  | dSign d == NonNeg = False
   | otherwise = case dValue d of
       Finite c _ -> unCoefficient c == [D0]
       _ -> False
 
 dIsPosZero :: Decoded -> Bool
 dIsPosZero d
-  | dSign d == Sign1 = False
+  | dSign d == Neg = False
   | otherwise = case dValue d of
       Finite c _ -> unCoefficient c == [D0]
       _ -> False
 
 dIsPosSubnormal :: Decoded -> Bool
 dIsPosSubnormal d
-  | dSign d == Sign1 = False
+  | dSign d == Neg = False
   | otherwise = case dValue d of
       Finite c e -> e < minNormalExp c
       _ -> False
 
 dIsPosNormal :: Decoded -> Bool
 dIsPosNormal d
-  | dSign d == Sign1 = False
+  | dSign d == Neg = False
   | otherwise = case dValue d of
       Finite c e -> e >= minNormalExp c
       _ -> False
 
 dIsPosInf :: Decoded -> Bool
 dIsPosInf d
-  | dSign d == Sign1 = False
+  | dSign d == Neg = False
   | otherwise = dValue d == Infinite
 
 

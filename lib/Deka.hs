@@ -115,10 +115,10 @@ instance Real Deka where
     Just r -> r
 
 instance Bounded Deka where
-  minBound = Deka $ fromBCD (Decoded Sign1 (Finite oneCoeff minBound))
+  minBound = Deka $ fromBCD (Decoded Neg (Finite oneCoeff minBound))
     where
       oneCoeff = succ minBound
-  maxBound = Deka $ fromBCD (Decoded Sign0 (Finite maxBound maxBound))
+  maxBound = Deka $ fromBCD (Decoded NonNeg (Finite maxBound maxBound))
 
 
 -- | Decimals with a total ordering.
@@ -144,7 +144,7 @@ integralToDeka :: Integral a => a -> Maybe Deka
 integralToDeka i = do
   coe <- P.coefficient . P.integralToDigits $ i
   let d = Decoded sgn (Finite coe zeroExponent)
-      sgn = if i < 0 then Sign1 else Sign0
+      sgn = if i < 0 then Neg else NonNeg
   return . Deka $ fromBCD d
 
 -- | Convert a string to a Deka.  You can use ordinary numeric

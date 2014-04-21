@@ -48,3 +48,15 @@ integralToDigits = reverse . go . abs
           let (d, m) = i `divMod` 10
           in intToDigit m : go d
 
+data Sign
+  = NonNeg
+  -- ^ The number is positive or is zero
+  | Neg
+  -- ^ The number is negative or the negative zero
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+data NaN
+  = Quiet
+  | Signaling
+  deriving (Eq, Ord, Show, Enum, Bounded)
+

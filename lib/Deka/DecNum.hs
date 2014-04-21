@@ -92,7 +92,7 @@ module Deka.DecNum
   , oneCoefficient
   , Exponent(..)
   , Sign(..)
-  , NaNtype(..)
+  , NaN(..)
   , Payload(..)
   , Decoded(..)
 
@@ -122,8 +122,6 @@ import Deka.Internal.DecNum.CtxFree
   , zeroCoefficient
   , oneCoefficient
   , Exponent(..)
-  , Sign(..)
-  , NaNtype(..)
   , Payload(..)
   , Decoded(..)
   , AdjExponent
@@ -136,6 +134,7 @@ import Deka.Internal.Decnumber.Types
 import Deka.Context
 import Deka.Internal.DecNum.Ctx
 import Deka.Internal.Unsafe
+import Deka.Decoded
 
 fromInt32 :: C'int32_t -> DecNum
 fromInt32 = unsafe1 I.fromInt32
@@ -218,7 +217,7 @@ infinity :: Sign -> DecNum
 infinity = unsafe1 I.infinity
 
 -- | Encodes quiet or signaling NaNs.
-notANumber :: Sign -> NaNtype -> Coefficient -> DecNum
+notANumber :: Sign -> NaN -> Coefficient -> DecNum
 notANumber = unsafe3 I.notANumber
 
 -- | Encodes non-special numbers (also known as finite numbers.)

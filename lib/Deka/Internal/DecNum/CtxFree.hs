@@ -174,9 +174,6 @@ checkExp mnd i coe
       Nothing -> -999999999
       Just prc -> -999999999 - (unPrecision prc - 1)
 
-data Sign = NonNeg | Neg
-  deriving (Eq, Ord, Show)
-
 -- | A fully decoded 'DecNum'.
 data Decoded = Decoded
   { dcdSign :: Sign
@@ -187,11 +184,8 @@ data Decoded = Decoded
 -- (except the 'Sign').
 data Payload
   = Infinity
-  | NaN NaNtype Coefficient
+  | NaN NaN Coefficient
   | NotSpecial Exponent Coefficient
-  deriving (Eq, Ord, Show)
-
-data NaNtype = Quiet | Signaling
   deriving (Eq, Ord, Show)
 
 -- | The coefficient of a non-special number, or the diagnostic
@@ -292,7 +286,7 @@ infinity s =
   return dn
 
 -- | Encodes quiet or signaling NaNs.
-notANumber :: Sign -> NaNtype -> Coefficient -> IO DecNum
+notANumber :: Sign -> NaN -> Coefficient -> IO DecNum
 notANumber s nt coe =
   let len = length . unCoefficient $ coe in
   newDecNumSize (fromIntegral len) >>= \dn ->
