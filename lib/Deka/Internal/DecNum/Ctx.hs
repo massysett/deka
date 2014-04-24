@@ -18,18 +18,18 @@ fromByteString bs = Ctx $ \pCtx ->
   newDecNum pCtx >>= \dn ->
   withForeignPtr (unDecNum dn) $ \pDn ->
   BS8.useAsCString bs $ \cstr ->
-  c'decNumberFromString (castPtr pDn) cstr pCtx >>
+  c'decNumberFromString pDn cstr pCtx >>
   return dn
 
 toUInt32 :: DecNum -> Ctx C'uint32_t
 toUInt32 dn = Ctx $ \pCtx ->
   withForeignPtr (unDecNum dn) $ \pDn ->
-  c'decNumberToUInt32 (castPtr pDn) pCtx
+  c'decNumberToUInt32 pDn pCtx
 
 toInt32 :: DecNum -> Ctx C'int32_t
 toInt32 dn = Ctx $ \pCtx ->
   withForeignPtr (unDecNum dn) $ \pDn ->
-  c'decNumberToInt32 (castPtr pDn) pCtx
+  c'decNumberToInt32 pDn pCtx
 
 type Unary
   = Ptr C'decNumber
@@ -44,7 +44,7 @@ unary f x = Ctx $ \pCtx ->
   newDecNum pCtx >>= \res ->
   withForeignPtr (unDecNum res) $ \pRes ->
   withForeignPtr (unDecNum x) $ \pX ->
-  f (castPtr pRes) (castPtr pX) pCtx >>
+  f pRes pX pCtx >>
   return res
 
 type Binary
@@ -63,7 +63,7 @@ binary f x y = Ctx $ \pCtx ->
   withForeignPtr (unDecNum res) $ \pRes ->
   withForeignPtr (unDecNum x) $ \pX ->
   withForeignPtr (unDecNum y) $ \pY ->
-  f (castPtr pRes) (castPtr pX) (castPtr pY) pCtx >>
+  f pRes pX pY pCtx >>
   return res
 
 type Ternary
@@ -85,7 +85,7 @@ ternary f x y z = Ctx $ \pCtx ->
   withForeignPtr (unDecNum x) $ \pX ->
   withForeignPtr (unDecNum y) $ \pY ->
   withForeignPtr (unDecNum z) $ \pZ ->
-  f (castPtr pRes) (castPtr pX) (castPtr pY) (castPtr pZ) pCtx >>
+  f pRes pX pY pZ pCtx >>
   return res
 
 abs :: DecNum -> Ctx DecNum
@@ -214,19 +214,19 @@ nextToward = binary c'decNumberNextToward
 numClass :: DecNum -> Ctx Class
 numClass (DecNum fp) = Ctx $ \pCtx ->
   withForeignPtr fp $ \pd ->
-  c'decNumberClass (castPtr pd) pCtx >>= \cl ->
+  c'decNumberClass pd pCtx >>= \cl ->
   return (Class cl)
 
 isNormal :: DecNum -> Ctx Bool
 isNormal (DecNum d) = Ctx $ \pCtx ->
   withForeignPtr d $ \pd ->
-  c'decNumberIsNormal (castPtr pd) pCtx >>= \int ->
+  c'decNumberIsNormal pd pCtx >>= \int ->
   return (toBool int)
 
 isSubnormal :: DecNum -> Ctx Bool
 isSubnormal (DecNum d) = Ctx $ \pCtx ->
   withForeignPtr d $ \pd ->
-  c'decNumberIsSubnormal (castPtr pd) pCtx >>= \int ->
+  c'decNumberIsSubnormal pd pCtx >>= \int ->
   return (toBool int)
 
 -- | Encodes non-special numbers (also known as finite numbers.)

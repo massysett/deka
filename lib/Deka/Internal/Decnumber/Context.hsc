@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface, OverloadedStrings, Safe #-}
+{-# LANGUAGE EmptyDataDecls #-}
 #define DECSUBSET 1
 #include <decContext.h>
 
@@ -8,7 +9,6 @@ module Deka.Internal.Decnumber.Context where
 
 import Foreign.Safe
 import Foreign.C
-import Control.Applicative
 import Deka.Internal.Decnumber.Types
 import Data.String
 
@@ -41,40 +41,10 @@ c'DEC_ROUND_05UP = #const DEC_ROUND_05UP
 c'DEC_ROUND_MAX :: Num a => a
 c'DEC_ROUND_MAX = #const DEC_ROUND_MAX
 
-data C'decContext = C'decContext
-  { c'decContext'digits :: C'int32_t
-  , c'decContext'emax :: C'int32_t
-  , c'decContext'emin :: C'int32_t
-  , c'decContext'round :: C'rounding
-  , c'decContext'traps :: C'uint32_t
-  , c'decContext'status :: C'uint32_t
-  , c'decContext'clamp :: C'uint8_t
-  , c'decContext'extended :: C'uint8_t
-  } deriving (Eq, Show)
+data C'decContext
 
-instance Storable C'decContext where
-  sizeOf _ = #size decContext
-  alignment _ = #alignment decContext
-  peek p =
-    C'decContext
-    <$> #{peek decContext, digits} p
-    <*> #{peek decContext, emax} p
-    <*> #{peek decContext, emin} p
-    <*> #{peek decContext, round} p
-    <*> #{peek decContext, traps} p
-    <*> #{peek decContext, status} p
-    <*> #{peek decContext, clamp} p
-    <*> #{peek decContext, extended} p
-
-  poke p (C'decContext d ex en r t s c ed) =
-    #{poke decContext, digits} p d
-    >> #{poke decContext, emax} p ex
-    >> #{poke decContext, emin} p en
-    >> #{poke decContext, round} p r
-    >> #{poke decContext, traps} p t
-    >> #{poke decContext, status} p s
-    >> #{poke decContext, clamp} p c
-    >> #{poke decContext, extended} p ed
+c'decContext'sizeOf :: Int
+c'decContext'sizeOf = #size decContext
 
 p'decContext'digits :: Ptr C'decContext -> Ptr C'int32_t
 p'decContext'digits = #ptr decContext, digits

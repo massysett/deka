@@ -23,7 +23,6 @@ import Prelude hiding
   , significand
   , exponent
   )
-import qualified Prelude
 import Deka.Context
 import Deka.Internal.Context
 

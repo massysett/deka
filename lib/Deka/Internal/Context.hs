@@ -127,7 +127,7 @@ instance Show Initializer where
 -- set up the context.
 runCtx :: Initializer -> Ctx a -> IO a
 runCtx (Initializer i) (Ctx f) = do
-  fp <- mallocForeignPtr
+  fp <- mallocForeignPtrBytes c'decContext'sizeOf
   withForeignPtr fp $ \ptr -> do
     _ <- c'decContextDefault ptr i
     f ptr

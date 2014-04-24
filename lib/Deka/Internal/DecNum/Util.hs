@@ -23,7 +23,7 @@ mallocAmount
   -- ^ Malloc this many bytes total
 mallocAmount s = base + extra
   where
-    base = sizeOf (undefined :: C'decNumber)
+    base = c'decNumber'sizeOf
     baseUnits = c'DECNUMUNITS
     totUnits = (s + c'DECDPUN - 1) `quot` c'DECDPUN
     extraUnits = max 0 $ totUnits - baseUnits
@@ -31,7 +31,7 @@ mallocAmount s = base + extra
 
 oneDigitDecNum :: IO DecNum
 oneDigitDecNum = do
-  fp <- mallocForeignPtrBytes (sizeOf (undefined :: C'decNumber))
+  fp <- mallocForeignPtrBytes c'decNumber'sizeOf
   return $ DecNum (castForeignPtr fp)
 
 newDecNum :: Ptr C'decContext -> IO DecNum

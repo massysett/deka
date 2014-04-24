@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface, OverloadedStrings, Safe #-}
+{-# LANGUAGE EmptyDataDecls #-}
 
 #include <decNumber.h>
 #include <decNumberMacros.h>
@@ -6,7 +7,6 @@
 
 module Deka.Internal.Decnumber.DecNumber where
 
-import Control.Applicative
 import Foreign.Safe
 import Foreign.C
 import Deka.Internal.Decnumber.Context
@@ -48,12 +48,10 @@ c'DECNUMUNITS = #const DECNUMUNITS
 
 type C'decNumberUnit = #type decNumberUnit
 
-data C'decNumber = C'decNumber
-  { c'decNumber'digits :: C'int32_t
-  , c'decNumber'exponent :: C'int32_t
-  , c'decNumber'bits :: C'uint8_t
-  , c'decNumber'lsu :: [C'decNumberUnit]
-  } deriving (Eq, Show)
+c'decNumber'sizeOf :: Int
+c'decNumber'sizeOf = #size decNumber
+
+data C'decNumber
 
 p'decNumber'digits :: Ptr C'decNumber -> Ptr C'int32_t
 p'decNumber'digits = #ptr decNumber, digits
@@ -66,23 +64,6 @@ p'decNumber'exponent = #ptr decNumber, exponent
 
 p'decNumber'lsu :: Ptr C'decNumber -> Ptr C'decNumberUnit
 p'decNumber'lsu = #ptr decNumber, lsu
-
-instance Storable C'decNumber where
-  sizeOf _ = #size decNumber
-  alignment _ = #alignment decNumber
-  peek p =
-    C'decNumber
-    <$> #{peek decNumber, digits} p
-    <*> #{peek decNumber, exponent} p
-    <*> #{peek decNumber, bits} p
-    <*> peekArray c'DECNUMUNITS (#{ptr decNumber, lsu} p)
-
-  poke p (C'decNumber ds ex bs ls) =
-    #{poke decNumber, digits} p ds
-    >> #{poke decNumber, exponent} p ex
-    >> #{poke decNumber, bits} p bs
-    >> pokeArray (#{ptr decNumber, lsu} p) ls
-
 
 foreign import ccall unsafe "decNumberFromInt32" c'decNumberFromInt32
   :: Ptr C'decNumber

@@ -19,23 +19,23 @@ fromInt32 :: C'int32_t -> IO DecNum
 fromInt32 i = do
   dn <- newDecNumSize 10
   withForeignPtr (unDecNum dn) $ \ptr -> do
-    _ <- c'decNumberFromInt32 (castPtr ptr) i
+    _ <- c'decNumberFromInt32 ptr i
     return dn
 
 fromUInt32 :: C'uint32_t -> IO DecNum
 fromUInt32 i = do
   dn <- newDecNumSize 10
   withForeignPtr (unDecNum dn) $ \ptr -> do
-    _ <- c'decNumberFromUInt32 (castPtr ptr) i
+    _ <- c'decNumberFromUInt32 ptr i
     return dn
 
 toEngByteString :: DecNum -> IO BS8.ByteString
 toEngByteString dn =
   withForeignPtr (unDecNum dn) $ \pDn ->
-  peek (p'decNumber'digits (castPtr pDn)) >>= \digs ->
+  peek (p'decNumber'digits pDn) >>= \digs ->
   let digsTot = fromIntegral digs + 14 in
   allocaBytes digsTot $ \pStr ->
-  c'decNumberToEngString (castPtr pDn) pStr >>
+  c'decNumberToEngString pDn pStr >>
   BS8.packCString pStr
 
 sameQuantum :: DecNum -> DecNum -> IO DecNum
@@ -44,7 +44,7 @@ sameQuantum (DecNum x) (DecNum y) =
   withForeignPtr y $ \py ->
   oneDigitDecNum >>= \o ->
   withForeignPtr (unDecNum o) $ \po ->
-  c'decNumberSameQuantum (castPtr po) (castPtr px) (castPtr py) >>
+  c'decNumberSameQuantum po px py >>
   return o
 
 copyAbs
@@ -58,7 +58,7 @@ copyAbs src dest =
   copyDecNum dest >>= \r ->
   withForeignPtr (unDecNum r) $ \pr ->
   withForeignPtr (unDecNum src) $ \ps ->
-  c'decNumberCopyAbs (castPtr pr) (castPtr ps) >>
+  c'decNumberCopyAbs pr ps >>
   return r
 
 -- CopyNegate, CopySign
@@ -68,7 +68,7 @@ negate src =
   copyDecNum src >>= \r ->
   withForeignPtr (unDecNum r) $ \pr ->
   withForeignPtr (unDecNum src) $ \ps ->
-  c'decNumberCopyNegate (castPtr pr) (castPtr ps) >>
+  c'decNumberCopyNegate pr ps >>
   return r
 
 copySign
@@ -79,18 +79,18 @@ copySign
   -> IO DecNum
 copySign src sgn =
   withForeignPtr (unDecNum src) $ \pc ->
-  peek (p'decNumber'digits (castPtr pc)) >>= \dgts ->
+  peek (p'decNumber'digits pc) >>= \dgts ->
   newDecNumSize dgts >>= \dn' ->
   withForeignPtr (unDecNum dn') $ \dp' ->
   withForeignPtr (unDecNum sgn) $ \pn ->
-  c'decNumberCopySign (castPtr dp') (castPtr pc) (castPtr pn) >>
+  c'decNumberCopySign (castPtr dp') pc pn >>
   return dn'
 
 trim :: DecNum -> IO DecNum
 trim src =
   copyDecNum src >>= \dest ->
   withForeignPtr (unDecNum dest) $ \pd ->
-  c'decNumberTrim (castPtr pd) >>
+  c'decNumberTrim pd >>
   return dest
 
 version :: IO BS8.ByteString
@@ -102,7 +102,7 @@ zero :: IO DecNum
 zero =
   oneDigitDecNum >>= \od ->
   withForeignPtr (unDecNum od) $ \pod ->
-  c'decNumberZero (castPtr pod) >>
+  c'decNumberZero pod >>
   return od
 
 testBool
@@ -111,7 +111,7 @@ testBool
   -> IO Bool
 testBool f (DecNum dn) =
   withForeignPtr dn $ \pn ->
-  f (castPtr pn) >>= \bl ->
+  f pn >>= \bl ->
   return (toBool bl)
 
 isCanonical :: DecNum -> IO Bool
@@ -233,7 +233,7 @@ decode dn =
 decodeSign :: DecNum -> IO Sign
 decodeSign (DecNum fp) =
   withForeignPtr fp $ \ptr ->
-  peek (p'decNumber'bits (castPtr ptr)) >>= \bts ->
+  peek (p'decNumber'bits ptr) >>= \bts ->
   let isSet = toBool $ bts .&. c'DECNEG
       r | isSet = Neg
         | otherwise = NonNeg
@@ -242,10 +242,10 @@ decodeSign (DecNum fp) =
 decodeCoeff :: DecNum -> IO Coefficient
 decodeCoeff (DecNum fp) =
   withForeignPtr fp $ \ptr ->
-  peek (p'decNumber'digits (castPtr ptr)) >>= \dgs ->
+  peek (p'decNumber'digits ptr) >>= \dgs ->
   allocaBytes (fromIntegral dgs) $ \arr ->
   let _types = arr :: Ptr C'uint8_t in
-  c'decNumberGetBCD (castPtr ptr) arr >>
+  c'decNumberGetBCD ptr arr >>
   peekArray (fromIntegral dgs) arr >>= \dgts ->
   return . Coefficient . map intToDigit $ dgts
 
@@ -265,7 +265,7 @@ encodeCoeff (Coefficient ds) (DecNum fp) =
 decodeExponent :: DecNum -> IO Exponent
 decodeExponent (DecNum fp) =
   withForeignPtr fp $ \ptr ->
-  peek (p'decNumber'exponent (castPtr ptr)) >>= \ex ->
+  peek (p'decNumber'exponent ptr) >>= \ex ->
   return (Exponent ex)
 
 -- # Encoding
