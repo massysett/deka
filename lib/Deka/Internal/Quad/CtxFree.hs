@@ -50,7 +50,6 @@ import Prelude hiding
   , significand
   , exponent
   )
-import qualified Prelude
 import Deka.Internal.Class
 import Deka.Context
 
