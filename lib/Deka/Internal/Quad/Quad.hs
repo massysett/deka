@@ -35,7 +35,7 @@ boolean f d =
 -- | Creates a new Quad.  Uninitialized, so don't export this
 -- function.
 newQuad :: IO Quad
-newQuad = fmap Quad mallocForeignPtr
+newQuad = fmap Quad (mallocForeignPtrBytes c'decQuad'sizeOf)
 
 type BinaryCtxFree
   = Ptr C'decQuad

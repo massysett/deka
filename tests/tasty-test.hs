@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Main where
 
 import Deka.Decoded.Generators

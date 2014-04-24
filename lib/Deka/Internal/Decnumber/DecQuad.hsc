@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, Safe #-}
+{-# LANGUAGE ForeignFunctionInterface, Safe, EmptyDataDecls #-}
 
 #include <decContext.h>
 #include <decQuad.h>
@@ -46,20 +46,13 @@ c'DECQUAD_Declets = #const DECQUAD_Declets
 c'DECQUAD_Ehigh :: Num a => a
 c'DECQUAD_Ehigh = #const DECQUAD_Ehigh
 
-newtype C'decQuad = C'decQuad
-  { c'decQuad'bytes :: [C'uint8_t]
-  } deriving (Eq, Show)
+c'decQuad'sizeOf :: Int
+c'decQuad'sizeOf = #size decQuad
+
+data C'decQuad
 
 p'decQuad'bytes :: Ptr C'decQuad -> Ptr c'decQuad'bytes
 p'decQuad'bytes = #ptr decQuad, bytes
-
-instance Storable C'decQuad where
-  sizeOf _ = #size decQuad
-  alignment _ = #alignment decQuad
-  peek p =
-    let pArr = p'decQuad'bytes p
-    in fmap C'decQuad $ peekArray c'DECQUAD_Bytes pArr
-  poke p (C'decQuad bs) = pokeArray (p'decQuad'bytes p) bs
 
 c'DECFLOAT_Sign :: Num a => a
 c'DECFLOAT_Sign = #const DECFLOAT_Sign
