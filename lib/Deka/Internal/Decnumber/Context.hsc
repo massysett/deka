@@ -46,27 +46,35 @@ data C'decContext
 c'decContext'sizeOf :: Int
 c'decContext'sizeOf = #size decContext
 
+-- | Precision to be used.  Must be from 1 to 999,999,999.
 p'decContext'digits :: Ptr C'decContext -> Ptr C'int32_t
 p'decContext'digits = #ptr decContext, digits
 
+-- | Largest adjusted exponent.  Must be from 0 to 999,999,999.
 p'decContext'emax :: Ptr C'decContext -> Ptr C'int32_t
 p'decContext'emax = #ptr decContext, emax
 
+-- | Smallest adjusted exponent.  Must be in range -999,999,999 to 0.
 p'decContext'emin :: Ptr C'decContext -> Ptr C'int32_t
 p'decContext'emin = #ptr decContext, emin
 
+-- | Rounding.  Must be one of the rounding enums.
 p'decContext'round :: Ptr C'decContext -> Ptr C'rounding
 p'decContext'round = #ptr decContext, round
 
+-- | Which exceptions should cause a trap.
 p'decContext'traps :: Ptr C'decContext -> Ptr C'uint32_t
 p'decContext'traps = #ptr decContext, traps
 
+-- | Status flags.  User should not set bits in here; only clear them.
 p'decContext'status :: Ptr C'decContext -> Ptr C'uint32_t
 p'decContext'status = #ptr decContext, status
 
+-- | Zero for no clamping; 1 for clamping.
 p'decContext'clamp :: Ptr C'decContext -> Ptr C'uint32_t
 p'decContext'clamp = #ptr decContext, clamp
 
+-- | Zero: no special values.  1: special values allowed.
 p'decContext'extended :: Ptr C'decContext -> Ptr C'uint32_t
 p'decContext'extended = #ptr decContext, extended
 

@@ -36,10 +36,10 @@ pNoChange q a = monadicIO $ do
   assert r
 
 -- | Unary function does not change first argument
-unary
+unaryCF
   :: (Quad -> IO a)
   -> TestTree
-unary f = testProperty desc test
+unaryCF f = testProperty desc test
   where
     desc = "unary function - does not change only argument"
     test = forAll genDecoded $ \dcd -> monadicIO $ do
@@ -47,10 +47,10 @@ unary f = testProperty desc test
       r <- run $ noChange q (f q)
       assert r
 
-binary
+binaryCF
   :: (Quad -> Quad -> IO a)
   -> TestTree
-binary f = testGroup desc tests
+binaryCF f = testGroup desc tests
   where
     desc = "binary function - does not change argument:"
     tests = [ testProperty "first" t1, testProperty "second" t2]
@@ -70,10 +70,10 @@ binary f = testGroup desc tests
       run (noChange q2 (f q1 q2)) >>=
       assert
 
-ternary
+ternaryCF
   :: (Quad -> Quad -> Quad -> IO a)
   -> TestTree
-ternary f = testGroup desc tests
+ternaryCF f = testGroup desc tests
   where
     desc = "ternary function - does not change argument:"
     tests = [ testProperty "first" t1, testProperty "second" t2,
