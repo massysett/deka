@@ -2,6 +2,8 @@
 
 module Deka.Internal.Quad.Tests.Util where
 
+import Deka.Internal.Context
+import Deka.Internal.Context.Generators
 import Deka.Internal.Decnumber.DecQuad
 import Deka.Internal.Quad.Quad
 import Deka.Internal.Quad.Decoding
@@ -12,6 +14,7 @@ import Test.QuickCheck
 import Test.Tasty.QuickCheck (testProperty)
 import Test.Tasty (testGroup, TestTree)
 import Test.QuickCheck.Monadic
+import Prelude hiding (round)
 
 -- | Verify that the contents of a Quad did not change.
 
@@ -108,3 +111,112 @@ ternaryCF f = testGroup desc tests
       run (noChange q3 (f q1 q2 q3)) >>=
       assert
 
+
+unary
+  :: (Quad -> Ctx a)
+  -> TestTree
+unary fn = testProperty desc tst
+  where
+    desc = "unary function - does not change only argument"
+    tst = forAll genDecoded $ \dcd ->
+      forAll (fmap Blind context) $ \(Blind ioCtx) ->
+      monadicIO $
+      run ioCtx >>= \fp ->
+      run ( withForeignPtr fp $ \ptr ->
+            fromBCD dcd >>= \q ->
+            noChange q (unCtx (fn q) ptr)) >>=
+      assert
+
+binary
+  :: (Quad -> Quad -> Ctx a)
+  -> TestTree
+binary fn = testGroup desc tsts
+  where
+    desc = "binary function - does not change argument:"
+    tsts = [ testProperty "first" t1, testProperty "second" t2 ]
+
+    t1 = forAll genDecoded $ \dcd1 ->
+      forAll genDecoded $ \dcd2 ->
+      forAll (fmap Blind context) $ \(Blind ioCtx) ->
+      monadicIO $
+      run ioCtx >>= \fp ->
+      run ( withForeignPtr fp $ \ptr ->
+            fromBCD dcd1 >>= \q1 ->
+            fromBCD dcd2 >>= \q2 ->
+            noChange q1 (unCtx (fn q1 q2) ptr)) >>=
+      assert
+
+    t2 = forAll genDecoded $ \dcd1 ->
+      forAll genDecoded $ \dcd2 ->
+      forAll (fmap Blind context) $ \(Blind ioCtx) ->
+      monadicIO $
+      run ioCtx >>= \fp ->
+      run ( withForeignPtr fp $ \ptr ->
+            fromBCD dcd1 >>= \q1 ->
+            fromBCD dcd2 >>= \q2 ->
+            noChange q2 (unCtx (fn q1 q2) ptr)) >>=
+      assert
+
+ternary
+  :: (Quad -> Quad -> Quad -> Ctx a)
+  -> TestTree
+ternary fn = testGroup desc tsts
+  where
+    desc = "ternary function - does not change argument:"
+    tsts = [ testProperty "first" t1, testProperty "second" t2,
+             testProperty "third" t3 ]
+
+    t1 = forAll genDecoded $ \dcd1 ->
+      forAll genDecoded $ \dcd2 ->
+      forAll genDecoded $ \dcd3 ->
+      forAll (fmap Blind context) $ \(Blind ioCtx) ->
+      monadicIO $
+      run ioCtx >>= \fp ->
+      run ( withForeignPtr fp $ \ptr ->
+            fromBCD dcd1 >>= \q1 ->
+            fromBCD dcd2 >>= \q2 ->
+            fromBCD dcd3 >>= \q3 ->
+            noChange q1 (unCtx (fn q1 q2 q3) ptr)) >>=
+      assert
+
+    t2 = forAll genDecoded $ \dcd1 ->
+      forAll genDecoded $ \dcd2 ->
+      forAll genDecoded $ \dcd3 ->
+      forAll (fmap Blind context) $ \(Blind ioCtx) ->
+      monadicIO $
+      run ioCtx >>= \fp ->
+      run ( withForeignPtr fp $ \ptr ->
+            fromBCD dcd1 >>= \q1 ->
+            fromBCD dcd2 >>= \q2 ->
+            fromBCD dcd3 >>= \q3 ->
+            noChange q2 (unCtx (fn q1 q2 q3) ptr)) >>=
+      assert
+
+    t3 = forAll genDecoded $ \dcd1 ->
+      forAll genDecoded $ \dcd2 ->
+      forAll genDecoded $ \dcd3 ->
+      forAll (fmap Blind context) $ \(Blind ioCtx) ->
+      monadicIO $
+      run ioCtx >>= \fp ->
+      run ( withForeignPtr fp $ \ptr ->
+            fromBCD dcd1 >>= \q1 ->
+            fromBCD dcd2 >>= \q2 ->
+            fromBCD dcd3 >>= \q3 ->
+            noChange q3 (unCtx (fn q1 q2 q3) ptr)) >>=
+      assert
+
+rounded
+  :: (Round -> Quad -> Ctx a)
+  -> TestTree
+rounded fn = testProperty desc tst
+  where
+    desc = "rounded: does not change only Quad argument"
+    tst = forAll round $ \r ->
+      forAll genDecoded $ \dcd ->
+      forAll (fmap Blind context) $ \(Blind ioCtx) ->
+      monadicIO $
+      run ioCtx >>= \fp ->
+      run ( withForeignPtr fp $ \ptr ->
+            fromBCD dcd >>= \q ->
+            noChange q (unCtx (fn r q) ptr)) >>=
+      assert

@@ -41,6 +41,21 @@ c'DEC_ROUND_05UP = #const DEC_ROUND_05UP
 c'DEC_ROUND_MAX :: Num a => a
 c'DEC_ROUND_MAX = #const DEC_ROUND_MAX
 
+-- | All rounding constants.
+
+allRounds :: Num a => [a]
+allRounds =
+  [ c'DEC_ROUND_CEILING
+  , c'DEC_ROUND_UP
+  , c'DEC_ROUND_HALF_UP
+  , c'DEC_ROUND_HALF_EVEN
+  , c'DEC_ROUND_HALF_DOWN
+  , c'DEC_ROUND_DOWN
+  , c'DEC_ROUND_FLOOR
+  , c'DEC_ROUND_05UP
+  , c'DEC_ROUND_MAX
+  ]
+
 data C'decContext
 
 c'decContext'sizeOf :: Int
@@ -131,6 +146,22 @@ c'DEC_CLASS_POS_NORMAL = #const DEC_CLASS_POS_NORMAL
 c'DEC_CLASS_POS_INF :: Num a => a
 c'DEC_CLASS_POS_INF = #const DEC_CLASS_POS_INF
 
+-- | All decClass constants.
+
+allDecClass :: Num a => [a]
+allDecClass =
+  [ c'DEC_CLASS_SNAN
+  , c'DEC_CLASS_QNAN
+  , c'DEC_CLASS_NEG_INF
+  , c'DEC_CLASS_NEG_NORMAL
+  , c'DEC_CLASS_NEG_SUBNORMAL
+  , c'DEC_CLASS_NEG_ZERO
+  , c'DEC_CLASS_POS_ZERO
+  , c'DEC_CLASS_POS_SUBNORMAL
+  , c'DEC_CLASS_POS_NORMAL
+  , c'DEC_CLASS_POS_INF
+  ]
+
 c'DEC_ClassString_SN :: IsString a => a
 c'DEC_ClassString_SN = #const_str DEC_ClassString_SN
 
@@ -205,6 +236,25 @@ c'DEC_Subnormal = #const DEC_Subnormal
 
 c'DEC_Underflow :: Num a => a
 c'DEC_Underflow = #const DEC_Underflow
+
+-- | All extended flags
+extFlags :: Num a => [a]
+extFlags =
+  [ c'DEC_Conversion_syntax
+  , c'DEC_Division_by_zero
+  , c'DEC_Division_impossible
+  , c'DEC_Division_undefined
+  , c'DEC_Insufficient_storage
+  , c'DEC_Inexact
+  , c'DEC_Invalid_context
+  , c'DEC_Invalid_operation
+  , c'DEC_Lost_digits
+  , c'DEC_Overflow
+  , c'DEC_Clamped
+  , c'DEC_Rounded
+  , c'DEC_Subnormal
+  , c'DEC_Underflow
+  ]
 
 c'DEC_IEEE_754_Division_by_zero :: Num a => a
 c'DEC_IEEE_754_Division_by_zero = #const DEC_IEEE_754_Division_by_zero
@@ -307,6 +357,15 @@ c'DEC_INIT_DECIMAL64 = #const DEC_INIT_DECIMAL64
 
 c'DEC_INIT_DECIMAL128 :: Num a => a
 c'DEC_INIT_DECIMAL128 = #const DEC_INIT_DECIMAL128
+
+-- | All initializers
+allInitializers :: Num a => [a]
+allInitializers =
+  [ c'DEC_INIT_BASE
+  , c'DEC_INIT_DECIMAL32
+  , c'DEC_INIT_DECIMAL64
+  , c'DEC_INIT_DECIMAL128
+  ]
 
 c'DEC_INIT_DECSINGLE :: Num a => a
 c'DEC_INIT_DECSINGLE = #const DEC_INIT_DECSINGLE
