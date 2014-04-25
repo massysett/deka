@@ -9,6 +9,7 @@ import Deka.Internal.Quad.CtxFree.Tests
 import qualified Deka.Internal.Quad.Immutability
 import System.Posix.Signals
 import Test.Tasty
+import Deka.Quad.Tests
 
 tests :: TestTree
 tests = testGroup "all tests"
