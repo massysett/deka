@@ -11,6 +11,7 @@ import System.Posix.Signals
 import Test.Tasty
 import qualified Deka.Quad.Tests
 import Dectest.Parse
+import Dectest.Parse.Tokens
 
 tests :: TestTree
 tests = testGroup "all tests"

@@ -1,126 +1,82 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Dectest.Parse where
 
+import Dectest.Parse.Tokens
 import qualified Data.ByteString.Char8 as BS8
-import Prelude hiding (Double)
 
--- | Raw file, parsed in from disk.
-newtype File = File { unFile :: BS8.ByteString }
-  deriving Show
+-- | Remove the comments from a line of tokens.  Any unquoted token that
+-- starts with two dashes is removed.  Also, any token that comes
+-- after such a token is also removed.
+removeComments :: [Token] -> [Token]
+removeComments toks = go toks
+  where
+    go [] = []
+    go (t:ts)
+      | quoted t = t : go ts
+      | BS8.take 2 (unToken t) == "--" = []
+      | otherwise = t : go ts
 
--- | A line from a File.  Does not contain any newlines.
-newtype Line = Line { unLine :: BS8.ByteString }
-  deriving Show
-
--- | Splits a File into a list of Line.  First, eliminates any
--- MS-DOS carriage returns (ASCII character 0d).  Then, uses the
--- ByteString lines function.
-splitLines :: File -> [Line]
-splitLines = map Line . BS8.lines . BS8.filter (/= '\r') . unFile
-
---
--- Parsing a Line into Tokens
---
-
--- | Set to True when a single close quote character has been
--- parsed.  Since double quote characters indicates an enclosed
--- quote, we don't know until the next character whether to close
--- the quote or just include a quote in the token.
-type Pending = Bool
-
-data QuoteType = Single | Double
+newtype Keyword = Keyword { unKeyword :: BS8.ByteString }
   deriving (Eq, Show)
 
-toQuot :: QuoteType -> Char
-toQuot Single = '\''
-toQuot Double = '"'
-
-data InTok
-  = PlainWord
-  | Quoted QuoteType Pending
-  deriving Show
-
-data LowLevelLine
-  = InTok InTok BS8.ByteString
-  | BetweenToks
-  deriving Show
-
-newtype Token = Token { unToken :: BS8.ByteString }
+newtype Value = Value { unValue :: BS8.ByteString }
   deriving (Eq, Show)
 
-lowLevelProc :: Char -> LowLevelLine -> (LowLevelLine, Maybe Token)
-lowLevelProc c s = case s of
-  InTok tokType curr -> case tokType of
-
-    PlainWord -> case c of
-      '"' -> (InTok (Quoted Double False) BS8.empty, tok)
-      '\'' -> (InTok (Quoted Single False) BS8.empty, tok)
-      ' ' -> (BetweenToks, tok)
-      x -> (InTok PlainWord (curr `BS8.snoc` x), Nothing)
-
-    Quoted qType pend
-      | pend -> case () of
-          _ | c == qt ->
-                ( InTok (Quoted qType False) (curr `BS8.snoc` qt),
-                  Nothing)
-            | otherwise -> case c of
-                ' ' -> (BetweenToks, tok)
-                '"' -> (InTok (Quoted Double False) BS8.empty, tok)
-                '\'' -> (InTok (Quoted Single False) BS8.empty, tok)
-                _ -> (InTok PlainWord (BS8.singleton c), tok)
-      | otherwise -> case () of
-          _ | c == qt -> (InTok (Quoted qType True) curr, Nothing)
-            | otherwise ->
-                ( InTok (Quoted qType False) (curr `BS8.snoc` c),
-                  Nothing)
-      where
-        qt = toQuot qType
-    where
-      tok = Just . Token $ curr
-
-  BetweenToks -> case c of
-    ' ' -> (BetweenToks, Nothing)
-    '"' -> (InTok (Quoted Double False) BS8.empty, Nothing)
-    '\'' -> (InTok (Quoted Single False) BS8.empty, Nothing)
-    _ -> (InTok PlainWord (BS8.singleton c), Nothing)
-
-
-data HighLevelLine = HighLevelLine
-  { llState :: LowLevelLine
-  , llToks :: [Token]
+data TestSpec = TestSpec
+  { testId :: BS8.ByteString
+  , testOperation :: BS8.ByteString
+  , testOperands :: [BS8.ByteString]
+  , testResult :: BS8.ByteString
+  , testConditions :: [BS8.ByteString]
   } deriving Show
 
-highLevelProc :: HighLevelLine -> Char -> HighLevelLine
-highLevelProc h c = HighLevelLine l' ts'
+data Instruction
+  = Blank
+  | Directive Keyword Value
+  | Test TestSpec
+  deriving Show
+
+lineToInstruction :: [Token] -> Instruction
+lineToInstruction ts
+  | null ts = Blank
+  | length ts == 2 = Directive (Keyword (unToken (head ts)))
+                               (Value (unToken (last ts)))
+  | otherwise = Test $ mkTestSpec ts
+
+mkTestSpec :: [Token] -> TestSpec
+mkTestSpec ts
+  | length ts < 5 = error "mkTestSpec: list too short"
+  | otherwise = TestSpec
+      { testId = unToken . head $ ts
+      , testOperation = unToken . head . drop 1 $ ts
+      , testOperands = map unToken
+          . takeWhile (not . resultsIn)
+          . drop 2
+          $ ts
+      , testResult = unToken
+          . safeHead
+          . drop 1
+          . dropWhile (not . resultsIn)
+          . drop 2
+          $ ts
+      , testConditions = map unToken
+          . drop 2
+          . dropWhile (not . resultsIn)
+          . drop 2
+          $ ts
+      }
   where
-    (l', mayT) = lowLevelProc c (llState h)
-    ts' = case mayT of
-      Nothing -> llToks h
-      Just t' -> t' : llToks h
+    resultsIn t = unToken t == "->" && not (quoted t)
+    safeHead x = case x of
+      [] -> error "mkTestSpec: list too short"
+      y:_ -> y
 
-eject :: HighLevelLine -> [Token]
-eject h = case llState h of
-  BetweenToks -> llToks h
-  InTok t bs -> case t of
-    PlainWord -> Token bs : llToks h
-    Quoted _ pnd
-      | pnd -> Token bs : llToks h
-      | otherwise -> error "unterminated quote"
-
-processLine :: Line -> [Token]
-processLine
-  = reverse
-  . eject
-  . BS8.foldl highLevelProc z
-  . unLine
+parseFile :: FilePath -> IO [Instruction]
+parseFile = fmap parse . BS8.readFile
   where
-    z = HighLevelLine BetweenToks []
-
-testProcessLine :: String -> IO ()
-testProcessLine
-  = mapM_ BS8.putStrLn
-  . map unToken
-  . processLine
-  . Line
-  . BS8.pack
-
+    parse
+      = map lineToInstruction
+      . map removeComments
+      . map processLine
+      . splitLines
+      . File
