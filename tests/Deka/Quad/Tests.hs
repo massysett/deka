@@ -9,7 +9,9 @@ import Test.Tasty.QuickCheck
 import Test.QuickCheck
 import Deka.Internal.Quad.Decoding.Generators
 import Deka.Internal.Context.Generators
-import Prelude hiding (round)
+import Prelude hiding (round, isInfinite, exponent, isNaN)
+import Data.Maybe (fromMaybe)
+import qualified Data.ByteString.Char8 as BS8
 
 testBoolean
   :: String
@@ -137,3 +139,139 @@ convTests = testGroup "integer conversions"
   , intConversion "uint32 exact" genUInt32 fromUInt32 toUInt32Exact
   ] -- integer conversions
 
+strTests :: TestTree
+strTests = testGroup "string conversions"
+  [ testProperty ("Decoded -> Quad -> ByteString"
+      ++ " -> Quad -> Decoded") $
+    forAll genDecoded $ \d ->
+      let q = fromBCD d
+          bs = toByteString q
+          q' = runQuad $ fromByteString bs
+          d' = toBCD q'
+          desc = "toByteString: " ++ BS8.unpack bs
+            ++ " toBCD: " ++ show d'
+      in counterexample desc $ d' == d
+
+  , testProperty ("fromBCD and (fromByteString . scientific) "
+      ++ "give same result") $
+    forAll genDecoded $ \d ->
+    let qD = fromBCD d
+        (qS, fl) = runQuadStatus . fromByteString
+                    . BS8.pack . scientific $ d
+        compared = compareTotal qD qS == EQ
+    in compared && null fl
+
+  , testProperty ("fromBCD and (fromByteString . ordinary) "
+      ++ "give results that compare equal") $
+    forAll genDecoded $ \d ->
+    let qD = fromBCD d
+        str = ordinary d
+        (qS, fl) = runQuadStatus . fromByteString
+                    . BS8.pack $ str
+        cmpResult 
+          | isNormal qD = compareOrd qD qS == Just EQ
+          | otherwise = compareTotal qD qS == EQ
+        noFlags f = null f
+        desc = "string: " ++ str
+          ++ " fromByteString result: " ++ show qS
+    in noFlags fl ==> counterexample desc cmpResult
+
+  , testProperty "toByteString -> fromByteString" $
+    forAll genDecoded $ \d ->
+    let q = fromBCD d
+        bs = toByteString q
+        (q', fl) = runQuadStatus . fromByteString $ bs
+        cmpRes = compareTotal q q' == EQ
+    in cmpRes && null fl
+
+  , testProperty "toEngByteString -> fromByteString" $
+    forAll genDecoded $ \d ->
+    let q = fromBCD d
+        bs = toEngByteString q
+        (q', fl) = runQuadStatus . fromByteString $ bs
+        cmpRes = compareOrd q q' == Just EQ
+        cmpResTot = compareTotal q q' == EQ
+        res = if isFinite q then cmpRes else cmpResTot
+    in null fl ==> res
+  ] -- string conversions
+
+boolTests :: TestTree
+boolTests = testGroup "booleans"
+  [ testBoolean "isFinite" genFinite dIsFinite isFinite
+
+  , testBoolean "isInfinite" (genInfinite genSign)
+      dIsInfinite isInfinite
+
+  , testGroup "isInteger"
+    [ testBoolean "isInteger" genInteger dIsInteger isInteger
+
+    , let e = fromMaybe (error "isInteger exponent failed")
+            . exponent $ 2
+          c = fromMaybe (error "isInteger coefficient failed")
+            . coefficient $ [D3]
+          dcd = Decoded NonNeg (Finite c e)
+          d = fromBCD dcd
+      in testProperty "returns False on 3 * 10 ^ 2" . once
+          . not . isInteger $ d
+    ]
+
+  , testBoolean "isLogical" genLogical
+      dIsLogical isLogical
+
+  , testBoolean "isNaN"
+    (genNaNDcd genSign genNaN (payloadDigits decimalDigs))
+      dIsNaN isNaN
+
+  , testBoolean "isNegative" genNegative
+    dIsNegative isNegative
+
+  , testBoolean "isNormal"
+    (genNormal genSign (sizedDigits coefficientLen decimalDigs))
+      dIsNormal isNormal
+
+  , testBoolean "isPositive" genPositive
+      dIsPositive isPositive
+
+  , testBoolean "isSignaling" genSignaling
+      dIsSignaling isSignaling
+
+  , testBoolean "isSigned" genSigned
+      dIsSigned isSigned
+
+  , testBoolean "isSubnormal"
+      (genSubnormal genSign (sizedDigits (coefficientLen - 1) decimalDigs))
+      dIsSubnormal isSubnormal
+
+  , testBoolean "isZero" genZero dIsZero isZero
+
+  ]
+
+attributeTests :: TestTree
+attributeTests = testGroup "attributes"
+  [ testGroup "digits"
+    [ testProperty "gets same result as length of decoded coeff" $
+      forAll genFinite $ \d ->
+      let digs = digits . fromBCD $ d
+      in case dValue d of
+          Finite c _ -> length (unCoefficient c) == digs
+          _ -> False
+    ]
+  ] -- attributes
+
+decodeTests :: TestTree
+decodeTests = testGroup "decode and encode"
+  [ testProperty "round trip from Decoded" $
+      forAll genDecoded $ \d ->
+      let r = toBCD . fromBCD $ d
+      in counterexample ("result: " ++ show r) (r == d)
+  ]
+
+tests :: TestTree
+tests = testGroup "Quad tests"
+  [ classTests
+  , convTests
+  , strTests
+  , boolTests
+  , attributeTests
+  , decodeTests
+  ]

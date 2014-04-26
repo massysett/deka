@@ -9,11 +9,13 @@ import Deka.Internal.Quad.CtxFree.Tests
 import qualified Deka.Internal.Quad.Immutability
 import System.Posix.Signals
 import Test.Tasty
-import Deka.Quad.Tests
+import qualified Deka.Quad.Tests
 
 tests :: TestTree
 tests = testGroup "all tests"
-  [ Deka.Internal.Quad.Immutability.tests ]
+  [ Deka.Internal.Quad.Immutability.tests
+  , Deka.Quad.Tests.tests
+  ]
 
 main :: IO ()
 main = do
