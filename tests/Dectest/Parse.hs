@@ -39,7 +39,7 @@ data Instruction
 lineToInstruction :: [Token] -> Instruction
 lineToInstruction ts
   | null ts = Blank
-  | length ts == 2 = Directive (Keyword (unToken (head ts)))
+  | length ts == 2 = Directive (Keyword . BS8.init . unToken . head $ ts)
                                (Value (unToken (last ts)))
   | otherwise = Test $ mkTestSpec ts
 
@@ -71,12 +71,13 @@ mkTestSpec ts
       [] -> error "mkTestSpec: list too short"
       y:_ -> y
 
+fileToInstructions :: BS8.ByteString -> [Instruction]
+fileToInstructions
+  = map lineToInstruction
+  . map removeComments
+  . map processLine
+  . splitLines
+  . File
+
 parseFile :: FilePath -> IO [Instruction]
-parseFile = fmap parse . BS8.readFile
-  where
-    parse
-      = map lineToInstruction
-      . map removeComments
-      . map processLine
-      . splitLines
-      . File
+parseFile = fmap fileToInstructions . BS8.readFile
