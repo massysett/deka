@@ -102,8 +102,9 @@ module Deka.Quad
   , runQuad
   , runQuadStatus
 
-  -- * Context
+  -- * Context and class
   , module Deka.Context
+  , module Deka.Class
 
   -- * Complete encoding and decoding
 

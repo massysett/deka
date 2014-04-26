@@ -12,6 +12,8 @@ import Test.Tasty
 import qualified Deka.Quad.Tests
 import Dectest.Parse
 import Dectest.Parse.Tokens
+import Dectest.Lookup
+import Dectest.Lookup.Quad
 
 tests :: TestTree
 tests = testGroup "all tests"
