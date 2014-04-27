@@ -33,9 +33,13 @@ extra-source-files:  README.md ChangeLog
   decnumber/src/decCommon.c
   decnumber/src/decBasic.c
   decnumber/src/decContext.h
+  decnumber/src/decContext.c
   decnumber/src/decQuad.h
+  decnumber/src/decQuad.c
   decnumber/src/decDPD.h
   decnumber/src/decNumber.c
+  decnumber/src/decimal64.c
+  decnumber/src/decimal64.h
 cabal-version:       >=1.10
 tested-with: GHC==7.4.1 GHC==7.6.3, GHC ==7.8.2
 
@@ -61,6 +65,7 @@ library
     , Deka.Internal.DecNum.DecNum
     , Deka.Internal.DecNum.Util
     , Deka.Internal.Decnumber.Context
+    , Deka.Internal.Decnumber.Decimal64
     , Deka.Internal.Decnumber.DecNumber
     , Deka.Internal.Decnumber.DecNumberLocal
     , Deka.Internal.Decnumber.DecQuad
@@ -82,6 +87,7 @@ library
     decnumber/src/decQuad.c
     decnumber/src/decContext.c
     decnumber/src/decNumber.c
+    decnumber/src/decimal64.c
   include-dirs:
     decnumber/src
        
@@ -116,6 +122,8 @@ Test-Suite tasty-test
   c-sources:
     decnumber/src/decQuad.c
     decnumber/src/decContext.c
+    decnumber/src/decimal64.c
+    decnumber/src/decNumber.c
   include-dirs:
     decnumber/src
 
