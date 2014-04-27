@@ -2,6 +2,7 @@ module Dectest.Lookup.Quad where
 
 import Deka.Quad
 import qualified Data.ByteString.Char8 as BS8
+import Prelude (Maybe(..), String, Ordering, Bool(..), Int)
 
 data Function
   = StrToQuad (BS8.ByteString -> Ctx Quad)
@@ -33,6 +34,15 @@ data Record = Record
   , recFn :: Function
   }
 
+unary :: String -> (Quad -> Ctx Quad) -> Record
+unary s f = Record s (Just s) (Unary f)
+
+binary :: String -> (Quad -> Quad -> Ctx Quad) -> Record
+binary s f = Record s (Just s) (Binary f)
+
+ternary :: String -> (Quad -> Quad -> Quad -> Ctx Quad) -> Record
+ternary s f = Record s (Just s) (Ternary f)
+
 functions :: [Record]
 functions =
   [ Record "fromByteString" Nothing (StrToQuad fromByteString)
@@ -44,5 +54,16 @@ functions =
   , Record "toInt32Exact" Nothing (Rounder toInt32Exact)
   , Record "toUInt32" Nothing (URounder toUInt32)
   , Record "toUInt32Exact" Nothing (URounder toUInt32Exact)
-  , Record "add" (Just "add") (Binary add)
+  , binary "add" add
+  , binary "subtract" subtract
+  , binary "multiply" multiply
+  , ternary "fma" fma
+  , binary "divide" divide
+  , Record "divideInteger" (Just "divideint") (Binary divideInteger)
+  , Record "remainderNear" (Just "remaindernear") (Binary remainderNear)
+  , binary "quantize" quantize
+  , unary "reduce" reduce
+  , binary "compare" compare
+  , Record "compareOrd" Nothing (MaybeOrd compareOrd)
+  , Record "compareSignal" (Just "comparesig") (Binary compareSignal)
   ]
