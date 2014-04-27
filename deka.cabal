@@ -56,8 +56,8 @@ library
     , Deka.Docs.Examples
     , Deka.Quad
 
-    -- Internals
-    , Deka.Internal
+  other-modules:
+      Deka.Internal
     , Deka.Internal.Class
     , Deka.Internal.Context
     , Deka.Internal.DecNum.CtxFree
