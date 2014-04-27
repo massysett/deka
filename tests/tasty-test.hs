@@ -14,11 +14,13 @@ import Dectest.Parse
 import Dectest.Parse.Tokens
 import Dectest.Lookup
 import Dectest.Lookup.Quad
+import qualified Dectest.Binary
 
 tests :: TestTree
 tests = testGroup "all tests"
   [ Deka.Internal.Quad.Immutability.tests
   , Deka.Quad.Tests.tests
+  , Dectest.Binary.tests
   ]
 
 main :: IO ()

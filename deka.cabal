@@ -62,6 +62,7 @@ library
     , Deka.Internal.DecNum.Util
     , Deka.Internal.Decnumber.Context
     , Deka.Internal.Decnumber.DecNumber
+    , Deka.Internal.Decnumber.DecNumberLocal
     , Deka.Internal.Decnumber.DecQuad
     , Deka.Internal.Decnumber.Types
     , Deka.Internal.Quad.CtxFree
@@ -107,6 +108,7 @@ Test-Suite tasty-test
   other-modules:
       Deka.Internal.Decnumber.DecQuad
     , Deka.Internal.Decnumber.Context
+    , Deka.Internal.Decnumber.DecNumberLocal
     , Deka.Internal.Decnumber.Types
 
   default-language:    Haskell2010
