@@ -98,6 +98,10 @@ module Deka.Quad
   , one
   , version
 
+  -- * Conversions to 'DecNum'
+  , toNumber
+  , fromNumber
+
   -- * Running a computation
   , runQuad
   , runQuadStatus
@@ -191,6 +195,7 @@ module Deka.Quad
 
   ) where
 
+import Deka.Internal.DecNum.DecNum
 import qualified Deka.Internal.Quad.CtxFree as C
 import Deka.Internal.Quad.Ctx
 import Deka.Decoded
@@ -308,6 +313,10 @@ toEngByteString = unsafe1 C.toEngByteString
 -- | Identifies the version of the decNumber C library.
 version :: BS8.ByteString
 version = unsafe0 C.version
+
+-- | Converts a 'Quad' to a 'DecNum'.
+toNumber :: Quad -> DecNum
+toNumber = unsafe1 C.toNumber
 
 -- | A Quad whose coefficient, exponent, and sign are all 0.
 zero :: Quad

@@ -66,6 +66,7 @@ library
     , Deka.Internal.DecNum.Util
     , Deka.Internal.Decnumber.Context
     , Deka.Internal.Decnumber.Decimal64
+    , Deka.Internal.Decnumber.Decimal128
     , Deka.Internal.Decnumber.DecNumber
     , Deka.Internal.Decnumber.DecNumberLocal
     , Deka.Internal.Decnumber.DecQuad
@@ -88,6 +89,8 @@ library
     decnumber/src/decContext.c
     decnumber/src/decNumber.c
     decnumber/src/decimal64.c
+    decnumber/src/decNumberMacros.c
+    decnumber/src/decimal128.c
   include-dirs:
     decnumber/src
        
@@ -114,7 +117,10 @@ Test-Suite tasty-test
   other-modules:
       Deka.Internal.Decnumber.DecQuad
     , Deka.Internal.Decnumber.Context
+    , Deka.Internal.Decnumber.DecNumber
     , Deka.Internal.Decnumber.DecNumberLocal
+    , Deka.Internal.Decnumber.Decimal64
+    , Deka.Internal.Decnumber.Decimal128
     , Deka.Internal.Decnumber.Types
 
   default-language:    Haskell2010
@@ -124,6 +130,8 @@ Test-Suite tasty-test
     decnumber/src/decContext.c
     decnumber/src/decimal64.c
     decnumber/src/decNumber.c
+    decnumber/src/decimal128.c
+    decnumber/src/decNumberMacros.c
   include-dirs:
     decnumber/src
 

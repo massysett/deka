@@ -60,4 +60,5 @@ tests = testGroup "immutability - Quad"
   , testGroup "isSubnormal" [unaryCF isSubnormal]
   , testGroup "sameQuantum" [binaryCF sameQuantum]
   , testGroup "toEngByteString" [unaryCF toEngByteString]
+  , testGroup "toNumber" [unaryCF toNumber]
   ]

@@ -26,9 +26,11 @@ import Prelude hiding
 import Deka.Context
 import Deka.Internal.Context
 
+import Deka.Internal.DecNum.DecNum
 import Deka.Internal.Decnumber.DecQuad
 import Deka.Internal.Decnumber.Context
 import Deka.Internal.Decnumber.Types
+import Deka.Internal.Decnumber.Decimal128
 import Deka.Internal.Quad.Quad
 
 type Unary
@@ -395,3 +397,16 @@ runQuadStatus a = runQuad $ do
 xor :: Quad -> Quad -> Ctx Quad
 xor = binary unsafe'c'decQuadXor
 
+-- Conversion from decNumber
+
+-- | Converts a 'DecNum' to a 'Quad'.  The possible errors are the
+-- same as for the 'fromByteString' function, except that
+-- 'conversionSyntax' is not possible.
+
+fromNumber :: DecNum -> Ctx Quad
+fromNumber (DecNum fpd) = Ctx $ \pCtx ->
+  newQuad >>= \r ->
+  withForeignPtr (unQuad r) $ \pR ->
+  withForeignPtr fpd $ \pDn ->
+  c'decimal128FromNumber (castPtr pR) pDn pCtx >>
+  return r

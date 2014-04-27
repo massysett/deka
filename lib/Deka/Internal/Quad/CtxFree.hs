@@ -54,6 +54,9 @@ import Deka.Internal.Class
 import Deka.Context
 
 import Deka.Internal.Decnumber.DecQuad
+import Deka.Internal.Decnumber.Decimal128
+import Deka.Internal.DecNum.DecNum
+import Deka.Internal.DecNum.Util
 import Deka.Internal.Decnumber.Types
 import Deka.Internal.Quad.Quad
 import Deka.Internal.Quad.Ctx (compare)
@@ -219,4 +222,15 @@ zero =
   withForeignPtr (unQuad d) $ \pD ->
   unsafe'c'decQuadZero pD >>
   return d
+
+-- Conversions to decNumber
+
+-- | Converts a Quad to a decNumber.
+toNumber :: Quad -> IO DecNum
+toNumber (Quad fp) =
+  newDecNumSize 16 >>= \dn ->
+  withForeignPtr fp $ \ptrQuad ->
+  withForeignPtr (unDecNum dn) $ \ptrDn ->
+  c'decimal128ToNumber (castPtr ptrQuad) ptrDn >>
+  return dn
 

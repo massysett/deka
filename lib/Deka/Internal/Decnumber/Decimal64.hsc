@@ -56,6 +56,6 @@ foreign import ccall unsafe "decimal64Canonical" c'decimal64Canonical
   -- ^ Source
   -> IO (Ptr C'decimal64)
 
-foreign import ccall unsafe "decimalIsCanonical" c'decimal64IsCanonical
+foreign import ccall unsafe "decimal64IsCanonical" c'decimal64IsCanonical
   :: Ptr C'decimal64
   -> IO C'uint32_t
