@@ -43,6 +43,9 @@ binary s f = Record s (Just s) (Binary f)
 ternary :: String -> (Quad -> Quad -> Quad -> Ctx Quad) -> Record
 ternary s f = Record s (Just s) (Ternary f)
 
+pdct :: String -> (Quad -> Bool) -> Record
+pdct s f = Record s Nothing (Predicate f)
+
 functions :: [Record]
 functions =
   [ Record "fromByteString" Nothing (StrToQuad fromByteString)
@@ -66,4 +69,42 @@ functions =
   , binary "compare" compare
   , Record "compareOrd" Nothing (MaybeOrd compareOrd)
   , Record "compareSignal" (Just "comparesig") (Binary compareSignal)
+  , Record "compareTotal" Nothing (Comparer compareTotal)
+  , Record "compareTotalMag" Nothing (Comparer compareTotalMag)
+  , binary "max" max
+  , binary "maxMag" maxMag
+  , binary "min" min
+  , binary "minMag" minMag
+  , Record "sameQuantum" (Just "samequantum") (BinaryBool sameQuantum)
+  , Record "decClass" (Just "class") (Classifier decClass)
+  , pdct "isFinite" isFinite
+  , pdct "isInfinite" isInfinite
+  , pdct "isInteger" isInteger
+  , pdct "isLogical" isLogical
+  , pdct "isNaN" isNaN
+  , pdct "isNegative" isNegative
+  , pdct "isNormal" isNormal
+  , pdct "isPositive" isPositive
+  , pdct "isSignaling" isSignaling
+  , pdct "isSigned" isSigned
+  , pdct "isSubnormal" isSubnormal
+  , pdct "isZero" isZero
+  , unary "plus" plus
+  , unary "minus" minus
+  , unary "abs" abs
+  , Record "copySign" (Just "copysign") (BinaryCF copySign)
+  , unary "nextMinus" nextMinus
+  , unary "nextPlus" nextPlus
+  , binary "nextToward" nextToward
+  , binary "and" and
+  , binary "or" or
+  , binary "xor" xor
+  , unary "invert" invert
+  , binary "shift" shift
+  , binary "rotate" rotate
+  , unary "logB" logB
+  , binary "scaleB" scaleB
+  , Record "digits" (Just "digits") (UnaryInt digits)
+  , Record "toIntegralExact" (Just "tointegralx") (Unary toIntegralExact)
+  , Record "toIntegralValue" (Just "tointegral") (RoundQuad toIntegralValue)
   ]
