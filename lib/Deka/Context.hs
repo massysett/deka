@@ -86,6 +86,7 @@ module Deka.Context
   -- * Running a Ctx
   , runCtx
   , runCtxStatus
+  , local
 
   ) where
 

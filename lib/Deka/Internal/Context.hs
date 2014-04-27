@@ -140,6 +140,25 @@ runCtxStatus i c = runCtx i $ do
   f <- getStatus
   return (r, f)
 
+-- # Local
+
+-- | Runs a Ctx computation within the existing Ctx.  The existing
+-- Ctx is copied to form a new Ctx; then the child computation is
+-- run without affecting the parent Ctx.
+
+local
+  :: Ctx a
+  -- ^ Run this computation.  It is initialized with the current
+  -- Ctx, but does not affect the current Ctx.
+  -> Ctx a
+  -- ^ Returns the result of the child computation.
+local (Ctx l) = Ctx $ \parent ->
+  allocaBytes (c'decContext'sizeOf) $ \child ->
+  copyBytes child parent c'decContext'sizeOf >>
+  l child
+
+-- # Flags
+
 newtype Flag = Flag { unFlag :: C'uint32_t }
   deriving (Eq, Ord, Typeable)
 
