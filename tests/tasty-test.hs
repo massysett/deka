@@ -15,6 +15,7 @@ import Dectest.Parse.Tokens
 import Dectest.Lookup
 import Dectest.Lookup.Quad
 import qualified Dectest.Binary
+import qualified Dectest.Parse.Operand
 
 tests :: TestTree
 tests = testGroup "all tests"

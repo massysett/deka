@@ -8,7 +8,12 @@ import Deka.Internal.Decnumber.Context
 import Foreign.Safe
 import Deka.Internal.DecNum.DecNum
 
-newDecNumSize :: C'int32_t -> IO DecNum
+-- | Allocates a DecNum of sufficient size to hold the given number
+-- of digits.
+newDecNumSize
+  :: C'int32_t
+  -- ^ New DecNum will hold this many digits.
+  -> IO DecNum
 newDecNumSize i = do
   let sz = mallocAmount i
   fp <- mallocForeignPtrBytes sz

@@ -38,6 +38,8 @@ extra-source-files:  README.md ChangeLog
   decnumber/src/decQuad.c
   decnumber/src/decDPD.h
   decnumber/src/decNumber.c
+  decnumber/src/decimal32.c
+  decnumber/src/decimal32.h
   decnumber/src/decimal64.c
   decnumber/src/decimal64.h
 cabal-version:       >=1.10
@@ -65,6 +67,7 @@ library
     , Deka.Internal.DecNum.DecNum
     , Deka.Internal.DecNum.Util
     , Deka.Internal.Decnumber.Context
+    , Deka.Internal.Decnumber.Decimal32
     , Deka.Internal.Decnumber.Decimal64
     , Deka.Internal.Decnumber.Decimal128
     , Deka.Internal.Decnumber.DecNumber
@@ -91,6 +94,7 @@ library
     decnumber/src/decimal64.c
     decnumber/src/decNumberMacros.c
     decnumber/src/decimal128.c
+    decnumber/src/decimal32.c
   include-dirs:
     decnumber/src
        
@@ -119,6 +123,7 @@ Test-Suite tasty-test
     , Deka.Internal.Decnumber.Context
     , Deka.Internal.Decnumber.DecNumber
     , Deka.Internal.Decnumber.DecNumberLocal
+    , Deka.Internal.Decnumber.Decimal32
     , Deka.Internal.Decnumber.Decimal64
     , Deka.Internal.Decnumber.Decimal128
     , Deka.Internal.Decnumber.Types
@@ -128,9 +133,10 @@ Test-Suite tasty-test
   c-sources:
     decnumber/src/decQuad.c
     decnumber/src/decContext.c
+    decnumber/src/decimal32.c
     decnumber/src/decimal64.c
-    decnumber/src/decNumber.c
     decnumber/src/decimal128.c
+    decnumber/src/decNumber.c
     decnumber/src/decNumberMacros.c
   include-dirs:
     decnumber/src
