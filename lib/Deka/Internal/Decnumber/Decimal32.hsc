@@ -19,6 +19,9 @@ data C'decimal32
 c'DECIMAL32_String :: Num a => a
 c'DECIMAL32_String = #const DECIMAL32_String
 
+c'decimal32'sizeOf :: Int
+c'decimal32'sizeOf = #size decimal32
+
 foreign import ccall unsafe "decimal32FromString" c'decimal32FromString
   :: Ptr C'decimal32
   -> Ptr CChar

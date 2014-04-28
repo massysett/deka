@@ -37,10 +37,12 @@ parseOperand = undefined
 -- without constraints; no flags are set by this process.
 parseResult
   :: (BS8.ByteString -> Ctx a)
-  -- ^ Use this function to convert to the targe number, if there is
+  -- ^ Use this function to convert to the target number, if there is
   -- no octothorpe.
 
   -> BS8.ByteString
   -- ^ Parse this string
   -> NumToken a
 parseResult = undefined
+
+

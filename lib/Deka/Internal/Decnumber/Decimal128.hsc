@@ -16,6 +16,9 @@ import Foreign.Safe
 
 data C'decimal128
 
+c'decimal128'sizeOf :: Int
+c'decimal128'sizeOf = #size decimal128
+
 c'DECIMAL128_String :: Num a => a
 c'DECIMAL128_String = #const DECIMAL128_String
 
