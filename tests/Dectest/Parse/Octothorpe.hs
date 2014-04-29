@@ -7,13 +7,20 @@ module Dectest.Parse.Octothorpe
   , parseOcto
   ) where
 
+import System.IO.Unsafe
+import Control.Monad (void)
+import Dectest.Binary
+import qualified Deka.DecNum as DN
+import Deka.Internal.DecNum.DecNum
+import Deka.Context
 import Deka.Internal.Context
 import qualified Deka.Internal.Decnumber.DecNumber as D
 import qualified Deka.Internal.Decnumber.Decimal32 as D32
 import qualified Deka.Internal.Decnumber.Decimal64 as D64
 import qualified Deka.Internal.Decnumber.Decimal128 as D128
-import Foreign.Safe
+import Foreign.Safe hiding (void)
 import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString as BS
 
 type ApplyPrecision = Bool
 
@@ -82,13 +89,64 @@ rs64 = undefined
 rs128 :: BS8.ByteString -> CompareResult D128.C'decimal128
 rs128 = undefined
 
+data OctoHex
+  = H32 (ForeignPtr D32.C'decimal32)
+  | H64 (ForeignPtr D64.C'decimal64)
+  | H128 (ForeignPtr D128.C'decimal128)
+
+-- | Decode an octothorpe that represents a hex format.  Octothorpe
+-- must already be cleaved from the front of the list.
+
+octoHex :: BS8.ByteString -> OctoHex
+octoHex bs
+  | len == 8 = go H32 32
+  | len == 16 = go H64 64
+  | len == 32 = go H128 128
+  | otherwise = error "octoHex: unknown length"
+  where
+    len = BS8.length bs
+    go ctor bytes = unsafePerformIO $
+      let hex = packHexList bs in
+      mallocForeignPtrBytes bytes >>= \fp ->
+      withForeignPtr fp $ \ptr ->
+      BS.useAsCString hex $ \cstr ->
+      copyBytes (castPtr ptr) cstr bytes >>
+      return (ctor fp)
+
+
+-- | Decode an octothorpe that represents a string.  The octothorpe
+-- and the digits representing the string should still be in the
+-- ByteString.
+
+octoString :: BS8.ByteString -> ApplyPrecision -> Ctx OctoHex
+octoString bs ap
+  | lead == "32" = go H32 f32 32
+  | lead == "64" = go H64 f64 64
+  | lead == "128" = go H128 f128 128
+  | otherwise = error "octoString: unknown length"
+  where
+    lead = BS8.takeWhile (/= '#') bs
+    rest = BS8.drop 1 $ BS8.dropWhile (/= '#') bs
+    f32 = \d n c -> void $ D32.c'decimal32FromNumber (castPtr d) n c
+    f64 = \d n c -> void $ D64.c'decimal64FromNumber (castPtr d) n c
+    f128 = \d n c -> void $ D128.c'decimal128FromNumber (castPtr d) n c
+    go ctor mkNum bytes = Ctx $ \pCtx ->
+      unCtx getPrecision pCtx >>= \oldP ->
+      let newP | ap = oldP
+               | otherwise = maybe (error "octoString: precision too large")
+                  id (precision (fromIntegral (BS8.length rest))) in
+      unCtx (setPrecision newP) pCtx >>= \_ ->
+      unCtx (DN.fromByteString rest) pCtx >>= \dn ->
+      unCtx (setPrecision oldP) pCtx >>= \_ ->
+      withForeignPtr (unDecNum dn) $ \pDn ->
+      mallocForeignPtrBytes bytes >>= \fpR ->
+      withForeignPtr fpR $ \pR ->
+      mkNum pR pDn pCtx >>
+      return (ctor fpR)
+
 --
 --
 --
-
-
-
-
 
 {- Parsing Operand Octothorpes
 
