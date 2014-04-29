@@ -72,6 +72,7 @@ library
     , Deka.Internal.Decnumber.Decimal128
     , Deka.Internal.Decnumber.DecNumber
     , Deka.Internal.Decnumber.DecNumberLocal
+    , Deka.Internal.Decnumber.DecDouble
     , Deka.Internal.Decnumber.DecQuad
     , Deka.Internal.Decnumber.Types
     , Deka.Internal.Quad.CtxFree
@@ -89,6 +90,7 @@ library
 
   c-sources:
     decnumber/src/decQuad.c
+    decnumber/src/decDouble.c
     decnumber/src/decContext.c
     decnumber/src/decNumber.c
     decnumber/src/decimal64.c
@@ -113,6 +115,7 @@ Test-Suite tasty-test
     , bytestring >=0.9.2.1 && < 0.11
     , random-shuffle ==0.0.4
     , unix >= 2.5.1.0 && < 2.8
+    , transformers >= 0.3.0.0 && < 0.4.0.0
 
   type: exitcode-stdio-1.0
   hs-source-dirs: tests lib
@@ -120,6 +123,7 @@ Test-Suite tasty-test
   main-is: tasty-test.hs
   other-modules:
       Deka.Internal.Decnumber.DecQuad
+    , Deka.Internal.Decnumber.DecDouble
     , Deka.Internal.Decnumber.Context
     , Deka.Internal.Decnumber.DecNumber
     , Deka.Internal.Decnumber.DecNumberLocal
@@ -132,6 +136,7 @@ Test-Suite tasty-test
 
   c-sources:
     decnumber/src/decQuad.c
+    decnumber/src/decDouble.c
     decnumber/src/decContext.c
     decnumber/src/decimal32.c
     decnumber/src/decimal64.c
