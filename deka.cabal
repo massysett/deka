@@ -34,6 +34,8 @@ extra-source-files:  README.md ChangeLog
   decnumber/src/decBasic.c
   decnumber/src/decContext.h
   decnumber/src/decContext.c
+  decnumber/src/decSingle.h
+  decnumber/src/decSingle.c
   decnumber/src/decQuad.h
   decnumber/src/decQuad.c
   decnumber/src/decDPD.h
@@ -77,6 +79,7 @@ library
     , Deka.Internal.Decnumber.DecNumber
     , Deka.Internal.Decnumber.DecNumberLocal
     , Deka.Internal.Decnumber.DecDouble
+    , Deka.Internal.Decnumber.DecSingle
     , Deka.Internal.Decnumber.DecQuad
     , Deka.Internal.Quad.CtxFree
     , Deka.Internal.Quad.Ctx
@@ -92,8 +95,9 @@ library
   default-language:    Haskell2010
 
   c-sources:
-    decnumber/src/decQuad.c
     decnumber/src/decDouble.c
+    decnumber/src/decSingle.c
+    decnumber/src/decQuad.c
     decnumber/src/decContext.c
     decnumber/src/decNumber.c
     decnumber/src/decimal64.c
@@ -125,7 +129,8 @@ Test-Suite tasty-test
   ghc-options: -Wall -rtsopts -fprof-auto
   main-is: tasty-test.hs
   other-modules:
-      Deka.Internal.Decnumber.DecQuad
+      Deka.Internal.Decnumber.DecSingle
+    , Deka.Internal.Decnumber.DecQuad
     , Deka.Internal.Decnumber.DecDouble
     , Deka.Internal.Decnumber.Context
     , Deka.Internal.Decnumber.DecNumber
@@ -137,6 +142,7 @@ Test-Suite tasty-test
   default-language:    Haskell2010
 
   c-sources:
+    decnumber/src/decSingle.c
     decnumber/src/decQuad.c
     decnumber/src/decDouble.c
     decnumber/src/decContext.c
