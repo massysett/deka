@@ -20,9 +20,10 @@ import Dectest.Lookup
 import Dectest.Lookup.Quad
 import qualified Dectest.Binary
 import qualified Dectest.Parse.Operand
-import qualified Dectest.Parse.Octothorpe
+import qualified Dectest.Interp.Octothorpe
 import qualified Dectest.Util
 import qualified Dectest
+import qualified Dectest.Interp.Operand
 
 tests :: TestTree
 tests = testGroup "all tests"

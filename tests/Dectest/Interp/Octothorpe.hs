@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- | Parse octothorpe-containing operands and results.
 
-module Dectest.Parse.Octothorpe
+module Dectest.Interp.Octothorpe
   ( OctoParsers(..)
+  , WhichPrecision(..)
   , Parsed(..)
   , parseOcto
   ) where
@@ -28,7 +29,10 @@ import Foreign.Safe hiding (void)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString as BS
 
-type ApplyPrecision = Bool
+data WhichPrecision
+  = FromCtx
+  | DoNotRound
+  deriving Eq
 
 data Parsed
   = NotOcto
@@ -43,7 +47,7 @@ isNull = (== "#")
 -- token.
 type CompareResult a = Ptr a -> Ctx Bool
 
-type ConvertOp a = ApplyPrecision -> Ctx (ForeignPtr a)
+type ConvertOp a = WhichPrecision -> Ctx (ForeignPtr a)
 
 data OctoParsers = OctoParsers
   { opOperandDec :: ConvertOp D.C'decNumber
@@ -92,9 +96,9 @@ opDec bs apPrec = Ctx $ \pCtx -> do
   oh <- getOctoHex bs True pCtx
   dn <- octoHexToDecNum oh
   let pcsn = octoHexPrecision oh
-      mayPrec
-        | apPrec = Nothing
-        | otherwise = Just pcsn
+      mayPrec = case apPrec of
+        DoNotRound -> Just pcsn
+        FromCtx -> Nothing
   _ <- unCtx (applyDirectivesToDecNumber mayPrec dn) pCtx
   return dn
 
@@ -187,13 +191,13 @@ applyDirectivesToDecNumber mayPrec fp = Ctx $ \pCtx ->
 -- | Applies directives to an OctoHex.  EXCEPTION - does not apply
 -- directives to a decimal32, as no function will do this.
 applyDirectivesToOctoHex
-  :: ApplyPrecision
+  :: WhichPrecision
   -> OctoHex
   -> Ctx ()
 applyDirectivesToOctoHex apPrec oh = Ctx $ \pCtx ->
-  let mayPrec
-        | apPrec = Nothing
-        | otherwise = Just (octoHexPrecision oh) in
+  let mayPrec = case apPrec of
+        DoNotRound -> Just (octoHexPrecision oh)
+        FromCtx -> Nothing in
   unCtx getPrecision pCtx >>= \pOld ->
   let pNew = case mayPrec of
         Nothing -> pOld
