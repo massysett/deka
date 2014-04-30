@@ -1,5 +1,5 @@
 {-# LANGUAGE Safe, MultiParamTypeClasses, FunctionalDependencies #-}
-module Deka.Internal.Decoding where
+module Deka.Internal.Fixed.Decoding where
 
 import Control.Monad
 import Data.Maybe

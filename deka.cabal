@@ -72,7 +72,6 @@ library
     , Deka.Internal.DecNum.Ctx
     , Deka.Internal.DecNum.DecNum
     , Deka.Internal.DecNum.Util
-    , Deka.Internal.Decoding
     , Deka.Internal.Decnumber.Context
     , Deka.Internal.Decnumber.Decimal32
     , Deka.Internal.Decnumber.Decimal64
@@ -82,6 +81,9 @@ library
     , Deka.Internal.Decnumber.DecDouble
     , Deka.Internal.Decnumber.DecSingle
     , Deka.Internal.Decnumber.DecQuad
+    , Deka.Internal.Fixed.Basic
+    , Deka.Internal.Fixed.Arithmetic
+    , Deka.Internal.Fixed.Decoding
     , Deka.Internal.Quad.CtxFree
     , Deka.Internal.Quad.Ctx
     , Deka.Internal.Quad.Decoding
