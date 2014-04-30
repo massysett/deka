@@ -72,6 +72,7 @@ library
     , Deka.Internal.DecNum.Ctx
     , Deka.Internal.DecNum.DecNum
     , Deka.Internal.DecNum.Util
+    , Deka.Internal.Decoding
     , Deka.Internal.Decnumber.Context
     , Deka.Internal.Decnumber.Decimal32
     , Deka.Internal.Decnumber.Decimal64
