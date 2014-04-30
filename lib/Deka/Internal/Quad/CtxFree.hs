@@ -227,7 +227,7 @@ zero =
 -- | Converts a Quad to a decNumber.
 toNumber :: Quad -> IO DecNum
 toNumber (Quad fp) =
-  newDecNumSize 34 >>= \dn ->
+  newDecNumSize c'DECQUAD_Pmax >>= \dn ->
   withForeignPtr fp $ \ptrQuad ->
   withForeignPtr (unDecNum dn) $ \ptrDn ->
   c'decimal128ToNumber (castPtr ptrQuad) ptrDn >>
