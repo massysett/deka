@@ -28,7 +28,6 @@ import qualified Prelude
 import Deka.Decoded
 
 import Deka.Internal.Decnumber.DecQuad
-import Deka.Internal.Quad.Quad
 
 class Decodable a b | a -> b where
   coefficientLength :: a -> Int
