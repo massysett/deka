@@ -112,10 +112,10 @@ getRounded f (Round r) d = Ctx $ \pC ->
 -- | Absolute value.  NaNs are handled normally (the sign of an NaN
 -- is not affected, and an sNaN sets 'invalidOperation'.
 abs :: Quad -> Ctx Quad
-abs = unary unsafe'c'decQuadAbs
+abs = unary c'decQuadAbs
 
 add :: Quad -> Quad -> Ctx Quad
-add = binary unsafe'c'decQuadAdd
+add = binary c'decQuadAdd
 
 -- | Digit-wise logical and.  Operands must be:
 --
@@ -127,7 +127,7 @@ add = binary unsafe'c'decQuadAdd
 --
 -- If not, 'invalidOperation' is set.
 and :: Quad -> Quad -> Ctx Quad
-and = binary unsafe'c'decQuadAnd
+and = binary c'decQuadAnd
 
 -- | Compares two 'Quad' numerically.  The result might be @-1@, @0@,
 -- @1@, or NaN, where @-1@ means x is less than y, @0@ indicates
@@ -138,28 +138,28 @@ and = binary unsafe'c'decQuadAnd
 -- result might be an NaN.
 --
 compare :: Quad -> Quad -> Ctx Quad
-compare = binary unsafe'c'decQuadCompare
+compare = binary c'decQuadCompare
 
 -- | Same as 'compare', but a quietNaN is treated like a signaling
 -- NaN (sets 'invalidOperation').
 compareSignal :: Quad -> Quad -> Ctx Quad
-compareSignal = binary unsafe'c'decQuadCompareSignal
+compareSignal = binary c'decQuadCompareSignal
 
 divide :: Quad -> Quad -> Ctx Quad
-divide = binary unsafe'c'decQuadDivide
+divide = binary c'decQuadDivide
 
 -- | @divideInteger x y@ returns the integer part of the result
 -- (rounded toward zero), with an exponent of 0.  If the the result
 -- would not fit because it has too many digits,
 -- 'divisionImpossible' is set.
 divideInteger :: Quad -> Quad -> Ctx Quad
-divideInteger = binary unsafe'c'decQuadDivideInteger
+divideInteger = binary c'decQuadDivideInteger
 
 -- | Fused multiply add; @fma x y z@ calculates @x * y + z@.  The
 -- multiply is carried out first and is exact, so the result has
 -- only one final rounding.
 fma :: Quad -> Quad -> Quad -> Ctx Quad
-fma = ternary unsafe'c'decQuadFMA
+fma = ternary c'decQuadFMA
 
 -- | Reads a ByteString, which can be in scientific, engineering, or
 -- \"regular\" decimal notation.  Also reads NaN, Infinity, etc.
@@ -174,7 +174,7 @@ fromByteString s = Ctx $ \pC ->
   newQuad >>= \r ->
   withForeignPtr (unQuad r) $ \pR ->
   BS8.useAsCString s $ \pS ->
-  unsafe'c'decQuadFromString pR pS pC >>
+  c'decQuadFromString pR pS pC >>
   return r
 
 -- | Digit-wise logical inversion.  The operand must be:
@@ -187,7 +187,7 @@ fromByteString s = Ctx $ \pC ->
 --
 -- If not, 'invalidOperation' is set.
 invert :: Quad -> Ctx Quad
-invert = unary unsafe'c'decQuadInvert
+invert = unary c'decQuadInvert
 
 -- | @logB x@ Returns the adjusted exponent of x, according to IEEE
 -- 754 rules.  If @x@ is infinite, returns +Infinity.  If @x@ is
@@ -196,49 +196,49 @@ invert = unary unsafe'c'decQuadInvert
 -- is one, the result is 0.  NaNs are propagated as for arithmetic
 -- operations.
 logB :: Quad -> Ctx Quad
-logB = unary unsafe'c'decQuadLogB
+logB = unary c'decQuadLogB
 
 -- | @max x y@ returns the larger argument; if either (but not both)
 -- @x@ or @y@ is a quiet NaN then the other argument is the result;
 -- otherwise, NaNs, are handled as for arithmetic operations.
 max :: Quad -> Quad -> Ctx Quad
-max = binary unsafe'c'decQuadMax
+max = binary c'decQuadMax
 
 -- | Like 'max' but the absolute values of the arguments are used.
 maxMag :: Quad -> Quad -> Ctx Quad
-maxMag = binary unsafe'c'decQuadMaxMag
+maxMag = binary c'decQuadMaxMag
 
 -- | @min x y@ returns the smaller argument; if either (but not both)
 -- @x@ or @y@ is a quiet NaN then the other argument is the result;
 -- otherwise, NaNs, are handled as for arithmetic operations.
 min :: Quad -> Quad -> Ctx Quad
-min = binary unsafe'c'decQuadMin
+min = binary c'decQuadMin
 
 -- | Like 'min' but the absolute values of the arguments are used.
 minMag :: Quad -> Quad -> Ctx Quad
-minMag = binary unsafe'c'decQuadMinMag
+minMag = binary c'decQuadMinMag
 
 -- | Negation.  Result has the same effect as @0 - x@ when the
 -- exponent of the zero is the same as that of @x@, if @x@ is
 -- finite.
 minus :: Quad -> Ctx Quad
-minus = unary unsafe'c'decQuadMinus
+minus = unary c'decQuadMinus
 
 multiply :: Quad -> Quad -> Ctx Quad
-multiply = binary unsafe'c'decQuadMultiply
+multiply = binary c'decQuadMultiply
 
 -- | Decrements toward negative infinity.
 nextMinus :: Quad -> Ctx Quad
-nextMinus = unary unsafe'c'decQuadNextMinus
+nextMinus = unary c'decQuadNextMinus
 
 -- | Increments toward positive infinity.
 nextPlus :: Quad -> Ctx Quad
-nextPlus = unary unsafe'c'decQuadNextPlus
+nextPlus = unary c'decQuadNextPlus
 
 -- | @nextToward x y@ returns the next 'Quad' in the direction of
 -- @y@.
 nextToward :: Quad -> Quad -> Ctx Quad
-nextToward = binary unsafe'c'decQuadNextToward
+nextToward = binary c'decQuadNextToward
 
 -- | Digit wise logical inclusive Or.  Operands must be:
 --
@@ -250,36 +250,36 @@ nextToward = binary unsafe'c'decQuadNextToward
 --
 -- If not, 'invalidOperation' is set.
 or :: Quad -> Quad -> Ctx Quad
-or = binary unsafe'c'decQuadOr
+or = binary c'decQuadOr
 
 -- | Same effect as @0 + x@ where the exponent of the zero is the
 -- same as that of @x@ if @x@ is finite).  NaNs are handled as for
 -- arithmetic operations.
 plus :: Quad -> Ctx Quad
-plus = unary unsafe'c'decQuadPlus
+plus = unary c'decQuadPlus
 
 -- | @quantize x y@ returns @z@ which is @x@ set to have the same
 -- quantum as @y@; that is, numerically the same value but rounded
 -- or padded if necessary to have the same exponent as @y@.  Useful
 -- for rounding monetary quantities.
 quantize :: Quad -> Quad -> Ctx Quad
-quantize = binary unsafe'c'decQuadQuantize
+quantize = binary c'decQuadQuantize
 
 -- | Reduces coefficient to its shortest possible form without
 -- changing the value of the result by removing all possible
 -- trailing zeroes.
 reduce :: Quad -> Ctx Quad
-reduce = unary unsafe'c'decQuadReduce
+reduce = unary c'decQuadReduce
 
 -- | Remainder from integer division.  If the intermediate integer
 -- does not fit within a Quad, 'divisionImpossible' is raised.
 remainder :: Quad -> Quad -> Ctx Quad
-remainder = binary unsafe'c'decQuadRemainder
+remainder = binary c'decQuadRemainder
 
 -- | Like 'remainder' but the nearest integer is used for for the
 -- intermediate result instead of the result from 'divideInteger'.
 remainderNear :: Quad -> Quad -> Ctx Quad
-remainderNear = binary unsafe'c'decQuadRemainderNear
+remainderNear = binary c'decQuadRemainderNear
 
 -- | @rotate x y@ rotates the digits of x to the left (if @y@ is
 -- positive) or right (if @y@ is negative) without adjusting the
@@ -290,7 +290,7 @@ remainderNear = binary unsafe'c'decQuadRemainderNear
 -- NaNs are propagated as usual.  No status is set unless @y@ is
 -- invalid or an operand is an NaN.
 rotate :: Quad -> Quad -> Ctx Quad
-rotate = binary unsafe'c'decQuadRotate
+rotate = binary c'decQuadRotate
 
 -- | @scaleB x y@ calculates @x * 10 ^ y@.  @y@ must be an integer
 -- (finite with exponent of 0) in the range of plus or minus @2 *
@@ -298,7 +298,7 @@ rotate = binary unsafe'c'decQuadRotate
 -- 'logB'.  Underflow and overflow might occur; NaNs propagate as
 -- usual.
 scaleB :: Quad -> Quad -> Ctx Quad
-scaleB = binary unsafe'c'decQuadScaleB
+scaleB = binary c'decQuadScaleB
 
 -- | @shift x y@ shifts digits the digits of x to the left (if @y@
 -- is positive) or right (if @y@ is negative) without adjusting the
@@ -311,12 +311,12 @@ scaleB = binary unsafe'c'decQuadScaleB
 -- the result is an infinity of the same sign.  No status is set
 -- unless y is invalid or the operand is an NaN.
 shift :: Quad -> Quad -> Ctx Quad
-shift = binary unsafe'c'decQuadShift
+shift = binary c'decQuadShift
 
 -- omitted: Show
 
 subtract :: Quad -> Quad -> Ctx Quad
-subtract = binary unsafe'c'decQuadSubtract
+subtract = binary c'decQuadSubtract
 
 -- | Uses the rounding method given rather than the one in the
 -- 'Ctx'.  If the operand is infinite, an NaN, or if the result of
@@ -324,12 +324,12 @@ subtract = binary unsafe'c'decQuadSubtract
 -- 'invalidOperation' is set.  'inexact' is not set even if rounding
 -- occurred.
 toInt32 :: Round -> Quad -> Ctx Int32
-toInt32 = getRounded unsafe'c'decQuadToInt32
+toInt32 = getRounded c'decQuadToInt32
 
 -- | Like 'toInt32' but if rounding removes non-zero digits then
 -- 'inexact' is set.
 toInt32Exact :: Round -> Quad -> Ctx Int32
-toInt32Exact = getRounded unsafe'c'decQuadToInt32Exact
+toInt32Exact = getRounded c'decQuadToInt32Exact
 
 -- | Rounds to an integral using the rounding mode set in the 'Ctx'.
 -- If the operand is infinite, an infinity of the same sign is
@@ -337,7 +337,7 @@ toInt32Exact = getRounded unsafe'c'decQuadToInt32Exact
 -- for other arithmetic operations.  If rounding removes non-zero
 -- digits then 'inexact' is set.
 toIntegralExact :: Quad -> Ctx Quad
-toIntegralExact = unary unsafe'c'decQuadToIntegralExact
+toIntegralExact = unary c'decQuadToIntegralExact
 
 -- | @toIntegralValue r x@ returns an integral value of @x@ using
 -- the rounding mode @r@ rather than the one specified in the 'Ctx'.
@@ -349,7 +349,7 @@ toIntegralValue (Round rnd) d = Ctx $ \pC ->
   withForeignPtr (unQuad d) $ \pD ->
   newQuad >>= \r ->
   withForeignPtr (unQuad r) $ \pR ->
-  unsafe'c'decQuadToIntegralValue pR pD pC rnd >>
+  c'decQuadToIntegralValue pR pD pC rnd >>
   return r
 
 -- toByteString - moved to Internal so that Quad can Show in a
@@ -364,12 +364,12 @@ toIntegralValue (Round rnd) d = Ctx $ \pC ->
 -- The negative zero converts to 0 and is valid, but negative
 -- numbers are not valid.
 toUInt32 :: Round -> Quad -> Ctx Word32
-toUInt32 = getRounded unsafe'c'decQuadToUInt32
+toUInt32 = getRounded c'decQuadToUInt32
 
 -- | Same as 'toUInt32' but if rounding removes non-zero digits then
 -- 'inexact' is set.
 toUInt32Exact :: Round -> Quad -> Ctx Word32
-toUInt32Exact = getRounded unsafe'c'decQuadToUInt32Exact
+toUInt32Exact = getRounded c'decQuadToUInt32Exact
 
 -- | Runs a computation with the decimal128 default context.
 runQuad :: Ctx a -> a
@@ -394,7 +394,7 @@ runQuadStatus a = runQuad $ do
 -- If not, 'invalidOperation' is set.
 
 xor :: Quad -> Quad -> Ctx Quad
-xor = binary unsafe'c'decQuadXor
+xor = binary c'decQuadXor
 
 -- Conversion from decNumber
 

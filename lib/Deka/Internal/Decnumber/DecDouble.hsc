@@ -93,133 +93,133 @@ c'DECPUNSIGNED = #const DECPUNSIGNED
 
 -- Utilities
 
-foreign import ccall unsafe "decDoubleToInt32" unsafe'c'decDoubleToInt32
+foreign import ccall unsafe "decDoubleToInt32" c'decDoubleToInt32
   :: Ptr C'decDouble
   -> Ptr C'decContext
   -> C'rounding
   -> IO Int32
 
-foreign import ccall unsafe "decDoubleToInt32Exact" unsafe'c'decDoubleToInt32Exact
+foreign import ccall unsafe "decDoubleToInt32Exact" c'decDoubleToInt32Exact
   :: Ptr C'decDouble
   -> Ptr C'decContext
   -> C'rounding
   -> IO Int32
 
-foreign import ccall unsafe "decDoubleFromInt32" unsafe'c'decDoubleFromInt32
+foreign import ccall unsafe "decDoubleFromInt32" c'decDoubleFromInt32
   :: Ptr C'decDouble
   -> Int32
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleFromPacked" unsafe'c'decDoubleFromPacked
-  :: Ptr C'decDouble
-  -> Int32
-  -> Ptr Word8
-  -> IO (Ptr C'decDouble)
-
-foreign import ccall unsafe "decDoubleFromPackedChecked" unsafe'c'decDoubleFromPackedChecked
+foreign import ccall unsafe "decDoubleFromPacked" c'decDoubleFromPacked
   :: Ptr C'decDouble
   -> Int32
   -> Ptr Word8
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleFromUInt32" unsafe'c'decDoubleFromUInt32
+foreign import ccall unsafe "decDoubleFromPackedChecked" c'decDoubleFromPackedChecked
+  :: Ptr C'decDouble
+  -> Int32
+  -> Ptr Word8
+  -> IO (Ptr C'decDouble)
+
+foreign import ccall unsafe "decDoubleFromUInt32" c'decDoubleFromUInt32
   :: Ptr C'decDouble
   -> Word32
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleFromString" unsafe'c'decDoubleFromString
+foreign import ccall unsafe "decDoubleFromString" c'decDoubleFromString
   :: Ptr C'decDouble
   -> CString
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleGetCoefficient" unsafe'c'decDoubleGetCoefficient
+foreign import ccall unsafe "decDoubleGetCoefficient" c'decDoubleGetCoefficient
   :: Ptr C'decDouble
   -> Ptr Word8
   -> IO Int32
 
-foreign import ccall unsafe "decDoubleGetExponent" unsafe'c'decDoubleGetExponent
+foreign import ccall unsafe "decDoubleGetExponent" c'decDoubleGetExponent
   :: Ptr C'decDouble
   -> IO Int32
 
-foreign import ccall unsafe "decDoubleSetCoefficient" unsafe'c'decDoubleSetCoefficient
+foreign import ccall unsafe "decDoubleSetCoefficient" c'decDoubleSetCoefficient
   :: Ptr C'decDouble
   -> Ptr Word8
   -> Int32
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleSetExponent" unsafe'c'decDoubleSetExponent
+foreign import ccall unsafe "decDoubleSetExponent" c'decDoubleSetExponent
   :: Ptr C'decDouble
   -> Ptr C'decContext
   -> Int32
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleShow" unsafe'c'decDoubleShow
+foreign import ccall unsafe "decDoubleShow" c'decDoubleShow
   :: Ptr C'decDouble
   -> CString
   -> IO ()
 
-foreign import ccall unsafe "decDoubleToEngString" unsafe'c'decDoubleToEngString
+foreign import ccall unsafe "decDoubleToEngString" c'decDoubleToEngString
   :: Ptr C'decDouble
   -> CString
   -> IO CString
 
-foreign import ccall unsafe "decDoubleToString" unsafe'c'decDoubleToString
+foreign import ccall unsafe "decDoubleToString" c'decDoubleToString
   :: Ptr C'decDouble
   -> CString
   -> IO CString
 
-foreign import ccall unsafe "decDoubleToUInt32" unsafe'c'decDoubleToUInt32
+foreign import ccall unsafe "decDoubleToUInt32" c'decDoubleToUInt32
   :: Ptr C'decDouble
   -> Ptr C'decContext
   -> C'rounding
   -> IO Word32
 
 
-foreign import ccall unsafe "decDoubleToUInt32Exact" unsafe'c'decDoubleToUInt32Exact
+foreign import ccall unsafe "decDoubleToUInt32Exact" c'decDoubleToUInt32Exact
   :: Ptr C'decDouble
   -> Ptr C'decContext
   -> C'rounding
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleZero" unsafe'c'decDoubleZero
+foreign import ccall unsafe "decDoubleZero" c'decDoubleZero
   :: Ptr C'decDouble
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleAbs" unsafe'c'decDoubleAbs
+foreign import ccall unsafe "decDoubleAbs" c'decDoubleAbs
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleAdd" unsafe'c'decDoubleAdd
+foreign import ccall unsafe "decDoubleAdd" c'decDoubleAdd
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleAnd" unsafe'c'decDoubleAnd
+foreign import ccall unsafe "decDoubleAnd" c'decDoubleAnd
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleDivide" unsafe'c'decDoubleDivide
+foreign import ccall unsafe "decDoubleDivide" c'decDoubleDivide
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleDivideInteger" unsafe'c'decDoubleDivideInteger
+foreign import ccall unsafe "decDoubleDivideInteger" c'decDoubleDivideInteger
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleFMA" unsafe'c'decDoubleFMA
+foreign import ccall unsafe "decDoubleFMA" c'decDoubleFMA
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
@@ -227,173 +227,173 @@ foreign import ccall unsafe "decDoubleFMA" unsafe'c'decDoubleFMA
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleFromBCD" unsafe'c'decDoubleFromBCD
+foreign import ccall unsafe "decDoubleFromBCD" c'decDoubleFromBCD
   :: Ptr C'decDouble
   -> Int32
   -> Ptr Word8
   -> Int32
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleInvert" unsafe'c'decDoubleInvert
+foreign import ccall unsafe "decDoubleInvert" c'decDoubleInvert
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleLogB" unsafe'c'decDoubleLogB
+foreign import ccall unsafe "decDoubleLogB" c'decDoubleLogB
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleMax" unsafe'c'decDoubleMax
-  :: Ptr C'decDouble
-  -> Ptr C'decDouble
-  -> Ptr C'decDouble
-  -> Ptr C'decContext
-  -> IO (Ptr C'decDouble)
-
-foreign import ccall unsafe "decDoubleMaxMag" unsafe'c'decDoubleMaxMag
+foreign import ccall unsafe "decDoubleMax" c'decDoubleMax
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleMin" unsafe'c'decDoubleMin
+foreign import ccall unsafe "decDoubleMaxMag" c'decDoubleMaxMag
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleMinMag" unsafe'c'decDoubleMinMag
+foreign import ccall unsafe "decDoubleMin" c'decDoubleMin
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleMinus" unsafe'c'decDoubleMinus
-  :: Ptr C'decDouble
-  -> Ptr C'decDouble
-  -> Ptr C'decContext
-  -> IO (Ptr C'decDouble)
-
-foreign import ccall unsafe "decDoubleMultiply" unsafe'c'decDoubleMultiply
+foreign import ccall unsafe "decDoubleMinMag" c'decDoubleMinMag
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleNextMinus" unsafe'c'decDoubleNextMinus
+foreign import ccall unsafe "decDoubleMinus" c'decDoubleMinus
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleNextPlus" unsafe'c'decDoubleNextPlus
-  :: Ptr C'decDouble
-  -> Ptr C'decDouble
-  -> Ptr C'decContext
-  -> IO (Ptr C'decDouble)
-
-foreign import ccall unsafe "decDoubleNextToward" unsafe'c'decDoubleNextToward
+foreign import ccall unsafe "decDoubleMultiply" c'decDoubleMultiply
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleOr" unsafe'c'decDoubleOr
+foreign import ccall unsafe "decDoubleNextMinus" c'decDoubleNextMinus
+  :: Ptr C'decDouble
+  -> Ptr C'decDouble
+  -> Ptr C'decContext
+  -> IO (Ptr C'decDouble)
+
+foreign import ccall unsafe "decDoubleNextPlus" c'decDoubleNextPlus
+  :: Ptr C'decDouble
+  -> Ptr C'decDouble
+  -> Ptr C'decContext
+  -> IO (Ptr C'decDouble)
+
+foreign import ccall unsafe "decDoubleNextToward" c'decDoubleNextToward
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoublePlus" unsafe'c'decDoublePlus
-  :: Ptr C'decDouble
-  -> Ptr C'decDouble
-  -> Ptr C'decContext
-  -> IO (Ptr C'decDouble)
-
-foreign import ccall unsafe "decDoubleQuantize" unsafe'c'decDoubleQuantize
+foreign import ccall unsafe "decDoubleOr" c'decDoubleOr
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleReduce" unsafe'c'decDoubleReduce
+foreign import ccall unsafe "decDoublePlus" c'decDoublePlus
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleRemainder" unsafe'c'decDoubleRemainder
-  :: Ptr C'decDouble
-  -> Ptr C'decDouble
-  -> Ptr C'decDouble
-  -> Ptr C'decContext
-  -> IO (Ptr C'decDouble)
-
-foreign import ccall unsafe "decDoubleRemainderNear" unsafe'c'decDoubleRemainderNear
+foreign import ccall unsafe "decDoubleQuantize" c'decDoubleQuantize
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleRotate" unsafe'c'decDoubleRotate
+foreign import ccall unsafe "decDoubleReduce" c'decDoubleReduce
+  :: Ptr C'decDouble
+  -> Ptr C'decDouble
+  -> Ptr C'decContext
+  -> IO (Ptr C'decDouble)
+
+foreign import ccall unsafe "decDoubleRemainder" c'decDoubleRemainder
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleScaleB" unsafe'c'decDoubleScaleB
+foreign import ccall unsafe "decDoubleRemainderNear" c'decDoubleRemainderNear
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleShift" unsafe'c'decDoubleShift
+foreign import ccall unsafe "decDoubleRotate" c'decDoubleRotate
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleSubtract" unsafe'c'decDoubleSubtract
+foreign import ccall unsafe "decDoubleScaleB" c'decDoubleScaleB
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleToBCD" unsafe'c'decDoubleToBCD
+foreign import ccall unsafe "decDoubleShift" c'decDoubleShift
+  :: Ptr C'decDouble
+  -> Ptr C'decDouble
+  -> Ptr C'decDouble
+  -> Ptr C'decContext
+  -> IO (Ptr C'decDouble)
+
+foreign import ccall unsafe "decDoubleSubtract" c'decDoubleSubtract
+  :: Ptr C'decDouble
+  -> Ptr C'decDouble
+  -> Ptr C'decDouble
+  -> Ptr C'decContext
+  -> IO (Ptr C'decDouble)
+
+foreign import ccall unsafe "decDoubleToBCD" c'decDoubleToBCD
   :: Ptr C'decDouble
   -> Ptr Int32
   -> Ptr Word8
   -> IO Int32
 
-foreign import ccall unsafe "decDoubleToIntegralValue" unsafe'c'decDoubleToIntegralValue
+foreign import ccall unsafe "decDoubleToIntegralValue" c'decDoubleToIntegralValue
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> C'rounding
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleToIntegralExact" unsafe'c'decDoubleToIntegralExact
+foreign import ccall unsafe "decDoubleToIntegralExact" c'decDoubleToIntegralExact
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleXor" unsafe'c'decDoubleXor
+foreign import ccall unsafe "decDoubleXor" c'decDoubleXor
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
@@ -402,133 +402,133 @@ foreign import ccall unsafe "decDoubleXor" unsafe'c'decDoubleXor
 
 -- Comparisons
 
-foreign import ccall unsafe "decDoubleCompare" unsafe'c'decDoubleCompare
+foreign import ccall unsafe "decDoubleCompare" c'decDoubleCompare
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleCompareSignal" unsafe'c'decDoubleCompareSignal
+foreign import ccall unsafe "decDoubleCompareSignal" c'decDoubleCompareSignal
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decContext
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleCompareTotal" unsafe'c'decDoubleCompareTotal
+foreign import ccall unsafe "decDoubleCompareTotal" c'decDoubleCompareTotal
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleCompareTotalMag" unsafe'c'decDoubleCompareTotalMag
+foreign import ccall unsafe "decDoubleCompareTotalMag" c'decDoubleCompareTotalMag
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> IO (Ptr C'decDouble)
 
 -- Copies
-foreign import ccall unsafe "decDoubleCanonical" unsafe'c'decDoubleCanonical
+foreign import ccall unsafe "decDoubleCanonical" c'decDoubleCanonical
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleCopyAbs" unsafe'c'decDoubleCopyAbs
+foreign import ccall unsafe "decDoubleCopyAbs" c'decDoubleCopyAbs
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleCopyNegate" unsafe'c'decDoubleCopyNegate
+foreign import ccall unsafe "decDoubleCopyNegate" c'decDoubleCopyNegate
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleCopySign" unsafe'c'decDoubleCopySign
+foreign import ccall unsafe "decDoubleCopySign" c'decDoubleCopySign
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> Ptr C'decDouble
   -> IO (Ptr C'decDouble)
 
-foreign import ccall unsafe "decDoubleCopy" unsafe'c'decDoubleCopy
+foreign import ccall unsafe "decDoubleCopy" c'decDoubleCopy
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> IO (Ptr C'decDouble)
 
 -- Non-computational
 
-foreign import ccall unsafe "decDoubleClass" unsafe'c'decDoubleClass
+foreign import ccall unsafe "decDoubleClass" c'decDoubleClass
   :: Ptr C'decDouble
   -> IO C'decClass
 
-foreign import ccall unsafe "decDoubleClassString" unsafe'c'decDoubleClassString
+foreign import ccall unsafe "decDoubleClassString" c'decDoubleClassString
   :: Ptr C'decDouble
   -> IO CString
 
-foreign import ccall unsafe "decDoubleDigits" unsafe'c'decDoubleDigits
+foreign import ccall unsafe "decDoubleDigits" c'decDoubleDigits
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsCanonical" unsafe'c'decDoubleIsCanonical
+foreign import ccall unsafe "decDoubleIsCanonical" c'decDoubleIsCanonical
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsFinite" unsafe'c'decDoubleIsFinite
+foreign import ccall unsafe "decDoubleIsFinite" c'decDoubleIsFinite
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsInteger" unsafe'c'decDoubleIsInteger
+foreign import ccall unsafe "decDoubleIsInteger" c'decDoubleIsInteger
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsLogical" unsafe'c'decDoubleIsLogical
+foreign import ccall unsafe "decDoubleIsLogical" c'decDoubleIsLogical
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsInfinite" unsafe'c'decDoubleIsInfinite
+foreign import ccall unsafe "decDoubleIsInfinite" c'decDoubleIsInfinite
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsNaN" unsafe'c'decDoubleIsNaN
+foreign import ccall unsafe "decDoubleIsNaN" c'decDoubleIsNaN
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsNegative" unsafe'c'decDoubleIsNegative
+foreign import ccall unsafe "decDoubleIsNegative" c'decDoubleIsNegative
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsNormal" unsafe'c'decDoubleIsNormal
+foreign import ccall unsafe "decDoubleIsNormal" c'decDoubleIsNormal
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsPositive" unsafe'c'decDoubleIsPositive
+foreign import ccall unsafe "decDoubleIsPositive" c'decDoubleIsPositive
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsSignaling" unsafe'c'decDoubleIsSignaling
+foreign import ccall unsafe "decDoubleIsSignaling" c'decDoubleIsSignaling
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsSigned" unsafe'c'decDoubleIsSigned
+foreign import ccall unsafe "decDoubleIsSigned" c'decDoubleIsSigned
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsSubnormal" unsafe'c'decDoubleIsSubnormal
+foreign import ccall unsafe "decDoubleIsSubnormal" c'decDoubleIsSubnormal
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleIsZero" unsafe'c'decDoubleIsZero
+foreign import ccall unsafe "decDoubleIsZero" c'decDoubleIsZero
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleRadix" unsafe'c'decDoubleRadix
+foreign import ccall unsafe "decDoubleRadix" c'decDoubleRadix
   :: Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleSameQuantum" unsafe'c'decDoubleSameQuantum
+foreign import ccall unsafe "decDoubleSameQuantum" c'decDoubleSameQuantum
   :: Ptr C'decDouble
   -> Ptr C'decDouble
   -> IO Word32
 
-foreign import ccall unsafe "decDoubleVersion" unsafe'c'decDoubleVersion
+foreign import ccall unsafe "decDoubleVersion" c'decDoubleVersion
   :: IO CString

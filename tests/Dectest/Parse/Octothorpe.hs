@@ -202,10 +202,10 @@ applyDirectivesToOctoHex apPrec oh = Ctx $ \pCtx ->
   let setOcto = case oh of
         H32 _ -> return ()
         H64 fp -> withForeignPtr fp $ \p64 ->
-          unsafe'c'decDoublePlus (castPtr p64) (castPtr p64) pCtx >>= \_ ->
+          c'decDoublePlus (castPtr p64) (castPtr p64) pCtx >>= \_ ->
           return ()
         H128 fp -> withForeignPtr fp $ \p128 ->
-          unsafe'c'decQuadPlus (castPtr p128) (castPtr p128) pCtx >>= \_ ->
+          c'decQuadPlus (castPtr p128) (castPtr p128) pCtx >>= \_ ->
           return () in
   setOcto >>= \_ ->
   unCtx (setPrecision pOld) pCtx >>= \_ ->

@@ -284,7 +284,7 @@ fromBCD dcd =
   withForeignPtr (unQuad d) $ \pD ->
   let (expn, digs, sgn) = toDecNumberBCD dcd in
   withArray digs $ \pArr ->
-  unsafe'c'decQuadFromBCD pD expn pArr sgn >>
+  c'decQuadFromBCD pD expn pArr sgn >>
   return d
 
 -- | A Quad with coefficient 'D1', exponent 0, and sign 'NonNeg'.
@@ -299,7 +299,7 @@ toBCD d =
   withForeignPtr (unQuad d) $ \pD ->
   allocaBytes c'DECQUAD_Pmax $ \pArr ->
   alloca $ \pExp ->
-  unsafe'c'decQuadToBCD pD pExp pArr >>= \sgn ->
+  c'decQuadToBCD pD pExp pArr >>= \sgn ->
   peek pExp >>= \ex ->
   peekArray c'DECQUAD_Pmax pArr >>= \coef ->
   return (getDecoded sgn ex coef)

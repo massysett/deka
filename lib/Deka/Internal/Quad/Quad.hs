@@ -89,7 +89,7 @@ instance Show Quad where
 -- was changed here because this function doesn't return a Haskell
 -- 'String'.
 toByteStringIO :: Quad -> IO BS8.ByteString
-toByteStringIO = mkString unsafe'c'decQuadToString
+toByteStringIO = mkString c'decQuadToString
 
 toByteString :: Quad -> BS8.ByteString
 toByteString = unsafe1 toByteStringIO
@@ -117,7 +117,7 @@ mkString f d =
 compareTotalIO :: Quad -> Quad -> IO Ordering
 compareTotalIO x y = f >>= getR
   where
-    f = binaryCtxFree unsafe'c'decQuadCompareTotal x y
+    f = binaryCtxFree c'decQuadCompareTotal x y
     getR c = switchM
       [(isNegative c, LT), (isZero c, EQ), (isPositive c, GT)]
       (error "compareTotal: unknown result")
@@ -142,13 +142,13 @@ compareTotal = unsafe2 compareTotalIO
 
 -- | True only if @x@ is less than zero and is not an NaN.
 isNegative :: Quad -> IO Bool
-isNegative = boolean unsafe'c'decQuadIsNegative
+isNegative = boolean c'decQuadIsNegative
 
 -- | True only if @x@ is a zero.
 isZero :: Quad -> IO Bool
-isZero = boolean unsafe'c'decQuadIsZero
+isZero = boolean c'decQuadIsZero
 
 -- | True only if @x@ is greater than zero and is not an NaN.
 isPositive :: Quad -> IO Bool
-isPositive = boolean unsafe'c'decQuadIsPositive
+isPositive = boolean c'decQuadIsPositive
 

@@ -93,133 +93,133 @@ c'DECPUNSIGNED = #const DECPUNSIGNED
 
 -- Utilities
 
-foreign import ccall unsafe "decQuadToInt32" unsafe'c'decQuadToInt32
+foreign import ccall unsafe "decQuadToInt32" c'decQuadToInt32
   :: Ptr C'decQuad
   -> Ptr C'decContext
   -> C'rounding
   -> IO Int32
 
-foreign import ccall unsafe "decQuadToInt32Exact" unsafe'c'decQuadToInt32Exact
+foreign import ccall unsafe "decQuadToInt32Exact" c'decQuadToInt32Exact
   :: Ptr C'decQuad
   -> Ptr C'decContext
   -> C'rounding
   -> IO Int32
 
-foreign import ccall unsafe "decQuadFromInt32" unsafe'c'decQuadFromInt32
+foreign import ccall unsafe "decQuadFromInt32" c'decQuadFromInt32
   :: Ptr C'decQuad
   -> Int32
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadFromPacked" unsafe'c'decQuadFromPacked
-  :: Ptr C'decQuad
-  -> Int32
-  -> Ptr Word8
-  -> IO (Ptr C'decQuad)
-
-foreign import ccall unsafe "decQuadFromPackedChecked" unsafe'c'decQuadFromPackedChecked
+foreign import ccall unsafe "decQuadFromPacked" c'decQuadFromPacked
   :: Ptr C'decQuad
   -> Int32
   -> Ptr Word8
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadFromUInt32" unsafe'c'decQuadFromUInt32
+foreign import ccall unsafe "decQuadFromPackedChecked" c'decQuadFromPackedChecked
+  :: Ptr C'decQuad
+  -> Int32
+  -> Ptr Word8
+  -> IO (Ptr C'decQuad)
+
+foreign import ccall unsafe "decQuadFromUInt32" c'decQuadFromUInt32
   :: Ptr C'decQuad
   -> Word32
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadFromString" unsafe'c'decQuadFromString
+foreign import ccall unsafe "decQuadFromString" c'decQuadFromString
   :: Ptr C'decQuad
   -> CString
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadGetCoefficient" unsafe'c'decQuadGetCoefficient
+foreign import ccall unsafe "decQuadGetCoefficient" c'decQuadGetCoefficient
   :: Ptr C'decQuad
   -> Ptr Word8
   -> IO Int32
 
-foreign import ccall unsafe "decQuadGetExponent" unsafe'c'decQuadGetExponent
+foreign import ccall unsafe "decQuadGetExponent" c'decQuadGetExponent
   :: Ptr C'decQuad
   -> IO Int32
 
-foreign import ccall unsafe "decQuadSetCoefficient" unsafe'c'decQuadSetCoefficient
+foreign import ccall unsafe "decQuadSetCoefficient" c'decQuadSetCoefficient
   :: Ptr C'decQuad
   -> Ptr Word8
   -> Int32
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadSetExponent" unsafe'c'decQuadSetExponent
+foreign import ccall unsafe "decQuadSetExponent" c'decQuadSetExponent
   :: Ptr C'decQuad
   -> Ptr C'decContext
   -> Int32
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadShow" unsafe'c'decQuadShow
+foreign import ccall unsafe "decQuadShow" c'decQuadShow
   :: Ptr C'decQuad
   -> CString
   -> IO ()
 
-foreign import ccall unsafe "decQuadToEngString" unsafe'c'decQuadToEngString
+foreign import ccall unsafe "decQuadToEngString" c'decQuadToEngString
   :: Ptr C'decQuad
   -> CString
   -> IO CString
 
-foreign import ccall unsafe "decQuadToString" unsafe'c'decQuadToString
+foreign import ccall unsafe "decQuadToString" c'decQuadToString
   :: Ptr C'decQuad
   -> CString
   -> IO CString
 
-foreign import ccall unsafe "decQuadToUInt32" unsafe'c'decQuadToUInt32
+foreign import ccall unsafe "decQuadToUInt32" c'decQuadToUInt32
   :: Ptr C'decQuad
   -> Ptr C'decContext
   -> C'rounding
   -> IO Word32
 
 
-foreign import ccall unsafe "decQuadToUInt32Exact" unsafe'c'decQuadToUInt32Exact
+foreign import ccall unsafe "decQuadToUInt32Exact" c'decQuadToUInt32Exact
   :: Ptr C'decQuad
   -> Ptr C'decContext
   -> C'rounding
   -> IO Word32
 
-foreign import ccall unsafe "decQuadZero" unsafe'c'decQuadZero
+foreign import ccall unsafe "decQuadZero" c'decQuadZero
   :: Ptr C'decQuad
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadAbs" unsafe'c'decQuadAbs
+foreign import ccall unsafe "decQuadAbs" c'decQuadAbs
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadAdd" unsafe'c'decQuadAdd
+foreign import ccall unsafe "decQuadAdd" c'decQuadAdd
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadAnd" unsafe'c'decQuadAnd
+foreign import ccall unsafe "decQuadAnd" c'decQuadAnd
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadDivide" unsafe'c'decQuadDivide
+foreign import ccall unsafe "decQuadDivide" c'decQuadDivide
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadDivideInteger" unsafe'c'decQuadDivideInteger
+foreign import ccall unsafe "decQuadDivideInteger" c'decQuadDivideInteger
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadFMA" unsafe'c'decQuadFMA
+foreign import ccall unsafe "decQuadFMA" c'decQuadFMA
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
@@ -227,173 +227,173 @@ foreign import ccall unsafe "decQuadFMA" unsafe'c'decQuadFMA
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadFromBCD" unsafe'c'decQuadFromBCD
+foreign import ccall unsafe "decQuadFromBCD" c'decQuadFromBCD
   :: Ptr C'decQuad
   -> Int32
   -> Ptr Word8
   -> Int32
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadInvert" unsafe'c'decQuadInvert
+foreign import ccall unsafe "decQuadInvert" c'decQuadInvert
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadLogB" unsafe'c'decQuadLogB
+foreign import ccall unsafe "decQuadLogB" c'decQuadLogB
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadMax" unsafe'c'decQuadMax
-  :: Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> Ptr C'decContext
-  -> IO (Ptr C'decQuad)
-
-foreign import ccall unsafe "decQuadMaxMag" unsafe'c'decQuadMaxMag
+foreign import ccall unsafe "decQuadMax" c'decQuadMax
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadMin" unsafe'c'decQuadMin
+foreign import ccall unsafe "decQuadMaxMag" c'decQuadMaxMag
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadMinMag" unsafe'c'decQuadMinMag
+foreign import ccall unsafe "decQuadMin" c'decQuadMin
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadMinus" unsafe'c'decQuadMinus
-  :: Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> Ptr C'decContext
-  -> IO (Ptr C'decQuad)
-
-foreign import ccall unsafe "decQuadMultiply" unsafe'c'decQuadMultiply
+foreign import ccall unsafe "decQuadMinMag" c'decQuadMinMag
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadNextMinus" unsafe'c'decQuadNextMinus
+foreign import ccall unsafe "decQuadMinus" c'decQuadMinus
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadNextPlus" unsafe'c'decQuadNextPlus
-  :: Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> Ptr C'decContext
-  -> IO (Ptr C'decQuad)
-
-foreign import ccall unsafe "decQuadNextToward" unsafe'c'decQuadNextToward
+foreign import ccall unsafe "decQuadMultiply" c'decQuadMultiply
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadOr" unsafe'c'decQuadOr
+foreign import ccall unsafe "decQuadNextMinus" c'decQuadNextMinus
+  :: Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> Ptr C'decContext
+  -> IO (Ptr C'decQuad)
+
+foreign import ccall unsafe "decQuadNextPlus" c'decQuadNextPlus
+  :: Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> Ptr C'decContext
+  -> IO (Ptr C'decQuad)
+
+foreign import ccall unsafe "decQuadNextToward" c'decQuadNextToward
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadPlus" unsafe'c'decQuadPlus
-  :: Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> Ptr C'decContext
-  -> IO (Ptr C'decQuad)
-
-foreign import ccall unsafe "decQuadQuantize" unsafe'c'decQuadQuantize
+foreign import ccall unsafe "decQuadOr" c'decQuadOr
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadReduce" unsafe'c'decQuadReduce
+foreign import ccall unsafe "decQuadPlus" c'decQuadPlus
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadRemainder" unsafe'c'decQuadRemainder
-  :: Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> Ptr C'decQuad
-  -> Ptr C'decContext
-  -> IO (Ptr C'decQuad)
-
-foreign import ccall unsafe "decQuadRemainderNear" unsafe'c'decQuadRemainderNear
+foreign import ccall unsafe "decQuadQuantize" c'decQuadQuantize
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadRotate" unsafe'c'decQuadRotate
+foreign import ccall unsafe "decQuadReduce" c'decQuadReduce
+  :: Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> Ptr C'decContext
+  -> IO (Ptr C'decQuad)
+
+foreign import ccall unsafe "decQuadRemainder" c'decQuadRemainder
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadScaleB" unsafe'c'decQuadScaleB
+foreign import ccall unsafe "decQuadRemainderNear" c'decQuadRemainderNear
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadShift" unsafe'c'decQuadShift
+foreign import ccall unsafe "decQuadRotate" c'decQuadRotate
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadSubtract" unsafe'c'decQuadSubtract
+foreign import ccall unsafe "decQuadScaleB" c'decQuadScaleB
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadToBCD" unsafe'c'decQuadToBCD
+foreign import ccall unsafe "decQuadShift" c'decQuadShift
+  :: Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> Ptr C'decContext
+  -> IO (Ptr C'decQuad)
+
+foreign import ccall unsafe "decQuadSubtract" c'decQuadSubtract
+  :: Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> Ptr C'decQuad
+  -> Ptr C'decContext
+  -> IO (Ptr C'decQuad)
+
+foreign import ccall unsafe "decQuadToBCD" c'decQuadToBCD
   :: Ptr C'decQuad
   -> Ptr Int32
   -> Ptr Word8
   -> IO Int32
 
-foreign import ccall unsafe "decQuadToIntegralValue" unsafe'c'decQuadToIntegralValue
+foreign import ccall unsafe "decQuadToIntegralValue" c'decQuadToIntegralValue
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> C'rounding
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadToIntegralExact" unsafe'c'decQuadToIntegralExact
+foreign import ccall unsafe "decQuadToIntegralExact" c'decQuadToIntegralExact
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadXor" unsafe'c'decQuadXor
+foreign import ccall unsafe "decQuadXor" c'decQuadXor
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
@@ -402,133 +402,133 @@ foreign import ccall unsafe "decQuadXor" unsafe'c'decQuadXor
 
 -- Comparisons
 
-foreign import ccall unsafe "decQuadCompare" unsafe'c'decQuadCompare
+foreign import ccall unsafe "decQuadCompare" c'decQuadCompare
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadCompareSignal" unsafe'c'decQuadCompareSignal
+foreign import ccall unsafe "decQuadCompareSignal" c'decQuadCompareSignal
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decContext
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadCompareTotal" unsafe'c'decQuadCompareTotal
+foreign import ccall unsafe "decQuadCompareTotal" c'decQuadCompareTotal
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadCompareTotalMag" unsafe'c'decQuadCompareTotalMag
+foreign import ccall unsafe "decQuadCompareTotalMag" c'decQuadCompareTotalMag
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> IO (Ptr C'decQuad)
 
 -- Copies
-foreign import ccall unsafe "decQuadCanonical" unsafe'c'decQuadCanonical
+foreign import ccall unsafe "decQuadCanonical" c'decQuadCanonical
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadCopyAbs" unsafe'c'decQuadCopyAbs
+foreign import ccall unsafe "decQuadCopyAbs" c'decQuadCopyAbs
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadCopyNegate" unsafe'c'decQuadCopyNegate
+foreign import ccall unsafe "decQuadCopyNegate" c'decQuadCopyNegate
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadCopySign" unsafe'c'decQuadCopySign
+foreign import ccall unsafe "decQuadCopySign" c'decQuadCopySign
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> Ptr C'decQuad
   -> IO (Ptr C'decQuad)
 
-foreign import ccall unsafe "decQuadCopy" unsafe'c'decQuadCopy
+foreign import ccall unsafe "decQuadCopy" c'decQuadCopy
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> IO (Ptr C'decQuad)
 
 -- Non-computational
 
-foreign import ccall unsafe "decQuadClass" unsafe'c'decQuadClass
+foreign import ccall unsafe "decQuadClass" c'decQuadClass
   :: Ptr C'decQuad
   -> IO C'decClass
 
-foreign import ccall unsafe "decQuadClassString" unsafe'c'decQuadClassString
+foreign import ccall unsafe "decQuadClassString" c'decQuadClassString
   :: Ptr C'decQuad
   -> IO CString
 
-foreign import ccall unsafe "decQuadDigits" unsafe'c'decQuadDigits
+foreign import ccall unsafe "decQuadDigits" c'decQuadDigits
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsCanonical" unsafe'c'decQuadIsCanonical
+foreign import ccall unsafe "decQuadIsCanonical" c'decQuadIsCanonical
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsFinite" unsafe'c'decQuadIsFinite
+foreign import ccall unsafe "decQuadIsFinite" c'decQuadIsFinite
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsInteger" unsafe'c'decQuadIsInteger
+foreign import ccall unsafe "decQuadIsInteger" c'decQuadIsInteger
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsLogical" unsafe'c'decQuadIsLogical
+foreign import ccall unsafe "decQuadIsLogical" c'decQuadIsLogical
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsInfinite" unsafe'c'decQuadIsInfinite
+foreign import ccall unsafe "decQuadIsInfinite" c'decQuadIsInfinite
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsNaN" unsafe'c'decQuadIsNaN
+foreign import ccall unsafe "decQuadIsNaN" c'decQuadIsNaN
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsNegative" unsafe'c'decQuadIsNegative
+foreign import ccall unsafe "decQuadIsNegative" c'decQuadIsNegative
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsNormal" unsafe'c'decQuadIsNormal
+foreign import ccall unsafe "decQuadIsNormal" c'decQuadIsNormal
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsPositive" unsafe'c'decQuadIsPositive
+foreign import ccall unsafe "decQuadIsPositive" c'decQuadIsPositive
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsSignaling" unsafe'c'decQuadIsSignaling
+foreign import ccall unsafe "decQuadIsSignaling" c'decQuadIsSignaling
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsSigned" unsafe'c'decQuadIsSigned
+foreign import ccall unsafe "decQuadIsSigned" c'decQuadIsSigned
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsSubnormal" unsafe'c'decQuadIsSubnormal
+foreign import ccall unsafe "decQuadIsSubnormal" c'decQuadIsSubnormal
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadIsZero" unsafe'c'decQuadIsZero
+foreign import ccall unsafe "decQuadIsZero" c'decQuadIsZero
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadRadix" unsafe'c'decQuadRadix
+foreign import ccall unsafe "decQuadRadix" c'decQuadRadix
   :: Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadSameQuantum" unsafe'c'decQuadSameQuantum
+foreign import ccall unsafe "decQuadSameQuantum" c'decQuadSameQuantum
   :: Ptr C'decQuad
   -> Ptr C'decQuad
   -> IO Word32
 
-foreign import ccall unsafe "decQuadVersion" unsafe'c'decQuadVersion
+foreign import ccall unsafe "decQuadVersion" c'decQuadVersion
   :: IO CString

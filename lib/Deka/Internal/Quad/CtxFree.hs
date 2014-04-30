@@ -80,11 +80,11 @@ unaryGet f d =
 
 -- | More information about a particular 'Quad'.
 decClass :: Quad -> IO Class
-decClass = fmap Class . unaryGet unsafe'c'decQuadClass
+decClass = fmap Class . unaryGet c'decQuadClass
 
 -- | True for NaNs.
 isNaN :: Quad -> IO Bool
-isNaN = boolean unsafe'c'decQuadIsNaN
+isNaN = boolean c'decQuadIsNaN
 
 -- | Wrapper for 'compare' that returns an 'Ordering' rather than a
 -- 'Quad'.  Returns @Just LT@ rather than -1, @Just EQ@ rather than
@@ -103,7 +103,7 @@ compareOrd x y = do
 -- two arguments.
 compareTotalMag :: Quad -> Quad -> IO Ordering
 compareTotalMag x y = do
-  c <- binaryCtxFree unsafe'c'decQuadCompareTotalMag x y
+  c <- binaryCtxFree c'decQuadCompareTotalMag x y
   switchM [ (isNegative c, LT), (isZero c, EQ),
             (isPositive c, GT) ]
           (error "compareTotalMag: unknown result")
@@ -120,35 +120,35 @@ copySign s p =
   withForeignPtr (unQuad n) $ \pN ->
   withForeignPtr (unQuad s) $ \pS ->
   withForeignPtr (unQuad p) $ \pP ->
-  unsafe'c'decQuadCopySign pN pS pP >>
+  c'decQuadCopySign pN pS pP >>
   return n
 
 -- | Number of significant digits.  If zero or infinite, returns 1.
 -- If NaN, returns number of digits in the payload.
 digits :: Quad -> IO Int
-digits = fmap fromIntegral . unaryGet unsafe'c'decQuadDigits
+digits = fmap fromIntegral . unaryGet c'decQuadDigits
 
 fromInt32 :: Int32 -> IO Quad
 fromInt32 i =
   newQuad >>= \r ->
   withForeignPtr (unQuad r) $ \pR ->
-  unsafe'c'decQuadFromInt32 pR i
+  c'decQuadFromInt32 pR i
   >> return r
 
 fromUInt32 :: Word32 -> IO Quad
 fromUInt32 i =
   newQuad >>= \r ->
   withForeignPtr (unQuad r) $ \pR ->
-  unsafe'c'decQuadFromUInt32 pR i >>
+  c'decQuadFromUInt32 pR i >>
   return r
 
 -- | True if @x@ is neither infinite nor a NaN.
 isFinite :: Quad -> IO Bool
-isFinite = boolean unsafe'c'decQuadIsFinite
+isFinite = boolean c'decQuadIsFinite
 
 -- | True for infinities.
 isInfinite :: Quad -> IO Bool
-isInfinite = boolean unsafe'c'decQuadIsInfinite
+isInfinite = boolean c'decQuadIsInfinite
 
 -- | True if @x@ is finite and has exponent of @0@; False otherwise.
 -- This tests the exponent, not the /adjusted/ exponent.  This can
@@ -163,30 +163,30 @@ isInfinite = boolean unsafe'c'decQuadIsInfinite
 -- >>> isInteger . evalCtx . fromByteString . pack $ "3.00e0"
 -- False
 isInteger :: Quad -> IO Bool
-isInteger = boolean unsafe'c'decQuadIsInteger
+isInteger = boolean c'decQuadIsInteger
 
 -- | True only if @x@ is zero or positive, an integer (finite with
 -- exponent of 0), and the coefficient is only zeroes and/or ones.
 isLogical :: Quad -> IO Bool
-isLogical = boolean unsafe'c'decQuadIsLogical
+isLogical = boolean c'decQuadIsLogical
 
 -- | True only if @x@ is finite, non-zero, and not subnormal.
 isNormal :: Quad -> IO Bool
-isNormal = boolean unsafe'c'decQuadIsNormal
+isNormal = boolean c'decQuadIsNormal
 
 -- | True only if @x@ is a signaling NaN.
 isSignaling :: Quad -> IO Bool
-isSignaling = boolean unsafe'c'decQuadIsSignaling
+isSignaling = boolean c'decQuadIsSignaling
 
 -- | True only if @x@ has a sign of 1.  Note that zeroes and NaNs
 -- may have sign of 1.
 isSigned :: Quad -> IO Bool
-isSigned = boolean unsafe'c'decQuadIsSigned
+isSigned = boolean c'decQuadIsSigned
 
 -- | True only if @x@ is subnormal - that is, finite, non-zero, and
 -- with a magnitude less than 10 ^ emin.
 isSubnormal :: Quad -> IO Bool
-isSubnormal = boolean unsafe'c'decQuadIsSubnormal
+isSubnormal = boolean c'decQuadIsSubnormal
 
 -- | True only if both operands have the same exponent or are both
 -- NaNs (quiet or signaling) or both infinite.
@@ -194,7 +194,7 @@ sameQuantum :: Quad -> Quad -> IO Bool
 sameQuantum x y =
   withForeignPtr (unQuad x) $ \pX ->
   withForeignPtr (unQuad y) $ \pY ->
-  unsafe'c'decQuadSameQuantum pX pY >>= \r ->
+  c'decQuadSameQuantum pX pY >>= \r ->
   return $ case r of
     1 -> True
     0 -> False
@@ -207,19 +207,19 @@ sameQuantum x y =
 -- name is changed here because the function does not return a
 -- regular Haskell 'String'.
 toEngByteString :: Quad -> IO BS8.ByteString
-toEngByteString = mkString unsafe'c'decQuadToEngString
+toEngByteString = mkString c'decQuadToEngString
 
 -- | Identifies the version of the decNumber C library.
 version :: IO BS8.ByteString
 version =
-  unsafe'c'decQuadVersion >>= BS8.packCString
+  c'decQuadVersion >>= BS8.packCString
 
 -- | A Quad whose coefficient, exponent, and sign are all 0.
 zero :: IO Quad
 zero =
   newQuad >>= \d ->
   withForeignPtr (unQuad d) $ \pD ->
-  unsafe'c'decQuadZero pD >>
+  c'decQuadZero pD >>
   return d
 
 -- Conversions to decNumber
