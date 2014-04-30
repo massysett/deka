@@ -10,8 +10,8 @@ module Deka.Quad
   , toEngByteString
 
   -- * Converting to and from integers
-  , C'int32_t
-  , C'uint32_t
+  , Int32
+  , Word32
   , fromInt32
   , fromUInt32
   , toInt32
@@ -201,7 +201,7 @@ import Deka.Internal.Quad.Ctx
 import Deka.Decoded
 import qualified Deka.Internal.Quad.Decoding as D
 import Deka.Internal.Quad.Decoding hiding (fromBCD, toBCD, one)
-import Deka.Context hiding (C'int32_t)
+import Deka.Context hiding (Int32)
 import Deka.Internal.Decnumber.Types
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Class
@@ -244,10 +244,10 @@ copySign = unsafe2 C.copySign
 digits :: Quad -> Int
 digits = unsafe1 C.digits
 
-fromInt32 :: C'int32_t -> Quad
+fromInt32 :: Int32 -> Quad
 fromInt32 = unsafe1 C.fromInt32
 
-fromUInt32 :: C'uint32_t -> Quad
+fromUInt32 :: Word32 -> Quad
 fromUInt32 = unsafe1 C.fromUInt32
 
 -- | True if @x@ is neither infinite nor a NaN.

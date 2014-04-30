@@ -129,14 +129,14 @@ copySign s p =
 digits :: Quad -> IO Int
 digits = fmap fromIntegral . unaryGet unsafe'c'decQuadDigits
 
-fromInt32 :: C'int32_t -> IO Quad
+fromInt32 :: Int32 -> IO Quad
 fromInt32 i =
   newQuad >>= \r ->
   withForeignPtr (unQuad r) $ \pR ->
   unsafe'c'decQuadFromInt32 pR i
   >> return r
 
-fromUInt32 :: C'uint32_t -> IO Quad
+fromUInt32 :: Word32 -> IO Quad
 fromUInt32 i =
   newQuad >>= \r ->
   withForeignPtr (unQuad r) $ \pR ->

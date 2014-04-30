@@ -61,4 +61,4 @@ foreign import ccall unsafe "decimal64Canonical" c'decimal64Canonical
 
 foreign import ccall unsafe "decimal64IsCanonical" c'decimal64IsCanonical
   :: Ptr C'decimal64
-  -> IO C'uint32_t
+  -> IO Word32

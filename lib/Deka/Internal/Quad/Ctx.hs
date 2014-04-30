@@ -321,15 +321,15 @@ subtract = binary unsafe'c'decQuadSubtract
 
 -- | Uses the rounding method given rather than the one in the
 -- 'Ctx'.  If the operand is infinite, an NaN, or if the result of
--- rounding is outside the range of a 'C'int32_t', then
+-- rounding is outside the range of a 'Int32', then
 -- 'invalidOperation' is set.  'inexact' is not set even if rounding
 -- occurred.
-toInt32 :: Round -> Quad -> Ctx C'int32_t
+toInt32 :: Round -> Quad -> Ctx Int32
 toInt32 = getRounded unsafe'c'decQuadToInt32
 
 -- | Like 'toInt32' but if rounding removes non-zero digits then
 -- 'inexact' is set.
-toInt32Exact :: Round -> Quad -> Ctx C'int32_t
+toInt32Exact :: Round -> Quad -> Ctx Int32
 toInt32Exact = getRounded unsafe'c'decQuadToInt32Exact
 
 -- | Rounds to an integral using the rounding mode set in the 'Ctx'.
@@ -359,17 +359,17 @@ toIntegralValue (Round rnd) d = Ctx $ \pC ->
 -- | @toUInt32 r x@ returns the value of @x@, rounded to an integer
 -- if necessary using the rounding mode @r@ rather than the one
 -- given in the 'Ctx'.  If @x@ is infinite, or outside of the range
--- of a 'C'uint32_t', then 'invalidOperation' is set.  'inexact' is
+-- of a 'Word32', then 'invalidOperation' is set.  'inexact' is
 -- not set even if rounding occurs.
 --
 -- The negative zero converts to 0 and is valid, but negative
 -- numbers are not valid.
-toUInt32 :: Round -> Quad -> Ctx C'uint32_t
+toUInt32 :: Round -> Quad -> Ctx Word32
 toUInt32 = getRounded unsafe'c'decQuadToUInt32
 
 -- | Same as 'toUInt32' but if rounding removes non-zero digits then
 -- 'inexact' is set.
-toUInt32Exact :: Round -> Quad -> Ctx C'uint32_t
+toUInt32Exact :: Round -> Quad -> Ctx Word32
 toUInt32Exact = getRounded unsafe'c'decQuadToUInt32Exact
 
 -- | Runs a computation with the decimal128 default context.

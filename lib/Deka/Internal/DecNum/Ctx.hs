@@ -21,12 +21,12 @@ fromByteString bs = Ctx $ \pCtx ->
   c'decNumberFromString pDn cstr pCtx >>
   return dn
 
-toUInt32 :: DecNum -> Ctx C'uint32_t
+toUInt32 :: DecNum -> Ctx Word32
 toUInt32 dn = Ctx $ \pCtx ->
   withForeignPtr (unDecNum dn) $ \pDn ->
   c'decNumberToUInt32 pDn pCtx
 
-toInt32 :: DecNum -> Ctx C'int32_t
+toInt32 :: DecNum -> Ctx Int32
 toInt32 dn = Ctx $ \pCtx ->
   withForeignPtr (unDecNum dn) $ \pDn ->
   c'decNumberToInt32 pDn pCtx

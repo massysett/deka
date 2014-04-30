@@ -15,14 +15,14 @@ import Deka.Internal.DecNum.Util
 
 -- # Conversions
 
-fromInt32 :: C'int32_t -> IO DecNum
+fromInt32 :: Int32 -> IO DecNum
 fromInt32 i = do
   dn <- newDecNumSize 10
   withForeignPtr (unDecNum dn) $ \ptr -> do
     _ <- c'decNumberFromInt32 ptr i
     return dn
 
-fromUInt32 :: C'uint32_t -> IO DecNum
+fromUInt32 :: Word32 -> IO DecNum
 fromUInt32 i = do
   dn <- newDecNumSize 10
   withForeignPtr (unDecNum dn) $ \ptr -> do
@@ -146,12 +146,12 @@ isZero = testBool c'decNumberIsZero
 --
 
 -- | The unadjusted, non-biased exponent of a floating point number.
-newtype Exponent = Exponent { unExponent :: C'int32_t }
+newtype Exponent = Exponent { unExponent :: Int32 }
   deriving (Eq, Ord, Show)
 
 -- | The adjusted exponent; that is, the exponent that results if
 -- only one digit is to the left of the decimal point.
-newtype AdjExponent = AdjExponent { unAdjExponent :: C'int32_t }
+newtype AdjExponent = AdjExponent { unAdjExponent :: Int32 }
   deriving (Eq, Ord, Show)
 
 adjExponent :: Exponent -> Coefficient -> AdjExponent
@@ -244,7 +244,7 @@ decodeCoeff (DecNum fp) =
   withForeignPtr fp $ \ptr ->
   peek (p'decNumber'digits ptr) >>= \dgs ->
   allocaBytes (fromIntegral dgs) $ \arr ->
-  let _types = arr :: Ptr C'uint8_t in
+  let _types = arr :: Ptr Word8 in
   c'decNumberGetBCD ptr arr >>
   peekArray (fromIntegral dgs) arr >>= \dgts ->
   return . Coefficient . map intToDigit $ dgts

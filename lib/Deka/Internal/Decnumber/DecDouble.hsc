@@ -98,34 +98,34 @@ foreign import ccall unsafe "decDoubleToInt32" unsafe'c'decDoubleToInt32
   :: Ptr C'decDouble
   -> Ptr C'decContext
   -> C'rounding
-  -> IO C'int32_t
+  -> IO Int32
 
 foreign import ccall unsafe "decDoubleToInt32Exact" unsafe'c'decDoubleToInt32Exact
   :: Ptr C'decDouble
   -> Ptr C'decContext
   -> C'rounding
-  -> IO C'int32_t
+  -> IO Int32
 
 foreign import ccall unsafe "decDoubleFromInt32" unsafe'c'decDoubleFromInt32
   :: Ptr C'decDouble
-  -> C'int32_t
+  -> Int32
   -> IO (Ptr C'decDouble)
 
 foreign import ccall unsafe "decDoubleFromPacked" unsafe'c'decDoubleFromPacked
   :: Ptr C'decDouble
-  -> C'int32_t
-  -> Ptr C'uint8_t
+  -> Int32
+  -> Ptr Word8
   -> IO (Ptr C'decDouble)
 
 foreign import ccall unsafe "decDoubleFromPackedChecked" unsafe'c'decDoubleFromPackedChecked
   :: Ptr C'decDouble
-  -> C'int32_t
-  -> Ptr C'uint8_t
+  -> Int32
+  -> Ptr Word8
   -> IO (Ptr C'decDouble)
 
 foreign import ccall unsafe "decDoubleFromUInt32" unsafe'c'decDoubleFromUInt32
   :: Ptr C'decDouble
-  -> C'uint32_t
+  -> Word32
   -> IO (Ptr C'decDouble)
 
 foreign import ccall unsafe "decDoubleFromString" unsafe'c'decDoubleFromString
@@ -136,23 +136,23 @@ foreign import ccall unsafe "decDoubleFromString" unsafe'c'decDoubleFromString
 
 foreign import ccall unsafe "decDoubleGetCoefficient" unsafe'c'decDoubleGetCoefficient
   :: Ptr C'decDouble
-  -> Ptr C'uint8_t
-  -> IO C'int32_t
+  -> Ptr Word8
+  -> IO Int32
 
 foreign import ccall unsafe "decDoubleGetExponent" unsafe'c'decDoubleGetExponent
   :: Ptr C'decDouble
-  -> IO C'int32_t
+  -> IO Int32
 
 foreign import ccall unsafe "decDoubleSetCoefficient" unsafe'c'decDoubleSetCoefficient
   :: Ptr C'decDouble
-  -> Ptr C'uint8_t
-  -> C'int32_t
+  -> Ptr Word8
+  -> Int32
   -> IO (Ptr C'decDouble)
 
 foreign import ccall unsafe "decDoubleSetExponent" unsafe'c'decDoubleSetExponent
   :: Ptr C'decDouble
   -> Ptr C'decContext
-  -> C'int32_t
+  -> Int32
   -> IO (Ptr C'decDouble)
 
 foreign import ccall unsafe "decDoubleShow" unsafe'c'decDoubleShow
@@ -174,14 +174,14 @@ foreign import ccall unsafe "decDoubleToUInt32" unsafe'c'decDoubleToUInt32
   :: Ptr C'decDouble
   -> Ptr C'decContext
   -> C'rounding
-  -> IO C'uint32_t
+  -> IO Word32
 
 
 foreign import ccall unsafe "decDoubleToUInt32Exact" unsafe'c'decDoubleToUInt32Exact
   :: Ptr C'decDouble
   -> Ptr C'decContext
   -> C'rounding
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleZero" unsafe'c'decDoubleZero
   :: Ptr C'decDouble
@@ -230,9 +230,9 @@ foreign import ccall unsafe "decDoubleFMA" unsafe'c'decDoubleFMA
 
 foreign import ccall unsafe "decDoubleFromBCD" unsafe'c'decDoubleFromBCD
   :: Ptr C'decDouble
-  -> C'int32_t
-  -> Ptr C'uint8_t
-  -> C'int32_t
+  -> Int32
+  -> Ptr Word8
+  -> Int32
   -> IO (Ptr C'decDouble)
 
 foreign import ccall unsafe "decDoubleInvert" unsafe'c'decDoubleInvert
@@ -377,9 +377,9 @@ foreign import ccall unsafe "decDoubleSubtract" unsafe'c'decDoubleSubtract
 
 foreign import ccall unsafe "decDoubleToBCD" unsafe'c'decDoubleToBCD
   :: Ptr C'decDouble
-  -> Ptr C'int32_t
-  -> Ptr C'uint8_t
-  -> IO C'int32_t
+  -> Ptr Int32
+  -> Ptr Word8
+  -> IO Int32
 
 foreign import ccall unsafe "decDoubleToIntegralValue" unsafe'c'decDoubleToIntegralValue
   :: Ptr C'decDouble
@@ -468,68 +468,68 @@ foreign import ccall unsafe "decDoubleClassString" unsafe'c'decDoubleClassString
 
 foreign import ccall unsafe "decDoubleDigits" unsafe'c'decDoubleDigits
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsCanonical" unsafe'c'decDoubleIsCanonical
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsFinite" unsafe'c'decDoubleIsFinite
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsInteger" unsafe'c'decDoubleIsInteger
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsLogical" unsafe'c'decDoubleIsLogical
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsInfinite" unsafe'c'decDoubleIsInfinite
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsNaN" unsafe'c'decDoubleIsNaN
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsNegative" unsafe'c'decDoubleIsNegative
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsNormal" unsafe'c'decDoubleIsNormal
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsPositive" unsafe'c'decDoubleIsPositive
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsSignaling" unsafe'c'decDoubleIsSignaling
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsSigned" unsafe'c'decDoubleIsSigned
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsSubnormal" unsafe'c'decDoubleIsSubnormal
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleIsZero" unsafe'c'decDoubleIsZero
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleRadix" unsafe'c'decDoubleRadix
   :: Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleSameQuantum" unsafe'c'decDoubleSameQuantum
   :: Ptr C'decDouble
   -> Ptr C'decDouble
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decDoubleVersion" unsafe'c'decDoubleVersion
   :: IO CString

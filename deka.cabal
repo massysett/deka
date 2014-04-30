@@ -78,7 +78,6 @@ library
     , Deka.Internal.Decnumber.DecNumberLocal
     , Deka.Internal.Decnumber.DecDouble
     , Deka.Internal.Decnumber.DecQuad
-    , Deka.Internal.Decnumber.Types
     , Deka.Internal.Quad.CtxFree
     , Deka.Internal.Quad.Ctx
     , Deka.Internal.Quad.Decoding

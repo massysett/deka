@@ -25,8 +25,8 @@ ccall rtn fn as =
               | otherwise = "->"
 
 ctxt = "Ptr C'decContext"
-ui32 = "C'uint32_t"
-i32 = "C'int32_t"
+ui32 = "Word32"
+i32 = "Int32"
 dc n = "decContext" ++ n
 
 functions =
@@ -41,7 +41,7 @@ functions =
   , (ctxt, dc "SetStatusFromString", [ctxt, "CString"])
   , (ctxt, dc "SetStatusFromStringQuiet", [ctxt, "CString"])
   , ("CString", dc "SetStatusToString", [ctxt])
-  , (i32, dc "TestEndian", ["C'uint8_t"])
+  , (i32, dc "TestEndian", ["Word8"])
   , (ui32, dc "TestSavedStatus", [ui32, ui32])
   , (ui32, dc "TestStatus", [ctxt, ui32])
   , (ctxt, dc "ZeroStatus", [ctxt])

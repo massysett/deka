@@ -11,7 +11,7 @@ import Deka.Internal.DecNum.DecNum
 -- | Allocates a DecNum of sufficient size to hold the given number
 -- of digits.
 newDecNumSize
-  :: C'int32_t
+  :: Int32
   -- ^ New DecNum will hold this many digits.
   -> IO DecNum
 newDecNumSize i = do
@@ -22,7 +22,7 @@ newDecNumSize i = do
 -- | How many bytes must be malloc'ed to hold this many
 -- digits?
 mallocAmount
-  :: C'int32_t
+  :: Int32
   -- ^ Number of digits
   -> Int
   -- ^ Malloc this many bytes total

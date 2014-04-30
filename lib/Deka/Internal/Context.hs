@@ -93,12 +93,12 @@ setRound (Round r) = Ctx $ \ptr -> poke (p'decContext'round ptr) r
 
 -- # Precision
 
-newtype Precision = Precision { unPrecision :: C'int32_t }
+newtype Precision = Precision { unPrecision :: Int32 }
   deriving (Eq, Ord, Show)
 
 -- # Initializers
 
-newtype Initializer = Initializer { _unInitializer :: C'int32_t }
+newtype Initializer = Initializer { _unInitializer :: Int32 }
   deriving (Eq, Ord)
 
 initBase :: Initializer
@@ -159,7 +159,7 @@ local (Ctx l) = Ctx $ \parent ->
 
 -- # Flags
 
-newtype Flag = Flag { unFlag :: C'uint32_t }
+newtype Flag = Flag { unFlag :: Word32 }
   deriving (Eq, Ord, Typeable)
 
 instance Exception Flag
@@ -188,14 +188,14 @@ allFlags =
     lostDigits, overflow, clamped, rounded, subnormal,
     underflow ]
 
-whichFlags :: C'uint32_t -> [Flag]
+whichFlags :: Word32 -> [Flag]
 whichFlags i =
   map Flag
   . filter ((/= 0) . (.&. i))
   . map unFlag
   $ allFlags
 
-combineFlags :: [Flag] -> C'uint32_t
+combineFlags :: [Flag] -> Word32
 combineFlags = foldl f 0
   where
     f a (Flag b) = a .|. b
@@ -314,7 +314,7 @@ getStatus = Ctx $ \ptr -> do
 
 -- # Digits
 
-precision :: C'int32_t -> Maybe Precision
+precision :: Int32 -> Maybe Precision
 precision i
   | i < c'DEC_MIN_DIGITS = Nothing
   | i > c'DEC_MAX_DIGITS = Nothing

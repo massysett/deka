@@ -62,15 +62,15 @@ c'decContext'sizeOf :: Int
 c'decContext'sizeOf = #size decContext
 
 -- | Precision to be used.  Must be from 1 to 999,999,999.
-p'decContext'digits :: Ptr C'decContext -> Ptr C'int32_t
+p'decContext'digits :: Ptr C'decContext -> Ptr Int32
 p'decContext'digits = #ptr decContext, digits
 
 -- | Largest adjusted exponent.  Must be from 0 to 999,999,999.
-p'decContext'emax :: Ptr C'decContext -> Ptr C'int32_t
+p'decContext'emax :: Ptr C'decContext -> Ptr Int32
 p'decContext'emax = #ptr decContext, emax
 
 -- | Smallest adjusted exponent.  Must be in range -999,999,999 to 0.
-p'decContext'emin :: Ptr C'decContext -> Ptr C'int32_t
+p'decContext'emin :: Ptr C'decContext -> Ptr Int32
 p'decContext'emin = #ptr decContext, emin
 
 -- | Rounding.  Must be one of the rounding enums.
@@ -78,19 +78,19 @@ p'decContext'round :: Ptr C'decContext -> Ptr C'rounding
 p'decContext'round = #ptr decContext, round
 
 -- | Which exceptions should cause a trap.
-p'decContext'traps :: Ptr C'decContext -> Ptr C'uint32_t
+p'decContext'traps :: Ptr C'decContext -> Ptr Word32
 p'decContext'traps = #ptr decContext, traps
 
 -- | Status flags.  User should not set bits in here; only clear them.
-p'decContext'status :: Ptr C'decContext -> Ptr C'uint32_t
+p'decContext'status :: Ptr C'decContext -> Ptr Word32
 p'decContext'status = #ptr decContext, status
 
 -- | Zero for no clamping; 1 for clamping.
-p'decContext'clamp :: Ptr C'decContext -> Ptr C'uint32_t
+p'decContext'clamp :: Ptr C'decContext -> Ptr Word32
 p'decContext'clamp = #ptr decContext, clamp
 
 -- | Zero: no special values.  1: special values allowed.
-p'decContext'extended :: Ptr C'decContext -> Ptr C'uint32_t
+p'decContext'extended :: Ptr C'decContext -> Ptr Word32
 p'decContext'extended = #ptr decContext, extended
 
 c'DEC_MAX_DIGITS :: Num a => a
@@ -380,12 +380,12 @@ c'DEC_INIT_DECQUAD = #const DEC_INIT_DECQUAD
 
 foreign import ccall unsafe "decContextClearStatus" c'decContextClearStatus
   :: Ptr C'decContext
-  -> C'uint32_t
+  -> Word32
   -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextDefault" c'decContextDefault
   :: Ptr C'decContext
-  -> C'int32_t
+  -> Int32
   -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextGetRounding" c'decContextGetRounding
@@ -394,18 +394,18 @@ foreign import ccall unsafe "decContextGetRounding" c'decContextGetRounding
 
 foreign import ccall unsafe "decContextGetStatus" c'decContextGetStatus
   :: Ptr C'decContext
-  -> IO C'uint32_t
+  -> IO Word32
 
 foreign import ccall unsafe "decContextRestoreStatus" c'decContextRestoreStatus
   :: Ptr C'decContext
-  -> C'uint32_t
-  -> C'uint32_t
+  -> Word32
+  -> Word32
   -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextSaveStatus" c'decContextSaveStatus
   :: Ptr C'decContext
-  -> C'uint32_t
-  -> IO C'uint32_t
+  -> Word32
+  -> IO Word32
 
 foreign import ccall unsafe "decContextSetRounding" c'decContextSetRounding
   :: Ptr C'decContext
@@ -414,7 +414,7 @@ foreign import ccall unsafe "decContextSetRounding" c'decContextSetRounding
 
 foreign import ccall unsafe "decContextSetStatus" c'decContextSetStatus
   :: Ptr C'decContext
-  -> C'uint32_t
+  -> Word32
   -> IO (Ptr C'decContext)
 
 foreign import ccall unsafe "decContextSetStatusFromString" c'decContextSetStatusFromString
@@ -432,18 +432,18 @@ foreign import ccall unsafe "decContextStatusToString" c'decContextStatusToStrin
   -> IO CString
 
 foreign import ccall unsafe "decContextTestEndian" c'decContextTestEndian
-  :: C'uint8_t
-  -> IO C'int32_t
+  :: Word8
+  -> IO Int32
 
 foreign import ccall unsafe "decContextTestSavedStatus" c'decContextTestSavedStatus
-  :: C'uint32_t
-  -> C'uint32_t
-  -> IO C'uint32_t
+  :: Word32
+  -> Word32
+  -> IO Word32
 
 foreign import ccall unsafe "decContextTestStatus" c'decContextTestStatus
   :: Ptr C'decContext
-  -> C'uint32_t
-  -> IO C'uint32_t
+  -> Word32
+  -> IO Word32
 
 foreign import ccall unsafe "decContextZeroStatus" c'decContextZeroStatus
   :: Ptr C'decContext

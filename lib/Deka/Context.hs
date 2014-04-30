@@ -41,7 +41,7 @@ module Deka.Context
   , getStatus
 
   -- * Digits
-  , C'int32_t
+  , Int32
   , Precision
   , precision
   , unPrecision

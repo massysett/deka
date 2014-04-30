@@ -18,7 +18,7 @@ import Deka.Internal.Unsafe
 
 type Boolean
   = Ptr C'decQuad
-  -> IO C'uint32_t
+  -> IO Word32
 
 boolean
   :: Boolean

@@ -260,7 +260,7 @@ zeroExponent :: Exponent
 zeroExponent = Exponent 0
 
 
-toDecNumberBCD :: Decoded -> (C'int32_t, [C'uint8_t], C'int32_t)
+toDecNumberBCD :: Decoded -> (Int32, [Word8], Int32)
 toDecNumberBCD (Decoded s v) = (e, ds, sgn)
   where
     sgn = case s of { NonNeg -> 0; Neg -> c'DECFLOAT_Sign }
@@ -307,12 +307,12 @@ toBCD d =
 
 
 getDecoded
-  :: C'int32_t
+  :: Int32
   -- ^ Sign. Zero if sign is zero; non-zero if sign is not zero
   -- (that is, is negavite.)
-  -> C'int32_t
+  -> Int32
   -- ^ Exponent
-  -> [C'uint8_t]
+  -> [Word8]
   -- ^ Coefficient
   -> Decoded
 getDecoded sgn ex coef = Decoded s v

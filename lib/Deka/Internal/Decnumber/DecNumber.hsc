@@ -53,13 +53,13 @@ c'decNumber'sizeOf = #size decNumber
 
 data C'decNumber
 
-p'decNumber'digits :: Ptr C'decNumber -> Ptr C'int32_t
+p'decNumber'digits :: Ptr C'decNumber -> Ptr Int32
 p'decNumber'digits = #ptr decNumber, digits
 
-p'decNumber'bits :: Ptr C'decNumber -> Ptr C'uint8_t
+p'decNumber'bits :: Ptr C'decNumber -> Ptr Word8
 p'decNumber'bits = #ptr decNumber, bits
 
-p'decNumber'exponent :: Ptr C'decNumber -> Ptr C'int32_t
+p'decNumber'exponent :: Ptr C'decNumber -> Ptr Int32
 p'decNumber'exponent = #ptr decNumber, exponent
 
 p'decNumber'lsu :: Ptr C'decNumber -> Ptr C'decNumberUnit
@@ -67,12 +67,12 @@ p'decNumber'lsu = #ptr decNumber, lsu
 
 foreign import ccall unsafe "decNumberFromInt32" c'decNumberFromInt32
   :: Ptr C'decNumber
-  -> C'int32_t
+  -> Int32
   -> IO (Ptr C'decNumber)
 
 foreign import ccall unsafe "decNumberFromUInt32" c'decNumberFromUInt32
   :: Ptr C'decNumber
-  -> C'uint32_t
+  -> Word32
   -> IO (Ptr C'decNumber)
 
 foreign import ccall unsafe "decNumberFromString" c'decNumberFromString
@@ -94,22 +94,22 @@ foreign import ccall unsafe "decNumberToEngString" c'decNumberToEngString
 foreign import ccall unsafe "decNumberToUInt32" c'decNumberToUInt32
   :: Ptr C'decNumber
   -> Ptr C'decContext
-  -> IO (C'uint32_t)
+  -> IO (Word32)
 
 foreign import ccall unsafe "decNumberToInt32" c'decNumberToInt32
   :: Ptr C'decNumber
   -> Ptr C'decContext
-  -> IO (C'int32_t)
+  -> IO (Int32)
 
 foreign import ccall unsafe "decNumberGetBCD" c'decNumberGetBCD
   :: Ptr C'decNumber
-  -> Ptr C'uint8_t
-  -> IO (Ptr C'uint8_t)
+  -> Ptr Word8
+  -> IO (Ptr Word8)
 
 foreign import ccall unsafe "decNumberSetBCD" c'decNumberSetBCD
   :: Ptr C'decNumber
-  -> Ptr C'uint8_t
-  -> C'uint32_t
+  -> Ptr Word8
+  -> Word32
   -> IO (Ptr C'decNumber)
 
 foreign import ccall unsafe "decNumberAbs" c'decNumberAbs
@@ -435,12 +435,12 @@ foreign import ccall unsafe "decNumberZero" c'decNumberZero
 foreign import ccall unsafe "decNumberIsNormal" c'decNumberIsNormal
   :: Ptr C'decNumber
   -> Ptr C'decContext
-  -> IO (C'int32_t)
+  -> IO (Int32)
 
 foreign import ccall unsafe "decNumberIsSubnormal" c'decNumberIsSubnormal
   :: Ptr C'decNumber
   -> Ptr C'decContext
-  -> IO (C'int32_t)
+  -> IO (Int32)
 
 foreign import ccall unsafe "m_decNumberIsCanonical" c'decNumberIsCanonical
   :: Ptr C'decNumber
