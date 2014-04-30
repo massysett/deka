@@ -10,8 +10,6 @@ module Deka.Quad
   , toEngByteString
 
   -- * Converting to and from integers
-  , Int32
-  , Word32
   , fromInt32
   , fromUInt32
   , toInt32
@@ -201,14 +199,15 @@ import Deka.Internal.Quad.Ctx
 import Deka.Decoded
 import qualified Deka.Internal.Quad.Decoding as D
 import Deka.Internal.Quad.Decoding hiding (fromBCD, toBCD, one)
-import Deka.Context hiding (Int32)
-import Deka.Internal.Decnumber.Types
+import Deka.Context
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Class
 import qualified Deka.Internal.Quad.Quad as Q
 import Deka.Internal.Quad.Quad (Quad)
 import Deka.Internal.Unsafe
-import Prelude (Bool, Maybe, Ordering, Int)
+import Prelude (Bool, Maybe, Ordering)
+import Data.Word
+import Data.Int
 
 -- | More information about a particular 'Quad'.
 decClass :: Quad -> Class

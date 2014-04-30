@@ -2,15 +2,17 @@ module Dectest.Lookup.Quad where
 
 import Deka.Quad
 import qualified Data.ByteString.Char8 as BS8
-import Prelude (Maybe(..), String, Ordering, Bool(..), Int)
+import Prelude (Maybe(..), String, Ordering, Bool(..))
+import Data.Int
+import Data.Word
 
 data Function
   = StrToQuad (BS8.ByteString -> Ctx Quad)
   | QuadToStr (Quad -> BS8.ByteString)
   | FromInt (Int32 -> Quad)
-  | FromUInt (C'uint32_t -> Quad)
+  | FromUInt (Word32 -> Quad)
   | Rounder (Round -> Quad -> Ctx Int32)
-  | URounder (Round -> Quad -> Ctx C'uint32_t)
+  | URounder (Round -> Quad -> Ctx Word32)
   | Unary (Quad -> Ctx Quad)
   | Binary (Quad -> Quad -> Ctx Quad)
   | Ternary (Quad -> Quad -> Quad -> Ctx Quad)

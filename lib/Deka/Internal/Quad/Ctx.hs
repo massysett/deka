@@ -29,7 +29,6 @@ import Deka.Internal.Context
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.Decnumber.DecQuad
 import Deka.Internal.Decnumber.Context
-import Deka.Internal.Decnumber.Types
 import Deka.Internal.Decnumber.Decimal128
 import Deka.Internal.Quad.Quad
 

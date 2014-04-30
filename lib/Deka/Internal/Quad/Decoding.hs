@@ -28,7 +28,6 @@ import qualified Prelude
 import Deka.Decoded
 
 import Deka.Internal.Decnumber.DecQuad
-import Deka.Internal.Decnumber.Types
 import Deka.Internal.Quad.Quad
 
 -- ## Decoding and encoding helpers

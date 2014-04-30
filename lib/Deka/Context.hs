@@ -41,7 +41,6 @@ module Deka.Context
   , getStatus
 
   -- * Digits
-  , Int32
   , Precision
   , precision
   , unPrecision
@@ -92,7 +91,6 @@ module Deka.Context
 
 import Deka.Internal.Context hiding (runCtx, runCtxStatus)
 import qualified Deka.Internal.Context as I
-import Deka.Internal.Decnumber.Types
 import Deka.Internal.Unsafe
 
 runCtx :: Initializer -> Ctx a -> a

@@ -11,7 +11,6 @@ import Foreign.Safe
 import Foreign.C
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Internal.Decnumber.DecQuad
-import Deka.Internal.Decnumber.Types
 import Deka.Internal.Unsafe
 
 -- # Helpers

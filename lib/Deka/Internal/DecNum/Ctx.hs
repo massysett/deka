@@ -10,7 +10,6 @@ import Deka.Internal.Decnumber.Context
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.Class
 import Foreign.Safe
-import Deka.Internal.Decnumber.Types
 import Deka.Decoded
 
 fromByteString :: BS8.ByteString -> Ctx DecNum

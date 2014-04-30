@@ -9,7 +9,6 @@ module Deka.Internal.Decnumber.Context where
 
 import Foreign.Safe
 import Foreign.C
-import Deka.Internal.Decnumber.Types
 import Data.String
 
 type C'rounding = #type enum rounding

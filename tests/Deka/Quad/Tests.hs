@@ -1,6 +1,5 @@
 module Deka.Quad.Tests where
 
-import Deka.Internal.Decnumber.Types
 import Deka.Class
 import Deka.Quad
 import Deka.Decoded.Generators
@@ -12,6 +11,8 @@ import Deka.Internal.Context.Generators
 import Prelude hiding (round, isInfinite, exponent, isNaN)
 import Data.Maybe (fromMaybe)
 import qualified Data.ByteString.Char8 as BS8
+import Data.Int
+import Data.Word
 
 testBoolean
   :: String
@@ -125,10 +126,10 @@ intConversion n gen fr to = testGroup (n ++ " conversions")
     in null fl && i' == i
   ]
 
-genInt32 :: Gen C'int32_t
+genInt32 :: Gen Int32
 genInt32 = choose (minBound, maxBound)
 
-genUInt32 :: Gen C'uint32_t
+genUInt32 :: Gen Word32
 genUInt32 = choose (minBound, maxBound)
 
 convTests :: TestTree

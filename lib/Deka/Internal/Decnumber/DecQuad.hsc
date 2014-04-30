@@ -10,7 +10,6 @@ module Deka.Internal.Decnumber.DecQuad where
 
 import Foreign.Safe
 import Foreign.C
-import Deka.Internal.Decnumber.Types
 import Deka.Internal.Decnumber.Context
 
 c'NULL :: Num a => a

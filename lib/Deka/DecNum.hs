@@ -3,10 +3,8 @@ module Deka.DecNum
   ( DecNum
 
   -- * Conversions
-  , Int32
   , fromInt32
   , toInt32
-  , Word32
   , fromUInt32
   , toUInt32
   , fromByteString
@@ -130,11 +128,12 @@ import Deka.Internal.DecNum.CtxFree
   )
 
 import qualified Deka.Internal.DecNum.CtxFree as I
-import Deka.Internal.Decnumber.Types
 import Deka.Context
 import Deka.Internal.DecNum.Ctx
 import Deka.Internal.Unsafe
 import Deka.Decoded
+import Data.Word
+import Data.Int
 
 fromInt32 :: Int32 -> DecNum
 fromInt32 = unsafe1 I.fromInt32

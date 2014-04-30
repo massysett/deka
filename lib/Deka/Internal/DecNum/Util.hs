@@ -2,7 +2,6 @@
 
 module Deka.Internal.DecNum.Util where
 
-import Deka.Internal.Decnumber.Types
 import Deka.Internal.Decnumber.DecNumber
 import Deka.Internal.Decnumber.Context
 import Foreign.Safe

@@ -6,7 +6,6 @@ import Foreign.Safe
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.Decnumber.DecNumber
 import qualified Data.ByteString.Char8 as BS8
-import Deka.Internal.Decnumber.Types
 import Deka.Decoded
 import Deka.Context
 import Prelude

@@ -71,7 +71,7 @@ parseOcto s
       , opResult128 = rs128 s
       }
 
-octoHexPrecision :: OctoHex -> C'int32_t
+octoHexPrecision :: OctoHex -> Int32
 octoHexPrecision o = case o of
   H32 _ -> 7
   H64 _ -> 16
@@ -168,7 +168,7 @@ rs128 bs pTestRslt = Ctx $ \pCtx -> do
 
 
 applyDirectivesToDecNumber
-  :: Maybe C'int32_t
+  :: Maybe Int32
   -- ^ If Just, apply the given precision to the operand.
   -- Otherwise, apply the precision from the context.
   -> ForeignPtr D.C'decNumber

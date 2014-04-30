@@ -8,7 +8,6 @@ module Deka.Internal.Decnumber.Decimal32 where
 #include <decContext.h>
 #include <decNumber.h>
 
-import Deka.Internal.Decnumber.Types
 import Deka.Internal.Decnumber.Context
 import Deka.Internal.Decnumber.DecNumber
 import Foreign.C.Types

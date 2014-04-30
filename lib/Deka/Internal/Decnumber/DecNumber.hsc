@@ -10,7 +10,6 @@ module Deka.Internal.Decnumber.DecNumber where
 import Foreign.Safe
 import Foreign.C
 import Deka.Internal.Decnumber.Context
-import Deka.Internal.Decnumber.Types
 import Data.String
 
 c'DECNAME :: IsString a => a

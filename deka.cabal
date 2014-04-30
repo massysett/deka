@@ -133,7 +133,6 @@ Test-Suite tasty-test
     , Deka.Internal.Decnumber.Decimal32
     , Deka.Internal.Decnumber.Decimal64
     , Deka.Internal.Decnumber.Decimal128
-    , Deka.Internal.Decnumber.Types
 
   default-language:    Haskell2010
 

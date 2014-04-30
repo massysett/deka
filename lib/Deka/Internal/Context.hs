@@ -6,7 +6,6 @@ import Deka.Internal.Decnumber.Context
 import Foreign.Safe
 import Control.Applicative
 import Control.Monad
-import Deka.Internal.Decnumber.Types
 import Control.Exception
 import Data.Typeable
 

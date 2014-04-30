@@ -4,12 +4,11 @@ import Test.QuickCheck
 import Test.QuickCheck.Random
 import Test.QuickCheck.Gen
 import Deka.Internal.Decnumber.Context
-import Deka.Internal.Decnumber.Types
 import Foreign.Safe
 import System.Random.Shuffle
 import Deka.Internal.Context
 
-nine9 :: C'int32_t
+nine9 :: Int32
 nine9 = 999999999
 
 getRand :: Gen QCGen

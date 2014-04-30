@@ -57,7 +57,6 @@ import Deka.Internal.Decnumber.DecQuad
 import Deka.Internal.Decnumber.Decimal128
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.DecNum.Util
-import Deka.Internal.Decnumber.Types
 import Deka.Internal.Quad.Quad
 import Deka.Internal.Quad.Ctx (compare)
 
