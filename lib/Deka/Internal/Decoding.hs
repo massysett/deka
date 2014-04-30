@@ -1,4 +1,4 @@
-{-# LANGUAGE Safe, MultiParamTypeClasses #-}
+{-# LANGUAGE Safe, MultiParamTypeClasses, FunctionalDependencies #-}
 module Deka.Internal.Decoding where
 
 import Control.Monad
@@ -30,14 +30,16 @@ import Deka.Decoded
 import Deka.Internal.Decnumber.DecQuad
 import Deka.Internal.Quad.Quad
 
-class Decodable a where
+class Decodable a b | a -> b where
   coefficientLength :: a -> Int
   payloadLength :: a -> Int
   payloadLength a = coefficientLength a - 1
   minAdjExp :: a -> Int
   maxAdjExp :: a -> Int
-  create :: IO a
-  unwrap :: a -> ForeignPtr b
+  create :: a -> IO a
+  unwrap :: a -> a -> ForeignPtr b
+  fromBCD :: a -> Ptr b -> Int32 -> Ptr Word8 -> Int32 -> IO (Ptr b)
+  toBCD :: a -> Ptr b -> Ptr Int32 -> Ptr Word8 -> IO Int32
 
 
 -- ## Decoding and encoding helpers
@@ -59,7 +61,7 @@ oneCoefficient = Coefficient [D1]
 -- | Creates a 'Coefficient'.  Checks to ensure it is not null and
 -- that it is not longer than 'coefficientLen' and that it does not
 -- have leading zeroes (if it is 0, a single 'D0' is allowed).
-coefficient :: Decodable a => a -> [Digit] -> Maybe (Coefficient a)
+coefficient :: Decodable a b => a -> [Digit] -> Maybe (Coefficient a)
 coefficient a ls
   | null ls = Nothing
   | length ls > 1 && head ls == D0 = Nothing
@@ -77,7 +79,7 @@ newtype Payload a = Payload { unPayload :: [Digit] }
 -- | Creates a 'Payload'.  Checks to ensure it is not null, not
 -- longer than 'payloadLen' and that it does not have leading zeroes
 -- (if it is 0, a single 'D0' is allowed).
-payload :: Decodable a => a -> [Digit] -> Maybe (Payload a)
+payload :: Decodable a b => a -> [Digit] -> Maybe (Payload a)
 payload a ds
   | null ds = Nothing
   | length ds > 1 && head ds == D0 = Nothing
@@ -118,7 +120,7 @@ zeroPayload = Payload [D0]
 -- the clamp and the subnormals.
 
 -- | The minimum and maximum possible exponent.
-minMaxExp :: Decodable a => a -> (Int, Int)
+minMaxExp :: Decodable a b => a -> (Int, Int)
 minMaxExp a = (l, h)
   where
     l = minAdjExp a - coefficientLength a + 1
@@ -131,7 +133,7 @@ newtype Exponent a = Exponent { unExponent :: Int }
 
 -- | Ensures that the exponent is within the range allowed by
 -- 'minMaxExp'.
-exponent :: Decodable a => a -> Int -> Maybe (Exponent a)
+exponent :: Decodable a b => a -> Int -> Maybe (Exponent a)
 exponent a i
   | i < l = Nothing
   | i > h = Nothing
@@ -162,12 +164,12 @@ adjustedToExponent ds e = Exponent $ unAdjustedExp e -
 
 -- | The smallest possible adjusted exponent that is still normal.
 -- Adjusted exponents smaller than this are subnormal.
-minNormalAdj :: Decodable a => a -> AdjustedExp a
+minNormalAdj :: Decodable a b => a -> AdjustedExp a
 minNormalAdj a = AdjustedExp (minAdjExp a)
 
 -- | Like 'minNormalAdj', but returns the size of the regular exponent
 -- rather than the adjusted exponent.
-minNormalExp :: Decodable a => a -> Coefficient a -> Exponent a
+minNormalExp :: Decodable a b => a -> Coefficient a -> Exponent a
 minNormalExp a c = adjustedToExponent c $ minNormalAdj a
 
 -- | An Exponent whose value is 0.
@@ -187,7 +189,7 @@ data Decoded a = Decoded
   , dValue :: Value a
   } deriving (Eq, Ord, Show)
 
-toDecNumberBCD :: Decodable a => a -> Decoded a -> (Int32, [Word8], Int32)
+toDecNumberBCD :: Decodable a b => a -> Decoded a -> (Int32, [Word8], Int32)
 toDecNumberBCD a (Decoded s v) = (e, ds, sgn)
   where
     sgn = case s of { NonNeg -> 0; Neg -> c'DECFLOAT_Sign }
@@ -205,37 +207,33 @@ toDecNumberBCD a (Decoded s v) = (e, ds, sgn)
         where
           pad = replicate (coefficientLength a - length digs) 0
 
-{-
-
-
-
--- | Encodes a new 'Quad'.
-fromBCD :: Decoded -> IO Quad
-fromBCD dcd =
-  newQuad >>= \d ->
-  withForeignPtr (unQuad d) $ \pD ->
-  let (expn, digs, sgn) = toDecNumberBCD dcd in
+encode
+  :: Decodable a b
+  => a
+  -> Decoded a
+  -> IO a
+encode t dcd =
+  create t >>= \d ->
+  withForeignPtr (unwrap t d) $ \pD ->
+  let (expn, digs, sgn) = toDecNumberBCD t dcd in
   withArray digs $ \pArr ->
-  c'decQuadFromBCD pD expn pArr sgn >>
+  fromBCD t pD expn pArr sgn >>= \_ ->
   return d
 
--- | A Quad with coefficient 'D1', exponent 0, and sign 'NonNeg'.
-one :: IO Quad
-one = fromBCD
+-- | A new value with coefficient 'D1', exponent 0, and sign 'NonNeg'.
+one :: Decodable a b => a -> IO a
+one a = encode a
   $ Decoded NonNeg (Finite (Coefficient [D1]) (Exponent 0))
 
--- | Decodes a 'Quad' to a pure Haskell type which holds identical
--- information.
-toBCD :: Quad -> IO Decoded
-toBCD d =
-  withForeignPtr (unQuad d) $ \pD ->
-  allocaBytes c'DECQUAD_Pmax $ \pArr ->
+decode :: Decodable a b => a -> IO (Decoded a)
+decode a =
+  withForeignPtr (unwrap a a) $ \pD ->
+  allocaBytes (coefficientLength a) $ \pArr ->
   alloca $ \pExp ->
-  c'decQuadToBCD pD pExp pArr >>= \sgn ->
+  toBCD a pD pExp pArr >>= \sgn ->
   peek pExp >>= \ex ->
-  peekArray c'DECQUAD_Pmax pArr >>= \coef ->
+  peekArray (coefficientLength a) pArr >>= \coef ->
   return (getDecoded sgn ex coef)
-
 
 getDecoded
   :: Int32
@@ -245,7 +243,7 @@ getDecoded
   -- ^ Exponent
   -> [Word8]
   -- ^ Coefficient
-  -> Decoded
+  -> Decoded a
 getDecoded sgn ex coef = Decoded s v
   where
     s = if sgn == 0 then NonNeg else Neg
@@ -259,6 +257,7 @@ getDecoded sgn ex coef = Decoded s v
         toDigs c = case dropWhile (== D0) . map intToDigit $ c of
           [] -> [D0]
           xs -> xs
+
 
 -- # Conversions
 
@@ -274,7 +273,7 @@ getDecoded sgn ex coef = Decoded s v
 -- Like decQuadToString, the payload of an NaN is not shown if it is
 -- zero.
 
-scientific :: Decoded -> String
+scientific :: Decoded a -> String
 scientific d = sign ++ rest
   where
     sign = case dSign d of
@@ -285,7 +284,7 @@ scientific d = sign ++ rest
       Finite c e -> sciFinite c e
       NaN n p -> sciNaN n p
 
-sciFinite :: Coefficient -> Exponent -> String
+sciFinite :: Coefficient a -> Exponent b -> String
 sciFinite c e = sCoe ++ 'E':sExp
   where
     sCoe = case unCoefficient c of
@@ -295,7 +294,7 @@ sciFinite c e = sCoe ++ 'E':sExp
       [] -> error "sciFinite: empty coefficient"
     sExp = show . unAdjustedExp . adjustedExp c $ e
 
-sciNaN :: NaN -> Payload -> String
+sciNaN :: NaN -> Payload a -> String
 sciNaN n p = nStr ++ pStr
   where
     nStr = case n of { Quiet -> "NaN"; Signaling -> "sNaN" }
@@ -303,7 +302,7 @@ sciNaN n p = nStr ++ pStr
       [D0] -> ""
       xs -> map digitToChar xs
 
--- | Converts Decoded to ordinary decimal notation.  For NaNs and
+-- | Converts Decoded a to ordinary decimal notation.  For NaNs and
 -- infinities, the notation is identical to that of 'scientific'.
 -- Unlike 'scientific', though the result can always be converted back
 -- to a 'Quad' using 'fromByteString', the number of significant
@@ -312,7 +311,7 @@ sciNaN n p = nStr ++ pStr
 -- reading it back in with @fromByteString@ will give you @1200E0@,
 -- which has four significant digits.
 
-ordinary :: Decoded -> String
+ordinary :: Decoded a -> String
 ordinary d = sign ++ rest
   where
     sign = case dSign d of
@@ -323,7 +322,7 @@ ordinary d = sign ++ rest
       Finite c e -> onyFinite c e
       NaN n p -> sciNaN n p
 
-onyFinite :: Coefficient -> Exponent -> String
+onyFinite :: Coefficient a -> Exponent b -> String
 onyFinite c e
   | coe == [D0] = "0"
   | ex >= 0 = map digitToChar coe ++ replicate ex '0'
@@ -339,9 +338,9 @@ onyFinite c e
     aex = Prelude.abs ex
     lCoe = length coe
 
--- | Converts a Decoded to a Rational.  Returns Nothing if the
--- Decoded is not finite.
-decodedToRational :: Decoded -> Maybe Rational
+-- | Converts a Decoded a to a Rational.  Returns Nothing if the
+-- Decoded a is not finite.
+decodedToRational :: Decoded a -> Maybe Rational
 decodedToRational d = case dValue d of
   (Finite c e) ->
     let int = digitsToInteger . unCoefficient $ c
@@ -351,19 +350,19 @@ decodedToRational d = case dValue d of
     in Just . mkSgn $ fromIntegral int * mult
   _ -> Nothing
 
--- # Decoded predicates
+-- # Decoded a predicates
 
-dIsFinite :: Decoded -> Bool
+dIsFinite :: Decoded a -> Bool
 dIsFinite (Decoded _ v) = case v of
   Finite _ _ -> True
   _ -> False
 
-dIsInfinite :: Decoded -> Bool
+dIsInfinite :: Decoded a -> Bool
 dIsInfinite (Decoded _ v) = case v of
   Infinite -> True
   _ -> False
 
-dIsInteger :: Decoded -> Bool
+dIsInteger :: Decoded a -> Bool
 dIsInteger (Decoded _ v) = case v of
   Finite _ e -> unExponent e == 0
   _ -> False
@@ -372,7 +371,7 @@ dIsInteger (Decoded _ v) = case v of
 -- exponent of 0), and the coefficient is only zeroes and/or ones.
 -- The sign must be NonNeg (that is, you cannot have a negative
 -- zero.)
-dIsLogical :: Decoded -> Bool
+dIsLogical :: Decoded a -> Bool
 dIsLogical (Decoded s v) = fromMaybe False $ do
   guard $ s == NonNeg
   (d, e) <- case v of
@@ -383,7 +382,7 @@ dIsLogical (Decoded s v) = fromMaybe False $ do
     . all (\x -> x == D0 || x == D1)
     . unCoefficient $ d
 
-dIsNaN :: Decoded -> Bool
+dIsNaN :: Decoded a -> Bool
 dIsNaN (Decoded _ v) = case v of
   NaN _ _ -> True
   _ -> False
@@ -391,7 +390,7 @@ dIsNaN (Decoded _ v) = case v of
 -- | True only if @x@ is less than zero and is not an NaN.  It's not
 -- enough for the sign to be Neg; the coefficient (if finite) must
 -- be greater than zero.
-dIsNegative :: Decoded -> Bool
+dIsNegative :: Decoded a -> Bool
 dIsNegative (Decoded s v) = fromMaybe False $ do
   guard $ s == Neg
   return $ case v of
@@ -399,14 +398,14 @@ dIsNegative (Decoded s v) = fromMaybe False $ do
     Infinite -> True
     _ -> False
 
-dIsNormal :: Decoded -> Bool
-dIsNormal (Decoded _ v) = case v of
+dIsNormal :: Decodable a b => a -> Decoded a -> Bool
+dIsNormal a (Decoded _ v) = case v of
   Finite d e
-    | adjustedExp d e < minNormalAdj -> False
+    | adjustedExp d e < minNormalAdj a -> False
     | otherwise -> any (/= D0) . unCoefficient $ d
   _ -> False
 
-dIsPositive :: Decoded -> Bool
+dIsPositive :: Decoded a -> Bool
 dIsPositive (Decoded s v)
   | s == Neg = False
   | otherwise = case v of
@@ -414,91 +413,90 @@ dIsPositive (Decoded s v)
       Infinite -> True
       _ -> False
 
-dIsSignaling :: Decoded -> Bool
+dIsSignaling :: Decoded a -> Bool
 dIsSignaling (Decoded _ v) = case v of
   NaN Signaling _ -> True
   _ -> False
 
 
-dIsSigned :: Decoded -> Bool
+dIsSigned :: Decoded a -> Bool
 dIsSigned (Decoded s _) = s == Neg
 
-dIsSubnormal :: Decoded -> Bool
-dIsSubnormal (Decoded _ v) = case v of
-  Finite d e -> adjustedExp d e < minNormalAdj
+dIsSubnormal :: Decodable a b => a -> Decoded a -> Bool
+dIsSubnormal a (Decoded _ v) = case v of
+  Finite d e -> adjustedExp d e < minNormalAdj a
   _ -> False
 
 -- | True for any zero (negative or positive zero).
-dIsZero :: Decoded -> Bool
+dIsZero :: Decoded a -> Bool
 dIsZero (Decoded _ v) = case v of
   Finite d _ -> all (== D0) . unCoefficient $ d
   _ -> False
 
--- # DecClass-like Decoded predicates
+-- # DecClass-like Decoded a predicates
 
-dIsSNaN :: Decoded -> Bool
+dIsSNaN :: Decoded a -> Bool
 dIsSNaN d = case dValue d of
   NaN n _ -> n == Signaling
   _ -> False
 
-dIsQNaN :: Decoded -> Bool
+dIsQNaN :: Decoded a -> Bool
 dIsQNaN d = case dValue d of
   NaN n _ -> n == Quiet
   _ -> False
 
-dIsNegInf :: Decoded -> Bool
+dIsNegInf :: Decoded a -> Bool
 dIsNegInf d
   | dSign d == NonNeg = False
   | otherwise = dValue d == Infinite
 
-dIsNegNormal :: Decoded -> Bool
-dIsNegNormal d
+dIsNegNormal :: Decodable a b => a -> Decoded a -> Bool
+dIsNegNormal a d
   | dSign d == NonNeg = False
   | otherwise = case dValue d of
-      Finite c e -> e >= minNormalExp c
+      Finite c e -> e >= minNormalExp a c
       _ -> False
 
-dIsNegSubnormal :: Decoded -> Bool
-dIsNegSubnormal d
+dIsNegSubnormal :: Decodable a b => a -> Decoded a -> Bool
+dIsNegSubnormal a d
   | dSign d == NonNeg = False
   | otherwise = case dValue d of
-      Finite c e -> e < minNormalExp c
+      Finite c e -> e < minNormalExp a c
       _ -> False
 
-dIsNegZero :: Decoded -> Bool
+dIsNegZero :: Decoded a -> Bool
 dIsNegZero d
   | dSign d == NonNeg = False
   | otherwise = case dValue d of
       Finite c _ -> unCoefficient c == [D0]
       _ -> False
 
-dIsPosZero :: Decoded -> Bool
+dIsPosZero :: Decoded a -> Bool
 dIsPosZero d
   | dSign d == Neg = False
   | otherwise = case dValue d of
       Finite c _ -> unCoefficient c == [D0]
       _ -> False
 
-dIsPosSubnormal :: Decoded -> Bool
-dIsPosSubnormal d
+dIsPosSubnormal :: Decodable a b => a -> Decoded a -> Bool
+dIsPosSubnormal a d
   | dSign d == Neg = False
   | otherwise = case dValue d of
-      Finite c e -> e < minNormalExp c
+      Finite c e -> e < minNormalExp a c
       _ -> False
 
-dIsPosNormal :: Decoded -> Bool
-dIsPosNormal d
+dIsPosNormal :: Decodable a b => a -> Decoded a -> Bool
+dIsPosNormal a d
   | dSign d == Neg = False
   | otherwise = case dValue d of
-      Finite c e -> e >= minNormalExp c
+      Finite c e -> e >= minNormalExp a c
       _ -> False
 
-dIsPosInf :: Decoded -> Bool
+dIsPosInf :: Decoded a -> Bool
 dIsPosInf d
   | dSign d == Neg = False
   | otherwise = dValue d == Infinite
 
--}
 -- # decQuad functions not recreated here:
 
 -- skipped: classString - not needed
