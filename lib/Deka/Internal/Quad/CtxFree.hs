@@ -58,7 +58,7 @@ import Deka.Internal.Decnumber.Decimal128
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.DecNum.Util
 import Deka.Internal.Quad.Quad
-import Deka.Internal.Quad.Ctx (compare)
+import Deka.Internal.Quad.Ctx (compare, downcast)
 
 -- # Helpers.  Do not export these.
 
@@ -230,6 +230,6 @@ toNumber (Quad fp) =
   newDecNumSize c'DECQUAD_Pmax >>= \dn ->
   withForeignPtr fp $ \ptrQuad ->
   withForeignPtr (unDecNum dn) $ \ptrDn ->
-  c'decimal128ToNumber (castPtr ptrQuad) ptrDn >>
+  c'decimal128ToNumber (downcast ptrQuad) ptrDn >>
   return dn
 

@@ -55,6 +55,7 @@ import Deka.Internal.Decnumber.Decimal32
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.DecNum.Util
 import Deka.Internal.Single.Single
+import Deka.Internal.Single.Ctx (downcast)
 
 -- # Helpers.  Do not export these.
 
@@ -102,6 +103,6 @@ toNumber (Single fp) =
   newDecNumSize c'DECSINGLE_Pmax >>= \dn ->
   withForeignPtr fp $ \ptrSingle ->
   withForeignPtr (unDecNum dn) $ \ptrDn ->
-  c'decimal32ToNumber (castPtr ptrSingle) ptrDn >>
+  c'decimal32ToNumber (downcast ptrSingle) ptrDn >>
   return dn
 

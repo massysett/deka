@@ -34,9 +34,8 @@ mallocAmount s = base + extra
     extra = sizeOf (undefined :: C'decNumberUnit) * fromIntegral extraUnits
 
 oneDigitDecNum :: IO DecNum
-oneDigitDecNum = do
-  fp <- mallocForeignPtrBytes c'decNumber'sizeOf
-  return $ DecNum (castForeignPtr fp)
+oneDigitDecNum = fmap DecNum $
+  mallocForeignPtrBytes c'decNumber'sizeOf
 
 newDecNum :: Ptr C'decContext -> IO DecNum
 newDecNum p = do
@@ -47,9 +46,9 @@ newDecNum p = do
 
 copyDecNum :: DecNum -> IO DecNum
 copyDecNum (DecNum p) = withForeignPtr p $ \dp ->
-  peek (p'decNumber'digits (castPtr dp)) >>= \dgts ->
+  peek (p'decNumber'digits dp) >>= \dgts ->
   newDecNumSize dgts >>= \dn' ->
   withForeignPtr (unDecNum dn') $ \dp' ->
-  c'decNumberCopy (castPtr dp') (castPtr dp) >>
+  c'decNumberCopy dp' dp >>
   return dn'
 

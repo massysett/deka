@@ -407,5 +407,8 @@ fromNumber (DecNum fpd) = Ctx $ \pCtx ->
   newQuad >>= \r ->
   withForeignPtr (unQuad r) $ \pR ->
   withForeignPtr fpd $ \pDn ->
-  c'decimal128FromNumber (castPtr pR) pDn pCtx >>
+  c'decimal128FromNumber (downcast pR) pDn pCtx >>
   return r
+
+downcast :: Ptr C'decQuad -> Ptr C'decimal128
+downcast = castPtr

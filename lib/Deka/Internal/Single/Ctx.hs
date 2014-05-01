@@ -148,5 +148,8 @@ fromNumber (DecNum fpd) = Ctx $ \pCtx ->
   newSingle >>= \r ->
   withForeignPtr (unSingle r) $ \pR ->
   withForeignPtr fpd $ \pDn ->
-  c'decimal32FromNumber (castPtr pR) pDn pCtx >>
+  c'decimal32FromNumber (downcast pR) pDn pCtx >>
   return r
+
+downcast :: Ptr C'decSingle -> Ptr C'decimal32
+downcast = castPtr

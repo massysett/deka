@@ -59,7 +59,7 @@ import Deka.Internal.Decnumber.Decimal64
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.DecNum.Util
 import Deka.Internal.Double.Double
-import Deka.Internal.Double.Ctx (compare)
+import Deka.Internal.Double.Ctx (compare, downcast)
 
 -- # Helpers.  Do not export these.
 
@@ -231,6 +231,6 @@ toNumber (Double fp) =
   newDecNumSize c'DECDOUBLE_Pmax >>= \dn ->
   withForeignPtr fp $ \ptrDouble ->
   withForeignPtr (unDecNum dn) $ \ptrDn ->
-  c'decimal64ToNumber (castPtr ptrDouble) ptrDn >>
+  c'decimal64ToNumber (downcast ptrDouble) ptrDn >>
   return dn
 

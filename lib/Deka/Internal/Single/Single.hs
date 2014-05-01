@@ -59,8 +59,7 @@ binaryCtxFree f x y =
 -- | Decimal number.  As indicated in the General Decimal
 -- Arithmetic specification, a 'Single' might be a finite number
 -- (perhaps the most common type) or it might be infinite or a
--- not-a-number.  'decClass' will tell you a little more about a
--- particular 'Single'.
+-- not-a-number.
 newtype Single = Single { unSingle :: ForeignPtr C'decSingle }
 
 -- | The Show instance uses 'toByteString'.

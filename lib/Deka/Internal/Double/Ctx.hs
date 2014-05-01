@@ -408,5 +408,8 @@ fromNumber (DecNum fpd) = Ctx $ \pCtx ->
   newDouble >>= \r ->
   withForeignPtr (unDouble r) $ \pR ->
   withForeignPtr fpd $ \pDn ->
-  c'decimal64FromNumber (castPtr pR) pDn pCtx >>
+  c'decimal64FromNumber (downcast pR) pDn pCtx >>
   return r
+
+downcast :: Ptr C'decDouble -> Ptr C'decimal64
+downcast = castPtr

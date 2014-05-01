@@ -82,7 +82,7 @@ copySign src sgn =
   newDecNumSize dgts >>= \dn' ->
   withForeignPtr (unDecNum dn') $ \dp' ->
   withForeignPtr (unDecNum sgn) $ \pn ->
-  c'decNumberCopySign (castPtr dp') pc pn >>
+  c'decNumberCopySign dp' pc pn >>
   return dn'
 
 trim :: DecNum -> IO DecNum
@@ -217,8 +217,7 @@ oneCoefficient = Coefficient [D1]
 decode :: DecNum -> IO Decoded
 decode dn =
   withForeignPtr (unDecNum dn) $ \fp ->
-  let pdn = castPtr fp in
-  peek (p'decNumber'bits pdn) >>= \bits ->
+  peek (p'decNumber'bits fp) >>= \bits ->
   decodeCoeff dn >>= \coe ->
   decodeExponent dn >>= \ex ->
   decodeSign dn >>= \sgn ->
@@ -253,11 +252,10 @@ decodeCoeff (DecNum fp) =
 encodeCoeff :: Coefficient -> DecNum -> IO ()
 encodeCoeff (Coefficient ds) (DecNum fp) =
   withForeignPtr fp $ \dptr ->
-  let pDn = castPtr dptr
-      len = length ds in
+  let len = length ds in
   allocaArray len $ \arr ->
   pokeArray arr (map digitToInt ds) >>
-  c'decNumberSetBCD pDn arr (fromIntegral len) >>
+  c'decNumberSetBCD dptr arr (fromIntegral len) >>
   return ()
 
 
@@ -274,14 +272,13 @@ infinity :: Sign -> IO DecNum
 infinity s =
   oneDigitDecNum >>= \dn ->
   withForeignPtr (unDecNum dn) $ \pd ->
-  let p = castPtr pd in
-  poke (p'decNumber'digits p) 1 >>
-  poke (p'decNumber'exponent p) 0 >>
-  poke (p'decNumber'lsu p) 0 >>
+  poke (p'decNumber'digits pd) 1 >>
+  poke (p'decNumber'exponent pd) 0 >>
+  poke (p'decNumber'lsu pd) 0 >>
   let bSgn | s == Neg = c'DECNEG
            | otherwise = 0
       bts = bSgn .|. c'DECINF in
-  poke (p'decNumber'bits p) bts >>
+  poke (p'decNumber'bits pd) bts >>
   return dn
 
 -- | Encodes quiet or signaling NaNs.
@@ -290,15 +287,14 @@ notANumber s nt coe =
   let len = length . unCoefficient $ coe in
   newDecNumSize (fromIntegral len) >>= \dn ->
   withForeignPtr (unDecNum dn) $ \dPtr ->
-  let pDn = castPtr dPtr in
-  poke (p'decNumber'digits pDn) (fromIntegral len) >>
-  poke (p'decNumber'exponent pDn) 0 >>
+  poke (p'decNumber'digits dPtr) (fromIntegral len) >>
+  poke (p'decNumber'exponent dPtr) 0 >>
   let bSgn | s == Neg = c'DECNEG
            | otherwise = 0
       bNaN | nt == Quiet = c'DECNAN
            | otherwise = c'DECSNAN
       bts = bSgn .|. bNaN in
-  poke (p'decNumber'bits pDn) bts >>
+  poke (p'decNumber'bits dPtr) bts >>
   encodeCoeff coe dn >>
   return dn
 
@@ -322,12 +318,11 @@ nonSpecialCtxFree mnd sgn coe ex
     let len = length . unCoefficient $ coe in
     newDecNumSize (fromIntegral len) >>= \dn ->
     withForeignPtr (unDecNum dn) $ \dPtr ->
-    let pDn = castPtr dPtr in
-    poke (p'decNumber'digits pDn) (fromIntegral len) >>
-    poke (p'decNumber'exponent pDn) (unExponent ex) >>
+    poke (p'decNumber'digits dPtr) (fromIntegral len) >>
+    poke (p'decNumber'exponent dPtr) (unExponent ex) >>
     let bSgn | sgn == Neg = c'DECNEG
              | otherwise = 0 in
-    poke (p'decNumber'bits pDn) bSgn >>
+    poke (p'decNumber'bits dPtr) bSgn >>
     encodeCoeff coe dn >>
     return dn
 
