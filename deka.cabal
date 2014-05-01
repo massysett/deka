@@ -81,6 +81,10 @@ library
     , Deka.Internal.Decnumber.DecDouble
     , Deka.Internal.Decnumber.DecSingle
     , Deka.Internal.Decnumber.DecQuad
+    , Deka.Internal.Single.CtxFree
+    , Deka.Internal.Single.Ctx
+    , Deka.Internal.Single.Decoding
+    , Deka.Internal.Single.Single
     , Deka.Internal.Double.CtxFree
     , Deka.Internal.Double.Ctx
     , Deka.Internal.Double.Decoding

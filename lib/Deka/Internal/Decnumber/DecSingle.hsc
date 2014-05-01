@@ -94,6 +94,13 @@ c'DECPUNSIGNED = #const DECPUNSIGNED
 
 -- Utilities
 
+foreign import ccall unsafe "decSingleFromBCD" c'decSingleFromBCD
+  :: Ptr C'decSingle
+  -> Int32
+  -> Ptr Word8
+  -> Int32
+  -> IO (Ptr C'decSingle)
+
 foreign import ccall unsafe "decSingleFromPacked" c'decSingleFromPacked
   :: Ptr C'decSingle
   -> Int32

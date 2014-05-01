@@ -55,7 +55,7 @@ import Deka.Internal.Class
 import Deka.Context
 
 import Deka.Internal.Decnumber.DecDouble
-import Deka.Internal.Decnumber.Decimal128
+import Deka.Internal.Decnumber.Decimal64
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.DecNum.Util
 import Deka.Internal.Double.Double
@@ -94,7 +94,7 @@ isNaN = boolean c'decDoubleIsNaN
 
 compareOrd :: Double -> Double -> IO (Maybe Ordering)
 compareOrd x y = do
-  let c = runCtx initDecimal128 $ compare x y
+  let c = runCtx initDecimal64 $ compare x y
   switchM [ (isNaN c, Nothing), (isNegative c, Just LT),
             (isZero c, Just EQ), (isPositive c, Just GT)]
           (error "compareOrd: unknown result")
@@ -231,6 +231,6 @@ toNumber (Double fp) =
   newDecNumSize c'DECDOUBLE_Pmax >>= \dn ->
   withForeignPtr fp $ \ptrDouble ->
   withForeignPtr (unDecNum dn) $ \ptrDn ->
-  c'decimal128ToNumber (castPtr ptrDouble) ptrDn >>
+  c'decimal64ToNumber (castPtr ptrDouble) ptrDn >>
   return dn
 

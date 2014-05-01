@@ -30,7 +30,7 @@ import Deka.Internal.Context
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.Decnumber.DecDouble
 import Deka.Internal.Decnumber.Context
-import Deka.Internal.Decnumber.Decimal128
+import Deka.Internal.Decnumber.Decimal64
 import Deka.Internal.Double.Double
 
 type Unary
@@ -372,11 +372,11 @@ toUInt32 = getRounded c'decDoubleToUInt32
 toUInt32Exact :: Round -> Double -> Ctx Word32
 toUInt32Exact = getRounded c'decDoubleToUInt32Exact
 
--- | Runs a computation with the decimal128 default context.
+-- | Runs a computation with the decimal64 default context.
 runDouble :: Ctx a -> a
-runDouble = Deka.Context.runCtx initDecimal128
+runDouble = Deka.Context.runCtx initDecimal64
 
--- | Runs a computation with the decimal128 default context, and
+-- | Runs a computation with the decimal64 default context, and
 -- returns any resulting flags.
 runDoubleStatus :: Ctx a -> (a, [Flag])
 runDoubleStatus a = runDouble $ do
@@ -408,5 +408,5 @@ fromNumber (DecNum fpd) = Ctx $ \pCtx ->
   newDouble >>= \r ->
   withForeignPtr (unDouble r) $ \pR ->
   withForeignPtr fpd $ \pDn ->
-  c'decimal128FromNumber (castPtr pR) pDn pCtx >>
+  c'decimal64FromNumber (castPtr pR) pDn pCtx >>
   return r
