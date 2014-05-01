@@ -16,7 +16,7 @@
 -- 'Deka' represents only finite values.  There are no infinities or
 -- not-a-number values allowed.
 --
--- For more control over your arithmetic, see "Data.Deka.Quad", but
+-- For more control over your arithmetic, see "Deka.Fixed.Quad", but
 -- for many routine uses this module is sufficient and is more
 -- succinct because, unlike 'Quad', 'Deka' is a member of the 'Num'
 -- typeclass.
@@ -33,8 +33,8 @@ module Deka
 import Control.Exception
 import Data.Maybe
 import Data.Typeable
-import Deka.Quad
-import qualified Deka.Quad as P
+import Deka.Fixed.Quad
+import qualified Deka.Fixed.Quad as P
 import qualified Data.ByteString.Char8 as BS8
 
 -- | Thrown by arithmetic functions in the Num class, as this is the
@@ -93,7 +93,7 @@ instance Ord Deka where
 -- arguments are out of range or if they produce results that are
 -- out of range or inexact.  For functions that don't throw, you can
 -- use 'integralToDeka' rather than 'fromInteger', or you can use
--- "Data.Deka.Quad" instead of 'Deka'.
+-- "Deka.Fixed.Quad" instead of 'Deka'.
 instance Num Deka where
   Deka x + Deka y = Deka . eval $ P.add x y
   Deka x - Deka y = Deka . eval $ P.subtract x y

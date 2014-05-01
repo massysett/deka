@@ -58,7 +58,6 @@ library
     , Deka.Decoded
     , Deka.Docs
     , Deka.Docs.Examples
-    , Deka.Quad
     , Deka.Fixed
     , Deka.Fixed.Single
     , Deka.Fixed.Double

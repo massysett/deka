@@ -1,7 +1,7 @@
-module Deka.Quad.Tests where
+module Deka.Fixed.Quad.Tests where
 
 import Deka.Class
-import Deka.Quad
+import Deka.Fixed.Quad
 import Deka.Decoded.Generators
 import Test.Tasty
 import Test.Tasty.QuickCheck

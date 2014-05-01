@@ -3,7 +3,7 @@ Examples for the Deka library
 
 For very simple arithmetic, just import `Deka`.  It contains a
 `Deka` type, which is an instance of Num.  For more control over your
-arithmetic, import `Deka.Quad`.  Be aware that `Quad` exports some
+arithmetic, import `Deka.Fixed.Quad`.  Be aware that `Quad` exports some
 functions that clash with Prelude names, so you might want to do a
 qualified `import`; however we will just import them unqualified
 here.
@@ -24,7 +24,7 @@ here.
 > module Deka.Docs.Examples where
 
 > import Deka
-> import Deka.Quad
+> import Deka.Fixed.Quad
 > import Data.Maybe
 
 We need Char8 ByteStrings when working with the `Deka.Quad` module:
@@ -123,14 +123,14 @@ apply `error` and quit.  That way you are assured that if you have a
 result, it is not rounded.
 
 
-More flexibility with the `Data.Deka.Quad` module
+More flexibility with the `Deka.Fixed.Quad` module
 =================================================
 
 Though the `Deka` type provides you with some flexibility--and it's
 easy to use because it's an instance of `Num`--sometimes you need more
 flexibility.  If you want to perform division, for example, `Deka` is
 no good.  For more flexibility, but more cumbersome use, turn to the
-`Data.Deka.Quad` module.
+`Deka.Fixed.Quad` module.
 
 The main type of the `Quad` module is called `Quad`, after decQuad in
 the decNumber library.  It exposes the full power of the decNumber
@@ -219,7 +219,7 @@ number of decimal places you want to round to.
 
 By default, rounding is done using the "roundHalfEven" method.  You
 can set a different rounding method if you wish; the rounding
-methods are listed in the Haddock documentation for `Data.Deka.Quad`.
+methods are listed in the Haddock documentation for `Deka.Fixed.Quad`.
 
 > putStrLn "This is 10 / 6, rounded using the 'roundDown' method.";
 > BS8.putStrLn . toByteString . runQuad $ do

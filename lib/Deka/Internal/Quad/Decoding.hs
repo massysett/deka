@@ -56,9 +56,9 @@ instance Bounded Coefficient where
 
 instance Enum Coefficient where
   toEnum i
-    | i < 0 = error $ "Deka.Quad.Coefficient.toEnum: argument "
+    | i < 0 = error $ "Deka.Fixed.Quad.Coefficient.toEnum: argument "
       ++ "out of range; is negative"
-    | length r > coefficientLen = error $ "Deka.Quad.Coefficient."
+    | length r > coefficientLen = error $ "Deka.Fixed.Quad.Coefficient."
         ++ "toEnum: argument too large"
     | otherwise = Coefficient r
     where
@@ -66,7 +66,7 @@ instance Enum Coefficient where
 
   fromEnum i
     | r > (fromIntegral (maxBound :: Int)) =
-        error $ "Deka.Quad.Coefficient.fromEnum:"
+        error $ "Deka.Fixed.Quad.Coefficient.fromEnum:"
           ++ " argument too large to fit into Int"
     | otherwise = fromIntegral r
     where
@@ -103,9 +103,9 @@ instance Bounded Payload where
 
 instance Enum Payload where
   toEnum i
-    | i < 0 = error $ "Deka.Quad.Payload.toEnum: argument "
+    | i < 0 = error $ "Deka.Fixed.Quad.Payload.toEnum: argument "
       ++ "out of range; is negative"
-    | length r > payloadLen = error $ "Deka.Quad.Payload."
+    | length r > payloadLen = error $ "Deka.Fixed.Quad.Payload."
         ++ "toEnum: argument too large"
     | otherwise = Payload r
     where
@@ -113,7 +113,7 @@ instance Enum Payload where
 
   fromEnum i
     | r > (fromIntegral (maxBound :: Int)) =
-        error $ "Deka.Quad.Payload.fromEnum:"
+        error $ "Deka.Fixed.Quad.Payload.fromEnum:"
           ++ " argument too large to fit into Int"
     | otherwise = fromIntegral r
     where

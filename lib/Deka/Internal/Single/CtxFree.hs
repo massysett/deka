@@ -22,7 +22,7 @@
 -- Many functions in this module clash with Prelude names, so you
 -- might want to do
 --
--- > import qualified Data.Deka.Single as Q
+-- > import qualified Deka.Single as Q
 module Deka.Internal.Single.CtxFree where
 
 -- # Imports

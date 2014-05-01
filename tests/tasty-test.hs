@@ -9,7 +9,7 @@ import Deka.Internal.Quad.CtxFree.Tests
 import qualified Deka.Internal.Quad.Immutability
 import System.Posix.Signals
 import Test.Tasty
-import qualified Deka.Quad.Tests
+import qualified Deka.Fixed.Quad.Tests
 import Dectest.Parse
 import Dectest.Parse.Tokens
 import Dectest.Lookup
@@ -23,7 +23,7 @@ import qualified Dectest
 tests :: TestTree
 tests = testGroup "all tests"
   [ Deka.Internal.Quad.Immutability.tests
-  , Deka.Quad.Tests.tests
+  , Deka.Fixed.Quad.Tests.tests
   , Dectest.Binary.tests
   ]
 

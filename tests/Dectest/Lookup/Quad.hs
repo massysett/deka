@@ -1,6 +1,6 @@
 module Dectest.Lookup.Quad where
 
-import Deka.Quad
+import Deka.Fixed.Quad
 import qualified Data.ByteString.Char8 as BS8
 import Prelude (Maybe(..), String, Ordering, Bool(..))
 import Data.Int
@@ -27,7 +27,7 @@ data Function
 
 data Record = Record
   { recName :: String
-  -- ^ The function is known by this name in Deka.Quad
+  -- ^ The function is known by this name in Deka.Fixed.Quad
 
   , recTestName :: Maybe String
   -- ^ The name of the corresponding Decnumber test keyword, if
