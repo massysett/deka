@@ -63,6 +63,8 @@ library
     , Deka.Fixed.Single
     , Deka.Fixed.Double
     , Deka.Fixed.Quad
+    , Deka.Classes
+    , Deka.Interface
 
   other-modules:
       Deka.Internal
@@ -83,6 +85,7 @@ library
     , Deka.Internal.Decnumber.DecQuad
     , Deka.Internal.Fixed.Basic
     , Deka.Internal.Fixed.Arithmetic
+    , Deka.Internal.Fixed.Transcendental
     , Deka.Internal.Fixed.Decoding
     , Deka.Internal.Quad.CtxFree
     , Deka.Internal.Quad.Ctx

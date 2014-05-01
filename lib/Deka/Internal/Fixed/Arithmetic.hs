@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 module Deka.Internal.Fixed.Arithmetic where
 
 import Foreign.Safe
@@ -13,7 +14,7 @@ type Binary a =
 type Ternary a = 
   Ptr a -> Ptr a -> Ptr a -> Ptr a -> Ptr C'decContext -> IO (Ptr a)
 
-class Arith a where
+class Arith w a | w -> a where
   abs :: Unary a
   add :: Binary a
   and :: Binary a
