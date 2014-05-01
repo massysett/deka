@@ -1,7 +1,7 @@
-module Deka.Internal.Quad.Decoding.Generators where
+module Deka.Internal.Double.Decoding.Generators where
 
 import Deka.Decoded
-import Deka.Internal.Quad.Decoding
+import Deka.Internal.Double.Decoding
 import Deka.Decoded.Generators
 import Test.QuickCheck hiding (maxSize)
 import Prelude hiding (exponent)

@@ -1,46 +1,46 @@
 -- | Test utilities
 
-module Deka.Internal.Quad.Tests.Util where
+module Deka.Internal.Double.Tests.Util where
 
 import Deka.Internal.Context
 import Deka.Internal.Context.Generators
-import Deka.Internal.Decnumber.DecQuad
-import Deka.Internal.Quad.Quad
-import Deka.Internal.Quad.Decoding
-import Deka.Internal.Quad.Decoding.Generators
+import Deka.Internal.Decnumber.DecDouble
+import Deka.Internal.Double.Double
+import Deka.Internal.Double.Decoding
+import Deka.Internal.Double.Decoding.Generators
 import Foreign.Safe
 import qualified Data.ByteString as BS
 import Test.QuickCheck
 import Test.Tasty.QuickCheck (testProperty)
 import Test.Tasty (testGroup, TestTree)
 import Test.QuickCheck.Monadic
-import Prelude hiding (round)
+import Prelude hiding (round, Double)
 
--- | Verify that the contents of a Quad did not change.
+-- | Verify that the contents of a Double did not change.
 
 noChange
-  :: Quad
-  -- ^ Quad to inspect
+  :: Double
+  -- ^ Double to inspect
   -> IO a
   -- ^ Run this IO action after initial inspection of the quad
   -> IO Bool
-  -- ^ True if the Quad did NOT change after running the IO action.
-  -- False if the Quad changed.
+  -- ^ True if the Double did NOT change after running the IO action.
+  -- False if the Double changed.
 noChange q a =
-  withForeignPtr (unQuad q) $ \ptr ->
-  BS.packCStringLen (castPtr ptr, c'decQuad'sizeOf) >>= \before ->
+  withForeignPtr (unDouble q) $ \ptr ->
+  BS.packCStringLen (castPtr ptr, c'decDouble'sizeOf) >>= \before ->
   a >>
-  BS.packCStringLen (castPtr ptr, c'decQuad'sizeOf) >>= \after ->
+  BS.packCStringLen (castPtr ptr, c'decDouble'sizeOf) >>= \after ->
   return (before == after)
 
-pNoChange :: Quad -> IO a -> Property
+pNoChange :: Double -> IO a -> Property
 pNoChange q a = monadicIO $ do
   r <- run $ noChange q a
   assert r
 
 -- | Unary function does not change first argument
 unaryCF
-  :: (Quad -> IO a)
+  :: (Double -> IO a)
   -> TestTree
 unaryCF f = testProperty desc test
   where
@@ -51,7 +51,7 @@ unaryCF f = testProperty desc test
       assert r
 
 binaryCF
-  :: (Quad -> Quad -> IO a)
+  :: (Double -> Double -> IO a)
   -> TestTree
 binaryCF f = testGroup desc tests
   where
@@ -74,7 +74,7 @@ binaryCF f = testGroup desc tests
       assert
 
 ternaryCF
-  :: (Quad -> Quad -> Quad -> IO a)
+  :: (Double -> Double -> Double -> IO a)
   -> TestTree
 ternaryCF f = testGroup desc tests
   where
@@ -113,7 +113,7 @@ ternaryCF f = testGroup desc tests
 
 
 unary
-  :: (Quad -> Ctx a)
+  :: (Double -> Ctx a)
   -> TestTree
 unary fn = testProperty desc tst
   where
@@ -128,7 +128,7 @@ unary fn = testProperty desc tst
       assert
 
 binary
-  :: (Quad -> Quad -> Ctx a)
+  :: (Double -> Double -> Ctx a)
   -> TestTree
 binary fn = testGroup desc tsts
   where
@@ -158,7 +158,7 @@ binary fn = testGroup desc tsts
       assert
 
 ternary
-  :: (Quad -> Quad -> Quad -> Ctx a)
+  :: (Double -> Double -> Double -> Ctx a)
   -> TestTree
 ternary fn = testGroup desc tsts
   where
@@ -206,11 +206,11 @@ ternary fn = testGroup desc tsts
       assert
 
 rounded
-  :: (Round -> Quad -> Ctx a)
+  :: (Round -> Double -> Ctx a)
   -> TestTree
 rounded fn = testProperty desc tst
   where
-    desc = "rounded: does not change only Quad argument"
+    desc = "rounded: does not change only Double argument"
     tst = forAll round $ \r ->
       forAll genDecoded $ \dcd ->
       forAll (fmap Blind context) $ \(Blind ioCtx) ->

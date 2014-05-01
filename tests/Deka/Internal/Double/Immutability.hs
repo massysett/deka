@@ -1,13 +1,13 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Deka.Internal.Quad.Immutability where
+module Deka.Internal.Double.Immutability where
 
-import Deka.Internal.Quad.Tests.Util
-import Deka.Internal.Quad.CtxFree
-import Deka.Internal.Quad.Ctx hiding (unary, binary, ternary)
+import Deka.Internal.Double.Tests.Util
+import Deka.Internal.Double.CtxFree
+import Deka.Internal.Double.Ctx hiding (unary, binary, ternary)
 import Test.Tasty
 
 tests :: TestTree
-tests = testGroup "immutability - Quad"
+tests = testGroup "immutability - Double"
   [ testGroup "abs" [unary abs]
   , testGroup "add" [binary add]
   , testGroup "and" [binary and]

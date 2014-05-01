@@ -1,1 +1,1 @@
-module Deka.Internal.Quad.CtxFree.Tests where
+module Deka.Internal.Double.CtxFree.Tests where
