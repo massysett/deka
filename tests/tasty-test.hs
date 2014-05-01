@@ -11,6 +11,7 @@ import qualified Deka.Internal.Double.Immutability
 import System.Posix.Signals
 import Test.Tasty
 import qualified Deka.Fixed.Quad.Tests
+import qualified Deka.Fixed.Double.Tests
 import Dectest.Parse
 import Dectest.Parse.Tokens
 import Dectest.Lookup
@@ -26,6 +27,7 @@ tests = testGroup "all tests"
   [ Deka.Internal.Quad.Immutability.tests
   , Deka.Internal.Double.Immutability.tests
   , Deka.Fixed.Quad.Tests.tests
+  , Deka.Fixed.Double.Tests.tests
   , Dectest.Binary.tests
   ]
 
