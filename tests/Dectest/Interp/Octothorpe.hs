@@ -14,6 +14,9 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe
 import qualified Deka.DecNum as DN
 import Deka.Internal.DecNum.DecNum
+import Deka.Internal.Single.Single
+import Deka.Internal.Double.Double
+import Deka.Internal.Quad.Quad
 import Deka.Internal.Decnumber.DecNumber (c'decNumberPlus)
 import Deka.Context
 import Deka.Internal.Context
@@ -23,11 +26,13 @@ import qualified Deka.Internal.Decnumber.DecNumber as D
 import qualified Deka.Internal.Decnumber.Decimal32 as D32
 import qualified Deka.Internal.Decnumber.Decimal64 as D64
 import qualified Deka.Internal.Decnumber.Decimal128 as D128
+import Deka.Internal.Decnumber.DecSingle (C'decSingle)
 import Deka.Internal.Decnumber.DecQuad
 import Deka.Internal.Decnumber.DecDouble
 import Foreign.Safe hiding (void)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString as BS
+import Prelude hiding (Double)
 
 data WhichPrecision
   = FromCtx
@@ -45,19 +50,19 @@ isNull = (== "#")
 -- | When parsing a result token, parseOcto returns a function that
 -- you use to compare the result of the test computation to the
 -- token.
-type CompareResult a = Ptr a -> Ctx Bool
+type CompareResult a = a -> Ctx Bool
 
-type ConvertOp a = WhichPrecision -> Ctx (ForeignPtr a)
+type ConvertOp a = WhichPrecision -> Ctx a
 
 data OctoParsers = OctoParsers
-  { opOperandDec :: ConvertOp D.C'decNumber
-  , opOperand32 :: ConvertOp D32.C'decimal32
-  , opOperand64 :: ConvertOp D64.C'decimal64
-  , opOperand128 :: ConvertOp D128.C'decimal128
-  , opResultDec :: CompareResult D.C'decNumber
-  , opResult32 :: CompareResult D32.C'decimal32
-  , opResult64 :: CompareResult D64.C'decimal64
-  , opResult128 :: CompareResult D128.C'decimal128
+  { opOperandDec :: ConvertOp DecNum
+  , opOperand32 :: ConvertOp Single
+  , opOperand64 :: ConvertOp Double
+  , opOperand128 :: ConvertOp Quad
+  , opResultDec :: CompareResult DecNum
+  , opResult32 :: CompareResult Single
+  , opResult64 :: CompareResult Double
+  , opResult128 :: CompareResult Quad
   }
 
 parseOcto :: BS8.ByteString -> Parsed
@@ -91,7 +96,7 @@ getOctoHex bs setF ptr = do
     Nothing -> unCtx (octoString bs setF) ptr
 
 
-opDec :: BS8.ByteString -> ConvertOp D.C'decNumber
+opDec :: BS8.ByteString -> ConvertOp DecNum
 opDec bs apPrec = Ctx $ \pCtx -> do
   oh <- getOctoHex bs True pCtx
   dn <- octoHexToDecNum oh
@@ -100,71 +105,83 @@ opDec bs apPrec = Ctx $ \pCtx -> do
         DoNotRound -> Just pcsn
         FromCtx -> Nothing
   _ <- unCtx (applyDirectivesToDecNumber mayPrec dn) pCtx
-  return dn
+  return $ DecNum dn
 
 
-op32 :: BS8.ByteString -> ConvertOp D32.C'decimal32
+op32 :: BS8.ByteString -> ConvertOp Single
 op32 bs _ = Ctx $ \pCtx -> do
   oh <- getOctoHex bs True pCtx
   return $ case oh of
-    H32 p -> p
+    H32 p -> Single (upcast32 p)
     _ -> error "op32: unsupported conversion"
 
-op64 :: BS8.ByteString -> ConvertOp D64.C'decimal64
+upcast32 :: ForeignPtr D32.C'decimal32 -> ForeignPtr C'decSingle
+upcast32 = castForeignPtr
+
+op64 :: BS8.ByteString -> ConvertOp Double
 op64 bs apPrec = Ctx $ \pCtx -> do
   oh <- getOctoHex bs True pCtx
   unCtx (applyDirectivesToOctoHex apPrec oh) pCtx
   case oh of
-    H64 p -> return p
+    H64 p -> return . Double . upcast64 $ p
     _ -> error "op64: unsupported conversion"
 
-op128 :: BS8.ByteString -> ConvertOp D128.C'decimal128
+upcast64 :: ForeignPtr D64.C'decimal64 -> ForeignPtr C'decDouble
+upcast64 = castForeignPtr
+
+op128 :: BS8.ByteString -> ConvertOp Quad
 op128 bs apPrec = Ctx $ \pCtx -> do
   oh <- getOctoHex bs True pCtx
   unCtx (applyDirectivesToOctoHex apPrec oh) pCtx
   case oh of
-    H128 p -> return p
+    H128 p -> return . Quad . upcast128 $ p
     _ -> error "op128: unsupported conversion"
 
-rsDec :: BS8.ByteString -> CompareResult D.C'decNumber
-rsDec bs pTestResult = Ctx $ \pCtx -> do
-  oh <- getOctoHex bs False pCtx
+upcast128 :: ForeignPtr D128.C'decimal128 -> ForeignPtr C'decQuad
+upcast128 = castForeignPtr
+
+rsDec :: BS8.ByteString -> CompareResult DecNum
+rsDec bs (DecNum fpTestResult) = Ctx $ \pCtx ->
+  getOctoHex bs False pCtx >>= \oh ->
+  withForeignPtr fpTestResult $ \pTestResult ->
   case oh of
     H32 fpTarget32 -> withForeignPtr fpTarget32 $ \pTarget32 ->
       allocaBytes D32.c'decimal32'sizeOf $ \pConvTestResult ->
       D32.c'decimal32FromNumber pConvTestResult pTestResult pCtx >>= \_ ->
-      equalDecimal32 pConvTestResult pTarget32
+      equalDecimal32 pConvTestResult (castPtr pTarget32)
 
     H64 fpTarget64 -> withForeignPtr fpTarget64 $ \pTarget64 ->
       allocaBytes D64.c'decimal64'sizeOf $ \pConvTestResult ->
       D64.c'decimal64FromNumber pConvTestResult pTestResult pCtx >>= \_ ->
-      equalDecimal64 pConvTestResult pTarget64
+      equalDecimal64 pConvTestResult (castPtr pTarget64)
 
     H128 fpTarget128 -> withForeignPtr fpTarget128 $ \pTarget128 ->
       allocaBytes D128.c'decimal128'sizeOf $ \pConvTestResult ->
       D128.c'decimal128FromNumber pConvTestResult pTestResult pCtx >>= \_ ->
-      equalDecimal128 pConvTestResult pTarget128
+      equalDecimal128 pConvTestResult (castPtr pTarget128)
 
-
-rs32 :: BS8.ByteString -> CompareResult D32.C'decimal32
-rs32 bs pTestRslt = Ctx $ \pCtx -> do
-  oh <- getOctoHex bs False pCtx
+rs32 :: BS8.ByteString -> CompareResult Single
+rs32 bs (Single fpTestRslt) = Ctx $ \pCtx ->
+  getOctoHex bs False pCtx >>= \oh ->
+  withForeignPtr fpTestRslt $ \pTestRslt ->
   case oh of
     H32 fpTarget32 -> withForeignPtr fpTarget32 $ \pTgt ->
       equalDecimal32 pTgt pTestRslt
     _ -> error "rs32: unsupported conversion"
 
-rs64 :: BS8.ByteString -> CompareResult D64.C'decimal64
-rs64 bs pTestRslt = Ctx $ \pCtx -> do
-  oh <- getOctoHex bs False pCtx
+rs64 :: BS8.ByteString -> CompareResult Double
+rs64 bs (Double fpTestRslt) = Ctx $ \pCtx ->
+  getOctoHex bs False pCtx >>= \oh ->
+  withForeignPtr fpTestRslt $ \pTestRslt ->
   case oh of
     H64 fpTarget64 -> withForeignPtr fpTarget64 $ \pTgt ->
       equalDecimal64 pTgt pTestRslt
     _ -> error "rs64: unsupported conversion"
 
-rs128 :: BS8.ByteString -> CompareResult D128.C'decimal128
-rs128 bs pTestRslt = Ctx $ \pCtx -> do
-  oh <- getOctoHex bs False pCtx
+rs128 :: BS8.ByteString -> CompareResult Quad
+rs128 bs (Quad fpTestRslt) = Ctx $ \pCtx ->
+  getOctoHex bs False pCtx >>= \oh ->
+  withForeignPtr fpTestRslt $ \pTestRslt ->
   case oh of
     H128 fpTarget128 -> withForeignPtr fpTarget128 $ \pTgt ->
       equalDecimal128 pTgt pTestRslt
@@ -296,21 +313,21 @@ octoString bs setFlgs
       return (ctor fpR)
 
 -- | Compare two Decimal32 to see if they are equal.
-equalDecimal32 :: Ptr D32.C'decimal32 -> Ptr D32.C'decimal32 -> IO Bool
+equalDecimal32 :: Ptr D32.C'decimal32 -> Ptr C'decSingle -> IO Bool
 equalDecimal32 x y = do
   bx <- BS.packCStringLen (castPtr x, D32.c'decimal32'sizeOf)
   by <- BS.packCStringLen (castPtr y, D32.c'decimal32'sizeOf)
   return $ bx == by
 
 -- | Compare two Decimal64 to see if they are equal.
-equalDecimal64 :: Ptr D64.C'decimal64 -> Ptr D64.C'decimal64 -> IO Bool
+equalDecimal64 :: Ptr D64.C'decimal64 -> Ptr C'decDouble -> IO Bool
 equalDecimal64 x y = do
   bx <- BS.packCStringLen (castPtr x, D64.c'decimal64'sizeOf)
   by <- BS.packCStringLen (castPtr y, D64.c'decimal64'sizeOf)
   return $ bx == by
 
 -- | Compare two Decimal128 to see if they are equal.
-equalDecimal128 :: Ptr D128.C'decimal128 -> Ptr D128.C'decimal128 -> IO Bool
+equalDecimal128 :: Ptr D128.C'decimal128 -> Ptr C'decQuad -> IO Bool
 equalDecimal128 x y = do
   bx <- BS.packCStringLen (castPtr x, D128.c'decimal128'sizeOf)
   by <- BS.packCStringLen (castPtr y, D128.c'decimal128'sizeOf)
