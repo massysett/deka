@@ -24,6 +24,7 @@ import qualified Dectest.Interp.Octothorpe
 import qualified Dectest.Util
 import qualified Dectest
 import qualified Dectest.Interp.Operand
+import qualified Dectest.Interp.Result
 
 tests :: TestTree
 tests = testGroup "all tests"

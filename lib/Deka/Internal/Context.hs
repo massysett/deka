@@ -97,9 +97,17 @@ newtype Precision = Precision { unPrecision :: Int32 }
 
 -- # Initializers
 
+-- | Before running computations in a context. the context must be
+-- initialized with certain settings, such as the rounding mode,
+-- precision, and maximum adjusted exponent.  An 'Initializer'
+-- contains all these settings.
 newtype Initializer = Initializer { _unInitializer :: Int32 }
   deriving (Eq, Ord)
 
+-- | This sets:
+--
+-- * 'Precision' to @9@
+-- * 'setEmax' to 
 initBase :: Initializer
 initBase = Initializer c'DEC_INIT_BASE
 
