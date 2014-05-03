@@ -18,6 +18,7 @@ import Dectest.Parse
 import Dectest.Parse.Tokens
 import Dectest.Lookup
 import Dectest.Lookup.Quad
+import Dectest.Lookup.Double
 import qualified Dectest.Binary
 import qualified Dectest.Parse.Operand
 import qualified Dectest.Interp.Octothorpe
