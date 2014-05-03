@@ -54,24 +54,6 @@ instance Bounded Coefficient where
   minBound = Coefficient [D0]
   maxBound = Coefficient $ replicate coefficientLen D9
 
-instance Enum Coefficient where
-  toEnum i
-    | i < 0 = error $ "Deka.Fixed.Quad.Coefficient.toEnum: argument "
-      ++ "out of range; is negative"
-    | length r > coefficientLen = error $ "Deka.Fixed.Quad.Coefficient."
-        ++ "toEnum: argument too large"
-    | otherwise = Coefficient r
-    where
-      r = integralToDigits i
-
-  fromEnum i
-    | r > (fromIntegral (maxBound :: Int)) =
-        error $ "Deka.Fixed.Quad.Coefficient.fromEnum:"
-          ++ " argument too large to fit into Int"
-    | otherwise = fromIntegral r
-    where
-      r = digitsToInteger . unCoefficient $ i
-
 -- | Creates a 'Coefficient'.  Checks to ensure it is not null and
 -- that it is not longer than 'coefficientLen' and that it does not
 -- have leading zeroes (if it is 0, a single 'D0' is allowed).
@@ -100,24 +82,6 @@ newtype Payload = Payload { unPayload :: [Digit] }
 instance Bounded Payload where
   minBound = Payload [D0]
   maxBound = Payload $ replicate payloadLen D9
-
-instance Enum Payload where
-  toEnum i
-    | i < 0 = error $ "Deka.Fixed.Quad.Payload.toEnum: argument "
-      ++ "out of range; is negative"
-    | length r > payloadLen = error $ "Deka.Fixed.Quad.Payload."
-        ++ "toEnum: argument too large"
-    | otherwise = Payload r
-    where
-      r = integralToDigits i
-
-  fromEnum i
-    | r > (fromIntegral (maxBound :: Int)) =
-        error $ "Deka.Fixed.Quad.Payload.fromEnum:"
-          ++ " argument too large to fit into Int"
-    | otherwise = fromIntegral r
-    where
-      r = digitsToInteger . unPayload $ i
 
 -- | Creates a 'Payload'.  Checks to ensure it is not null, not
 -- longer than 'payloadLen' and that it does not have leading zeroes
@@ -189,17 +153,6 @@ instance Bounded AdjustedExp where
   minBound = AdjustedExp $ fst minMaxExp
   maxBound = AdjustedExp $ snd minMaxExp + coefficientLen - 1
 
-instance Enum AdjustedExp where
-  toEnum i
-    | r < minBound = error e
-    | r > maxBound = error e
-    | otherwise = r
-    where
-      r = AdjustedExp i
-      e = "Deka.AdjustedExp.toEnum: integer out of range"
-
-  fromEnum (AdjustedExp i) = i
-
 adjustedExp :: Coefficient -> Exponent -> AdjustedExp
 adjustedExp ds e = AdjustedExp $ unExponent e
   + dDigits ds - 1
@@ -232,17 +185,6 @@ newtype Exponent = Exponent { unExponent :: Int }
 instance Bounded Exponent where
   minBound = Exponent . fst $ minMaxExp
   maxBound = Exponent . snd $ minMaxExp
-
-instance Enum Exponent where
-  toEnum i
-    | r < minBound = error e
-    | r > maxBound = error e
-    | otherwise = r
-    where
-      r = Exponent i
-      e = "Deka.Exponent.toEnum: integer out of range"
-
-  fromEnum (Exponent i) = i
 
 -- | Ensures that the exponent is within the range allowed by
 -- 'minMaxExp'.

@@ -34,6 +34,7 @@ import Control.Exception
 import Data.Maybe
 import Data.Typeable
 import Deka.Fixed.Quad
+import Deka.Internal.Quad.Decoding (Coefficient(..))
 import qualified Deka.Fixed.Quad as P
 import qualified Data.ByteString.Char8 as BS8
 
@@ -117,7 +118,7 @@ instance Real Deka where
 instance Bounded Deka where
   minBound = Deka $ fromBCD (Decoded Neg (Finite oneCoeff minBound))
     where
-      oneCoeff = succ minBound
+      oneCoeff = Coefficient [D1]
   maxBound = Deka $ fromBCD (Decoded NonNeg (Finite maxBound maxBound))
 
 

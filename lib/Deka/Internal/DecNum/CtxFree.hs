@@ -5,6 +5,7 @@ module Deka.Internal.DecNum.CtxFree where
 import Foreign.Safe
 import Deka.Internal.DecNum.DecNum
 import Deka.Internal.Decnumber.DecNumber
+import Deka.Internal.Decnumber.Context
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Decoded
 import Deka.Context
@@ -199,8 +200,8 @@ newtype Coefficient = Coefficient { unCoefficient :: [Digit] }
 coefficient :: [Digit] -> Maybe Coefficient
 coefficient ls
   | null ls = Nothing
-  | length ls > 1 && head ls == D0 = Nothing
-  | length ls > 999999999 = Nothing
+  | length ls > c'DEC_MIN_DIGITS && head ls == D0 = Nothing
+  | length ls > c'DEC_MAX_DIGITS = Nothing
   | otherwise = Just . Coefficient $ ls
 
 -- | Coefficient of 'D0'
