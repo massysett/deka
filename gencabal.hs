@@ -47,9 +47,11 @@ libraryModules = map (D.fromString . ("Deka." ++))
   ]
 
 internalModules :: [D.ModuleName]
-internalModules = map (D.fromString . ("Deka.Internal" ++))
-  [ ""
-  , "Class"
+internalModules
+  = map D.fromString $
+  "Deka.Internal"
+  : map ("Deka.Internal." ++)
+  [ "Class"
   , "Context"
   , "DecNum.CtxFree"
   , "DecNum.Ctx"
@@ -89,14 +91,14 @@ internalModules = map (D.fromString . ("Deka.Internal" ++))
 -- * decPacked.c - auxiliary, not needed
 cSources :: [FilePath]
 cSources = map (\s -> "decnumber/src/" ++ s ++ ".c")
-  [ "decContext"
+  [ "decQuad"
+  , "decContext"
   , "decDouble"
   , "decimal128"
   , "decimal32"
   , "decimal64"
   , "decNumber"
   , "decNumberMacros"
-  , "decQuad"
   , "decSingle"
   ]
 
@@ -123,6 +125,7 @@ packageDescription :: D.PackageDescription
 packageDescription = D.emptyPackageDescription
   { D.package = D.PackageIdentifier name pkgVersion
   , D.license = D.BSD3
+  , D.licenseFile = "LICENSE"
   , D.copyright = "2014 Omari Norman"
   , D.maintainer = "omari@smileystation.com"
   , D.author = "Omari Norman"
