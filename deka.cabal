@@ -101,6 +101,7 @@ library
   ghc-options: -Wall
   default-language:    Haskell2010
 
+  cc-options: -fPIC
   c-sources:
     decnumber/src/decDouble.c
     decnumber/src/decSingle.c
