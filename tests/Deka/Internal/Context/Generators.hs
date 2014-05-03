@@ -27,8 +27,8 @@ round = fmap Round $ elements allRounds
 context :: Gen (IO (ForeignPtr C'decContext))
 context = do
   digits <- choose (1, nine9)
-  emax <- choose (0, nine9)
-  emin <- choose (negate nine9, 0)
+  emx <- choose (0, nine9)
+  emn <- choose (negate nine9, 0)
   rnd <- elements allRounds
   trps <- oneof [ return [], randList extFlags ]
   stat <- oneof [ return [], randList extFlags ]
@@ -40,8 +40,8 @@ context = do
     fp <- mallocForeignPtrBytes c'decContext'sizeOf
     withForeignPtr fp $ \ptr -> do
       poke (p'decContext'digits ptr) digits
-      poke (p'decContext'emax ptr) emax
-      poke (p'decContext'emin ptr) emin
+      poke (p'decContext'emax ptr) emx
+      poke (p'decContext'emin ptr) emn
       poke (p'decContext'round ptr) rnd
       poke (p'decContext'traps ptr) trps'
       poke (p'decContext'status ptr) stat'

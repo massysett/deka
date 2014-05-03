@@ -64,8 +64,17 @@ module Deka.Context
   , setRound
 
   -- * Emax and Emin
+  -- ** Emax
+  , Emax
+  , unEmax
+  , emax
   , getEmax
   , setEmax
+
+  -- ** Emin
+  , Emin
+  , unEmin
+  , emin
   , getEmin
   , setEmin
 

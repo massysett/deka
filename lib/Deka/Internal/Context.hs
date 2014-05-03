@@ -18,6 +18,12 @@ import Data.Typeable
 -- the flags that computations can set (for instance, a computation might
 -- set a flag to indicate that the result is rounded or inexact or
 -- was a division by zero.) The Ctx monad carries this context.
+--
+-- A 'Ctx' has many fields. Computations in "Deka.DecNum" make use
+-- of all these fields.  Computations in the "Deka.Fixed" modules
+-- ignore the settings in all fields except for rounding and the
+-- status flags.  For example, any traps you set with 'setTraps'
+-- has no effect when using any of the computations in 'Deka.Fixed'.
 newtype Ctx a = Ctx { unCtx :: Ptr C'decContext -> IO a }
 
 instance Functor Ctx where
@@ -416,34 +422,81 @@ getPrecision = Ctx $ fmap Precision . peek . p'decContext'digits
 
 -- # Emax, Emin
 
-getEmax :: Ctx Int
-getEmax = Ctx $ fmap fromIntegral . peek . p'decContext'emax
+-- | Maximum adjusted exponent.  The adjusted exponent is calculated
+-- as though the number were expressed in scientific notation.  If
+-- the adjusted exponent would be larger than 'Emax' then an
+-- overflow results.  This value must be in the range @0@ through
+-- @999,999,999@.
+newtype Emax = Emax { unEmax :: Int32 }
+  deriving (Eq, Ord, Show)
 
-setEmax :: Int -> Ctx Bool
-setEmax i = Ctx f
-  where
-    f ptr
-      | i < c'DEC_MIN_EMAX = return False
-      | i > c'DEC_MAX_EMAX = return False
-      | otherwise = poke (p'decContext'emax ptr) (fromIntegral i)
-          >> return True
+instance Bounded Emax where
+  minBound = Emax c'DEC_MIN_EMAX
+  maxBound = Emax c'DEC_MAX_EMAX
 
-getEmin :: Ctx Int
-getEmin = Ctx $ fmap fromIntegral . peek . p'decContext'emin
+-- | Minimum adjusted exponent.  The adjusted exponent is calculated
+-- as though the number were expressed in scientific notation.  If
+-- the adjusted exponent would be smaller than 'Emin' then the
+-- result is subnormal.  If the result is also inexact, an underflow
+-- results.  If subnormal results are allowed (see 'setClamp') the
+-- smallest possible exponent is 'Emin' minus 'Precision' plus @1@.
+--
+-- 'Emin' is usually set to @-Emax@ or to @-(Emax - 1)@.  It must be
+-- in the range @-999,999,999@ through @0@.
+newtype Emin = Emin { unEmin :: Int32 }
+  deriving (Eq, Ord, Show)
 
-setEmin :: Int -> Ctx Bool
-setEmin i = Ctx f
-  where
-    f ptr
-      | i < c'DEC_MIN_EMIN = return False
-      | i > c'DEC_MAX_EMIN = return False
-      | otherwise = poke (p'decContext'emin ptr) (fromIntegral i)
-          >> return True
+instance Bounded Emin where
+  minBound = Emin c'DEC_MIN_EMIN
+  maxBound = Emin c'DEC_MAX_EMIN
+
+-- | Returns an 'Emax' for use in 'setEmax', but only if the given
+-- argument is in the range @0@ through @999,999,999@.
+
+emax :: Int32 -> Maybe Emax
+emax i
+  | i < c'DEC_MIN_EMAX = Nothing
+  | i > c'DEC_MAX_EMAX = Nothing
+  | otherwise = Just . Emax $ i
+
+-- | Returns an 'Emin' for use in 'setEmin', but only if the given
+-- argument is in the range @-999,999,999@ through @0@.
+
+emin :: Int32 -> Maybe Emin
+emin i
+  | i < c'DEC_MIN_EMIN = Nothing
+  | i > c'DEC_MAX_EMIN = Nothing
+  | otherwise = Just . Emin $ i
+
+getEmax :: Ctx Emax
+getEmax = Ctx $ fmap Emax . peek . p'decContext'emax
+
+setEmax :: Emax -> Ctx ()
+setEmax (Emax i) = Ctx $ \ptr -> poke (p'decContext'emax ptr) i
+
+getEmin :: Ctx Emin
+getEmin = Ctx $ fmap Emin . peek . p'decContext'emin
+
+setEmin :: Emin -> Ctx ()
+setEmin (Emin i) = Ctx $ \ptr -> poke (p'decContext'emin ptr) i
 
 -- # Clamp and extended
 
 getClamp :: Ctx Bool
 getClamp = Ctx $ fmap (/= 0) . peek . p'decContext'clamp
+
+-- | Controls explicit exponent clamping.  When False, a result
+-- exponent is limited to a maximum of emax and a minimum of emin
+-- (for example, the exponent of a zero result will be clamped to be
+-- in this range). When True, a result exponent has the same minimum
+-- but is limited to a maximum of emax-(digits-1). As well as
+-- clamping zeros, this may cause the coefficient of a result to be
+-- padded with zeros on the right in order to bring the exponent
+-- within range.
+--
+-- Also when True, this limits the length of NaN payloads to
+-- 'Precision' - 1 when constructing a NaN by conversion from a
+-- string.
 
 setClamp :: Bool -> Ctx ()
 setClamp b = Ctx f
@@ -454,6 +507,10 @@ setClamp b = Ctx f
 getExtended :: Ctx Bool
 getExtended = Ctx $ fmap (/= 0) . peek . p'decContext'extended
 
+-- | When True, special values are possible and subnormal numbers
+-- can result from operations.  When False, no negative zeroes are
+-- possible; operands are rounded, and the exponent range is
+-- balanced.
 setExtended :: Bool -> Ctx ()
 setExtended b = Ctx f
   where
