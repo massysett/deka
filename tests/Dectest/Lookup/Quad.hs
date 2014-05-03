@@ -1,58 +1,14 @@
 module Dectest.Lookup.Quad where
 
 import Deka.Fixed.Quad
-import qualified Data.ByteString.Char8 as BS8
-import Prelude (Maybe(..), String, Ordering, Bool(..))
-import Data.Int
-import Data.Word
+import Prelude (Maybe(..))
+import Dectest.Lookup.Types
 
-data Function
-  = StrToQuad (BS8.ByteString -> Ctx Quad)
-  | QuadToStr (Quad -> BS8.ByteString)
-  | FromInt (Int32 -> Quad)
-  | FromUInt (Word32 -> Quad)
-  | Rounder (Round -> Quad -> Ctx Int32)
-  | URounder (Round -> Quad -> Ctx Word32)
-  | Unary (Quad -> Ctx Quad)
-  | Binary (Quad -> Quad -> Ctx Quad)
-  | Ternary (Quad -> Quad -> Quad -> Ctx Quad)
-  | MaybeOrd (Quad -> Quad -> Maybe Ordering)
-  | Comparer (Quad -> Quad -> Ordering)
-  | BinaryBool (Quad -> Quad -> Bool)
-  | Classifier (Quad -> Class)
-  | Predicate (Quad -> Bool)
-  | BinaryCF (Quad -> Quad -> Quad)
-  | UnaryInt (Quad -> Int)
-  | RoundQuad (Round -> Quad -> Ctx Quad)
-
-data Record = Record
-  { recName :: String
-  -- ^ The function is known by this name in Deka.Fixed.Quad
-
-  , recTestName :: Maybe String
-  -- ^ The name of the corresponding Decnumber test keyword, if
-  -- there is one
-
-  , recFn :: Function
-  }
-
-unary :: String -> (Quad -> Ctx Quad) -> Record
-unary s f = Record s (Just s) (Unary f)
-
-binary :: String -> (Quad -> Quad -> Ctx Quad) -> Record
-binary s f = Record s (Just s) (Binary f)
-
-ternary :: String -> (Quad -> Quad -> Quad -> Ctx Quad) -> Record
-ternary s f = Record s (Just s) (Ternary f)
-
-pdct :: String -> (Quad -> Bool) -> Record
-pdct s f = Record s Nothing (Predicate f)
-
-functions :: [Record]
+functions :: [Record Quad]
 functions =
-  [ Record "fromByteString" Nothing (StrToQuad fromByteString)
-  , Record "toByteString" Nothing (QuadToStr toByteString)
-  , Record "toEngByteString" Nothing (QuadToStr toEngByteString)
+  [ Record "fromByteString" Nothing (StrToType fromByteString)
+  , Record "toByteString" Nothing (TypeToStr toByteString)
+  , Record "toEngByteString" Nothing (TypeToStr toEngByteString)
   , Record "fromInt32" Nothing (FromInt fromInt32)
   , Record "fromUInt32" Nothing (FromUInt fromUInt32)
   , Record "toInt32" Nothing (Rounder toInt32)
@@ -108,5 +64,6 @@ functions =
   , binary "scaleB" scaleB
   , Record "digits" (Just "digits") (UnaryInt digits)
   , Record "toIntegralExact" (Just "tointegralx") (Unary toIntegralExact)
-  , Record "toIntegralValue" (Just "tointegral") (RoundQuad toIntegralValue)
+  , Record "toIntegralValue" (Just "tointegral")
+      (RoundSameType toIntegralValue)
   ]
