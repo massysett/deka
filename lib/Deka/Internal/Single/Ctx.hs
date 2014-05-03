@@ -125,9 +125,9 @@ fromByteString s = Ctx $ \pC ->
   c'decSingleFromString pR pS pC >>
   return r
 
--- | Runs a computation with the decimal32 default context.
+-- | Runs a computation with the initSingle default context.
 runSingle :: Ctx a -> a
-runSingle = Deka.Context.runCtx initDecimal32
+runSingle = Deka.Context.runCtx initSingle
 
 -- | Runs a computation with the decimal32 default context, and
 -- returns any resulting flags.

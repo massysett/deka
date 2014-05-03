@@ -78,9 +78,9 @@ module Deka.Context
   -- * Initializers
   , Initializer
   , initBase
-  , initDecimal32
-  , initDecimal64
-  , initDecimal128
+  , initSingle
+  , initDouble
+  , initQuad
 
   -- * Running a Ctx
   , runCtx

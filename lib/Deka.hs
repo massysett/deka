@@ -70,7 +70,7 @@ eval c
   | null fl = r
   | otherwise = throw . Flagged $ fl
   where
-    (r, fl) = runCtx initDecimal128 $ do
+    (r, fl) = runCtx initQuad $ do
       res <- c
       f <- getStatus
       return (res, f)
@@ -162,7 +162,7 @@ strToDeka s
   | not (isFinite r) = Nothing
   | otherwise = Just (Deka r)
   where
-    (r, fl) = runCtx initDecimal128 $ do
+    (r, fl) = runCtx initQuad $ do
       res <- fromByteString . BS8.pack $ s
       f <- getStatus
       return (res, f)

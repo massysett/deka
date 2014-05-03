@@ -93,7 +93,7 @@ isNaN = boolean c'decQuadIsNaN
 
 compareOrd :: Quad -> Quad -> IO (Maybe Ordering)
 compareOrd x y = do
-  let c = runCtx initDecimal128 $ compare x y
+  let c = runCtx initQuad $ compare x y
   switchM [ (isNaN c, Nothing), (isNegative c, Just LT),
             (isZero c, Just EQ), (isPositive c, Just GT)]
           (error "compareOrd: unknown result")

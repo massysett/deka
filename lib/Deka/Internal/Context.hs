@@ -92,6 +92,9 @@ setRound (Round r) = Ctx $ \ptr -> poke (p'decContext'round ptr) r
 
 -- # Precision
 
+-- | Sets the precision to be used for all operations.  The result
+-- of an operation is rounded to this length if necessary.  Must
+-- have a vlue in the range @1@ through @999,999,999@.
 newtype Precision = Precision { unPrecision :: Int32 }
   deriving (Eq, Ord, Show)
 
@@ -107,25 +110,32 @@ newtype Initializer = Initializer { _unInitializer :: Int32 }
 -- | This sets:
 --
 -- * 'Precision' to @9@
--- * 'setEmax' to 
+-- * 'Emax' to @999,999,999@
+-- * 'Emin' to @-999,999,999@
+-- * Rounding to 'roundHalfUp'
+-- * No flags are set
+-- * Traps are set to 'divisionByZero', 'invalidOperation',
+--   'overflow', and 'underflow'
+-- * 'setClamp' is True
+-- * 'setExtended' is True
 initBase :: Initializer
 initBase = Initializer c'DEC_INIT_BASE
 
-initDecimal32 :: Initializer
-initDecimal32 = Initializer c'DEC_INIT_DECIMAL32
+initSingle :: Initializer
+initSingle = Initializer c'DEC_INIT_DECSINGLE
 
-initDecimal64 :: Initializer
-initDecimal64 = Initializer c'DEC_INIT_DECIMAL64
+initDouble :: Initializer
+initDouble = Initializer c'DEC_INIT_DECDOUBLE
 
-initDecimal128 :: Initializer
-initDecimal128 = Initializer c'DEC_INIT_DECIMAL128
+initQuad :: Initializer
+initQuad = Initializer c'DEC_INIT_DECQUAD
 
 instance Show Initializer where
   show i
     | i == initBase = "base"
-    | i == initDecimal32 = "decimal32"
-    | i == initDecimal64 = "decimal64"
-    | i == initDecimal128 = "decimal128"
+    | i == initSingle = "single"
+    | i == initDouble = "double"
+    | i == initQuad = "quad"
     | otherwise = error "show initializer: unknown value"
 
 -- # Run

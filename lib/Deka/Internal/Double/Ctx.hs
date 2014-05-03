@@ -372,9 +372,9 @@ toUInt32 = getRounded c'decDoubleToUInt32
 toUInt32Exact :: Round -> Double -> Ctx Word32
 toUInt32Exact = getRounded c'decDoubleToUInt32Exact
 
--- | Runs a computation with the decimal64 default context.
+-- | Runs a computation with the 'initDouble' default context.
 runDouble :: Ctx a -> a
-runDouble = Deka.Context.runCtx initDecimal64
+runDouble = Deka.Context.runCtx initDouble
 
 -- | Runs a computation with the decimal64 default context, and
 -- returns any resulting flags.

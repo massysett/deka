@@ -371,9 +371,9 @@ toUInt32 = getRounded c'decQuadToUInt32
 toUInt32Exact :: Round -> Quad -> Ctx Word32
 toUInt32Exact = getRounded c'decQuadToUInt32Exact
 
--- | Runs a computation with the decimal128 default context.
+-- | Runs a computation with the 'initQuad' default context.
 runQuad :: Ctx a -> a
-runQuad = Deka.Context.runCtx initDecimal128
+runQuad = Deka.Context.runCtx initQuad
 
 -- | Runs a computation with the decimal128 default context, and
 -- returns any resulting flags.
