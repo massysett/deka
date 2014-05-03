@@ -98,6 +98,10 @@ setRound (Round r) = Ctx $ \ptr -> poke (p'decContext'round ptr) r
 newtype Precision = Precision { unPrecision :: Int32 }
   deriving (Eq, Ord, Show)
 
+instance Bounded Precision where
+  minBound = Precision c'DEC_MIN_DIGITS
+  maxBound = Precision c'DEC_MAX_DIGITS
+
 -- # Initializers
 
 -- | Before running computations in a context. the context must be
@@ -113,7 +117,7 @@ newtype Initializer = Initializer { _unInitializer :: Int32 }
 -- * 'Emax' to @999,999,999@
 -- * 'Emin' to @-999,999,999@
 -- * Rounding to 'roundHalfUp'
--- * No flags are set
+-- * No status flags are set
 -- * Traps are set to 'divisionByZero', 'invalidOperation',
 --   'overflow', and 'underflow'
 -- * 'setClamp' is True
@@ -121,12 +125,32 @@ newtype Initializer = Initializer { _unInitializer :: Int32 }
 initBase :: Initializer
 initBase = Initializer c'DEC_INIT_BASE
 
+-- | This sets:
+--
+-- * 'Precision' to @7@
+-- * 'Emax' to @96@
+-- * 'Emin' to @-95@
+-- * Rounding to 'roundHalfEven'
+-- * No status flags are set
+-- * No traps are enabled
+-- * 'setClamp' is True
+-- * 'setExtended' is True
 initSingle :: Initializer
 initSingle = Initializer c'DEC_INIT_DECSINGLE
 
+-- | This sets the fields the same as for 'initSingle', except:
+--
+-- * 'Precision' is @16@
+-- * 'Emax' is @384@
+-- * 'Emin' is @-383@
 initDouble :: Initializer
 initDouble = Initializer c'DEC_INIT_DECDOUBLE
 
+-- | This sets the fields the same as for 'initSingle', except:
+--
+-- * 'Precision' is @34@
+-- * 'Emax' is @6144@
+-- * 'Emin' is @-6143@
 initQuad :: Initializer
 initQuad = Initializer c'DEC_INIT_DECQUAD
 
@@ -176,6 +200,15 @@ local (Ctx l) = Ctx $ \parent ->
 
 -- # Flags
 
+-- | Indicates error conditions.  This type serves two purposes:
+-- computations set flags to indicate errors; these can be queried
+-- with 'isStatusSet' and 'getStatus' and cleared with
+-- 'clearStatus'.  In addition, you can set traps; see 'setTraps',
+-- 'setTrap', and 'clearTraps'.
+--
+-- 'Flag' is an instance of 'Exception' so that you can throw it if
+-- you want; however, none of the functions in the @deka@ package
+-- throw.
 newtype Flag = Flag { unFlag :: Word32 }
   deriving (Eq, Ord, Typeable)
 
@@ -198,6 +231,7 @@ instance Show Flag where
     | f == underflow = "Underflow"
     | otherwise = error "show flag: unrecognized flag"
 
+-- | A list of all possible 'Flag'.
 allFlags :: [Flag]
 allFlags =
   [ conversionSyntax, divisionByZero, divisionImpossible,
@@ -243,6 +277,9 @@ insufficientStorage = Flag c'DEC_Insufficient_storage
 inexact :: Flag
 inexact = Flag c'DEC_Inexact
 
+-- | The Context for computations was invalid; this error should
+-- never occur because @deka@ keeps you from setting an invalid
+-- context.
 invalidContext :: Flag
 invalidContext = Flag c'DEC_Invalid_context
 
@@ -274,17 +311,38 @@ underflow = Flag c'DEC_Underflow
 -- # Traps
 
 -- ## Set
-setAllTraps :: [Flag] -> Ctx ()
-setAllTraps fs = Ctx $ \ptr -> do
+
+-- | If you set a trap, a computation will immediately raise
+-- @SIGFPE@ if the corresponding error arises.  (This behavior is
+-- set in the decNumber C library and cannot be configured.)
+-- 'setTraps' causes a trap to be set for all the 'Flag' you list.
+-- This is not a toggling mechanism; if you list a 'Flag' here, it
+-- will be set as a trap.  This function never clears any traps that
+-- have already been set.
+--
+-- By setting a flag here, SIGFPE is raised if any subsequent
+-- computations raise the corresponding error condition.  Setting a
+-- flag with this function or with 'setTrap' never, by itself,
+-- causes SIGFPE to be raised; it is raised only by a subsequent
+-- computation.  So, if you set a flag using this function or
+-- 'setTrap' and the corresponding status flag is already set,
+-- SIGFPE will be raised only if a subsequent computation raises
+-- that error condition.
+setTraps :: [Flag] -> Ctx ()
+setTraps fs = Ctx $ \ptr -> do
   let pTr = p'decContext'traps ptr
   poke pTr (combineFlags fs) 
 
+-- | Sets a single trap.  Does not affect any other traps.  This
+-- always sets the given trap; this is not a toggling mechanism.
+-- See notes under 'setTraps'.
 setTrap :: Flag -> Ctx ()
 setTrap f = Ctx $ \ptr -> do
   let pTr = p'decContext'traps ptr
   ts <- peek pTr
   poke pTr (ts .|. unFlag f)
 
+-- | Clears the given traps; does not affect any traps not listed.
 clearTraps :: [Flag] -> Ctx ()
 clearTraps fs = Ctx $ \ptr -> do
   let pTr = p'decContext'traps ptr
@@ -293,12 +351,14 @@ clearTraps fs = Ctx $ \ptr -> do
 
 -- ## Query
 
+-- | Is this particular trap set?
 isTrapSet :: Flag -> Ctx Bool
 isTrapSet (Flag f) = Ctx $ \ptr -> do
   let pTr = p'decContext'traps ptr
   ts <- peek pTr
   return $ ts .&. f /= 0
 
+-- | Gets a list of all currently set traps.
 getTraps :: Ctx [Flag]
 getTraps = Ctx $ \ptr -> do
   ts <- peek (p'decContext'traps ptr)
@@ -310,6 +370,11 @@ getTraps = Ctx $ \ptr -> do
 
 -- No set functions provided - you're not supposed to set traps
 
+-- | Clears status flags.  Status flags indicate whether previous
+-- computations have caused particular error conditions.
+--
+-- No function is provided to set status flags; only computations
+-- may set status flags.
 clearStatus :: [Flag] -> Ctx ()
 clearStatus fs = Ctx $ \ptr -> do
   _ <- c'decContextClearStatus ptr (combineFlags fs) 
@@ -317,12 +382,14 @@ clearStatus fs = Ctx $ \ptr -> do
 
 -- ## Query
 
+-- | Is this particular status flag set?
 isStatusSet :: Flag -> Ctx Bool
 isStatusSet (Flag f) = Ctx $ \ptr -> do
   let pSt = p'decContext'status ptr
   ts <- peek pSt
   return $ ts .&. f /= 0
 
+-- | Returns a list of all currently set status flags.
 getStatus :: Ctx [Flag]
 getStatus = Ctx $ \ptr -> do
   let pSt = p'decContext'status ptr
@@ -331,6 +398,9 @@ getStatus = Ctx $ \ptr -> do
 
 -- # Digits
 
+-- | Creates a 'Precision' that you can then set with
+-- 'setPrecision'.  Returns 'Nothing' if the argument is less than
+-- @1@ or greater than @999,999,999@.
 precision :: Int32 -> Maybe Precision
 precision i
   | i < c'DEC_MIN_DIGITS = Nothing

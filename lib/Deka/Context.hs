@@ -24,7 +24,7 @@ module Deka.Context
 
   -- * Traps
   -- ** Set
-  , setAllTraps
+  , setTraps
   , setTrap
   , clearTraps
 
