@@ -4,4 +4,3 @@ config.log
 config.status
 configure
 decnumber/src/decNumberLocal.h
-deka.cabal
