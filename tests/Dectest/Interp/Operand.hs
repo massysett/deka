@@ -13,8 +13,8 @@ import qualified Deka.Internal.DecNum.Ctx as N
 import Deka.Internal.DecNum.DecNum
 import Data.Int
 
-interpOp
-  :: (OctoParsers -> WhichPrecision -> Ctx r)
+type ParseString r
+  = (OctoParsers -> WhichPrecision -> Ctx r)
   -- ^ Gets the result from the OctoParsers
 
   -> Int32
@@ -24,13 +24,18 @@ interpOp
   -- ^ Parses result if not an octothorpe
 
   -> WhichPrecision
-  -> BS8.ByteString
-  -> Ctx (Maybe r)
+  -> Ctx r
 
-interpOp getOcto pcsn prsr wp bs = case parseOcto bs of
-  Null -> return Nothing
-  Octo op -> fmap Just $ getOcto op wp
-  NotOcto -> do
+
+interpOp
+  :: BS8.ByteString
+  -- ^ String to parse
+  -> Maybe (ParseString r)
+
+interpOp bs = case parseOcto bs of
+  Null -> Nothing
+  Octo op -> Just $ \getOcto _ _ wp -> getOcto op wp
+  NotOcto -> Just $ \_ pcsn prsr wp -> do
     pOld <- getPrecision
     let pNew = case wp of
           FromCtx -> pOld
@@ -39,30 +44,36 @@ interpOp getOcto pcsn prsr wp bs = case parseOcto bs of
     setPrecision pNew
     dn <- prsr bs
     setPrecision pOld
-    return . Just $ dn
+    return dn
 
 operandNum
-  :: WhichPrecision
-  -> BS8.ByteString
-  -> Ctx (Maybe DecNum)
-operandNum wp bs = interpOp opOperandDec (fromIntegral . BS8.length $ bs)
-  N.fromByteString wp bs
+  :: BS8.ByteString
+  -> Maybe (WhichPrecision -> Ctx DecNum)
+operandNum bs =
+  fmap (\f wp -> f opOperandDec (fromIntegral . BS8.length $ bs)
+              N.fromByteString wp)
+  $ interpOp bs
 
 operand32
-  :: WhichPrecision
-  -> BS8.ByteString
-  -> Ctx (Maybe S.Single)
-operand32 = interpOp opOperand32 S.c'DECSINGLE_Pmax S.fromByteString
+  :: BS8.ByteString
+  -> Maybe (WhichPrecision -> Ctx S.Single)
+operand32 bs =
+  fmap (\f wp -> f opOperand32 S.c'DECSINGLE_Pmax S.fromByteString wp)
+  $ interpOp bs
 
 operand64
-  :: WhichPrecision
-  -> BS8.ByteString
-  -> Ctx (Maybe D.Double)
-operand64 = interpOp opOperand64 D.c'DECDOUBLE_Pmax D.fromByteString
+  :: BS8.ByteString
+  -> Maybe (WhichPrecision -> Ctx D.Double)
+operand64 bs =
+  fmap (\f wp -> f opOperand64 D.c'DECDOUBLE_Pmax D.fromByteString wp)
+  $ interpOp bs
+
 
 operand128
-  :: WhichPrecision
-  -> BS8.ByteString
-  -> Ctx (Maybe Q.Quad)
-operand128 = interpOp opOperand128 Q.c'DECQUAD_Pmax Q.fromByteString
+  :: BS8.ByteString
+  -> Maybe (WhichPrecision -> Ctx Q.Quad)
+operand128 bs =
+  fmap (\f wp -> f opOperand128 Q.c'DECQUAD_Pmax Q.fromByteString wp)
+  $ interpOp bs
+
 
