@@ -81,6 +81,10 @@ internalModules
   , "Unsafe"
   ]
 
+-- As of GHC 7.8, the ordering of the cSources matters.  See
+--
+-- https://ghc.haskell.org/trac/ghc/ticket/9074#ticket
+
 -- | C sources.  Do not include:
 --
 -- * decBasic.c - this is included by decSingle.c, decQuad.c,
@@ -91,14 +95,14 @@ internalModules
 -- * decPacked.c - auxiliary, not needed
 cSources :: [FilePath]
 cSources = map (\s -> "decnumber/src/" ++ s ++ ".c")
-  [ "decQuad"
-  , "decContext"
-  , "decDouble"
-  , "decimal128"
-  , "decimal32"
-  , "decimal64"
-  , "decNumber"
+  [ "decContext"
   , "decNumberMacros"
+  , "decNumber"
+  , "decimal64"
+  , "decimal32"
+  , "decimal128"
+  , "decQuad"
+  , "decDouble"
   , "decSingle"
   ]
 
@@ -230,11 +234,72 @@ library = D.CondNode
   , D.condTreeComponents = []
   }
 
+-- Leave exeName blank - this is probably if you want the executable
+-- to have a name different than that specified in the "executables"
+-- list
+
+parseTestFile :: D.CondTree D.ConfVar [D.Dependency] D.Executable
+parseTestFile = D.CondNode
+  { D.condTreeData = D.Executable
+      { D.exeName = ""
+      , D.modulePath = "testParse.hs"
+      , D.buildInfo = D.emptyBuildInfo
+          { D.defaultLanguage = Just D.Haskell2010
+          , D.hsSourceDirs = [ "tests" ]
+          , D.options = ghcOptions
+          }
+      }
+
+  , D.condTreeConstraints = libDeps
+  , D.condTreeComponents =
+      [ ( D.CNot (D.Var (D.Flag (D.FlagName "testexe")))
+          , D.CondNode
+            { D.condTreeData = D.Executable
+                { D.exeName = ""
+                , D.modulePath = ""
+                , D.buildInfo = D.emptyBuildInfo { D.buildable = False }
+                }
+            , D.condTreeConstraints = []
+            , D.condTreeComponents = []
+            }
+          , Nothing
+        )
+      ]
+    }
+
+tastyTest :: D.CondTree D.ConfVar [D.Dependency] D.TestSuite
+tastyTest = D.CondNode
+  { D.condTreeData = D.TestSuite
+      { D.testName = ""
+      , D.testInterface = D.TestSuiteExeV10
+          (Version [1,0] []) "tasty-test.hs"
+      , D.testBuildInfo = D.emptyBuildInfo
+          { D.buildable = True
+          , D.cSources = cSources
+          , D.hsSourceDirs = ["tests", "lib"]
+          , D.otherModules = libraryModules ++ internalModules
+              ++ testModules
+          , D.defaultLanguage = Just D.Haskell2010
+          , D.includeDirs = [ "decnumber/src" ]
+          , D.includes = cHeaders
+          , D.options = ghcOptions
+          }
+
+      -- Why is testEnabled False? I am guessing it's because the
+      -- TestSuite is part of the PackageDescription after
+      -- conditionals are resolved.
+      , D.testEnabled = False
+      }
+  , D.condTreeConstraints = libDeps ++ testDeps
+  }
+
+
+
 executables :: [(String, D.CondTree D.ConfVar [D.Dependency] D.Executable)]
-executables = []
+executables = [("parseTestFile", parseTestFile)]
 
 testSuites :: [(String, D.CondTree D.ConfVar [D.Dependency] D.TestSuite)]
-testSuites = []
+testSuites = [("tasty-test", tastyTest)]
 
 benchmarks :: [(String, D.CondTree D.ConfVar [D.Dependency] D.Benchmark)]
 benchmarks = []
