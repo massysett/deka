@@ -46,34 +46,29 @@ interpOp bs = case parseOcto bs of
     setPrecision pOld
     return dn
 
-operandNum
-  :: BS8.ByteString
-  -> Maybe (WhichPrecision -> Ctx DecNum)
-operandNum bs =
-  fmap (\f wp -> f opOperandDec (fromIntegral . BS8.length $ bs)
-              N.fromByteString wp)
-  $ interpOp bs
+class Operand a where
+  operand :: BS8.ByteString -> Maybe (WhichPrecision -> Ctx a)
 
-operand32
-  :: BS8.ByteString
-  -> Maybe (WhichPrecision -> Ctx S.Single)
-operand32 bs =
-  fmap (\f wp -> f opOperand32 S.c'DECSINGLE_Pmax S.fromByteString wp)
-  $ interpOp bs
+instance Operand DecNum where
+  operand bs =
+    fmap (\f wp -> f opOperandDec (fromIntegral . BS8.length $ bs)
+                N.fromByteString wp)
+    $ interpOp bs
 
-operand64
-  :: BS8.ByteString
-  -> Maybe (WhichPrecision -> Ctx D.Double)
-operand64 bs =
-  fmap (\f wp -> f opOperand64 D.c'DECDOUBLE_Pmax D.fromByteString wp)
-  $ interpOp bs
+instance Operand S.Single where
+  operand bs =
+    fmap (\f wp -> f opOperand32 S.c'DECSINGLE_Pmax S.fromByteString wp)
+    $ interpOp bs
+
+instance Operand D.Double where
+  operand bs =
+    fmap (\f wp -> f opOperand64 D.c'DECDOUBLE_Pmax D.fromByteString wp)
+    $ interpOp bs
 
 
-operand128
-  :: BS8.ByteString
-  -> Maybe (WhichPrecision -> Ctx Q.Quad)
-operand128 bs =
-  fmap (\f wp -> f opOperand128 Q.c'DECQUAD_Pmax Q.fromByteString wp)
-  $ interpOp bs
+instance Operand Q.Quad where
+  operand bs =
+    fmap (\f wp -> f opOperand128 Q.c'DECQUAD_Pmax Q.fromByteString wp)
+    $ interpOp bs
 
 

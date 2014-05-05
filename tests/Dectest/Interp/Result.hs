@@ -9,39 +9,46 @@ import qualified Deka.Fixed.Quad as Q
 import Deka.Context
 import qualified Data.ByteString.Char8 as BS8
 
-result
+mkresult
   :: (OctoParsers -> a -> Ctx Bool)
   -> (a -> BS8.ByteString)
   -> BS8.ByteString
   -> a
-  -> Ctx (Maybe Bool)
-result getCmp toStr bs a = case parseOcto bs of
-  Null -> return Nothing
-  Octo op -> fmap Just $ getCmp op a
-  NotOcto -> return . Just $ bsR == bs
+  -> Maybe (Ctx Bool)
+mkresult getCmp toStr bs a = case parseOcto bs of
+  Null -> Nothing
+  Octo op -> Just $ \a -> getCmp op a
+  NotOcto -> Just . return $ \a -> bsR == bs
     where
       bsR = toStr a
 
-resultDec
-  :: BS8.ByteString
-  -> DecNum
-  -> Ctx (Maybe Bool)
-resultDec = result opResultDec N.toByteString
+class ToByteString a where
+  toByteString :: a -> BS8.ByteString
 
-result32
-  :: BS8.ByteString
-  -> S.Single
-  -> Ctx (Maybe Bool)
-result32 = result opResult32 S.toByteString
+instance ToByteString DecNum where
+  toByteString = N.toByteString
 
-result64
-  :: BS8.ByteString
-  -> D.Double
-  -> Ctx (Maybe Bool)
-result64 = result opResult64 D.toByteString
+instance ToByteString S.Single where
+  toByteString = S.toByteString
 
-result128
-  :: BS8.ByteString
-  -> Q.Quad
-  -> Ctx (Maybe Bool)
-result128 = result opResult128 Q.toByteString
+instance ToByteString D.Double where
+  toByteString = D.toByteString
+
+instance ToByteString Q.Quad where
+  toByteString = Q.toByteString
+
+class Result a where
+  result :: BS8.ByteString -> Maybe (a -> Ctx Bool)
+
+instance Result DecNum where
+  result = mkresult opResultDec N.toByteString
+
+instance Result S.Single where
+  result = mkresult opResult32 S.toByteString
+
+instance Result D.Double where
+  result = mkresult opResult64 D.toByteString
+
+instance Result Q.Quad where
+  result = mkresult opResult128 Q.toByteString
+
