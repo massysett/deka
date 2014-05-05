@@ -13,14 +13,11 @@ mkresult
   :: (OctoParsers -> a -> Ctx Bool)
   -> (a -> BS8.ByteString)
   -> BS8.ByteString
-  -> a
-  -> Maybe (Ctx Bool)
-mkresult getCmp toStr bs a = case parseOcto bs of
+  -> Maybe (a -> Ctx Bool)
+mkresult getCmp toStr bs = case parseOcto bs of
   Null -> Nothing
   Octo op -> Just $ \a -> getCmp op a
-  NotOcto -> Just . return $ \a -> bsR == bs
-    where
-      bsR = toStr a
+  NotOcto -> Just $ \a -> return $ toStr a == bs
 
 class ToByteString a where
   toByteString :: a -> BS8.ByteString

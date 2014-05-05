@@ -4,8 +4,9 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Deka.Context as C
 import Data.Functor.Identity
 import Data.List (find)
-import Dectest.Interp.Result
+import qualified Dectest.Interp.Result as R
 import Dectest.Interp.Operand
+import Dectest.Interp.Octothorpe
 
 data Result
   = Skip
@@ -13,7 +14,7 @@ data Result
   | Null
   -- ^ One of the operands was null; skip the test
   | Pass
-  | Fail BS8.ByteString
+  | Fail BS8.ByteString [C.Flag]
   -- ^ Comes with the string representation of the test result
   | OperandMismatch
   -- ^ Test did not come with right number of operands
@@ -35,7 +36,7 @@ type ApplyTest a
   -- otherwise, return the result of the function
 
 applyTest
-  :: (Operand a, Result a, ToByteString a)
+  :: (Operand a, R.Result a, R.ToByteString a)
   => [(BS8.ByteString, ApplyTest a)]
   -- ^ Association list of operation names and the function that
   -- applies each operation.
@@ -59,10 +60,12 @@ applyTest ls dir nm os (rslt, fs) = either id id $ do
         compR n
       (r, rFl) = runCtxStatus initQuad comp
       bs = toByteString r
-  maybe 
+      throwFlags | sort rFl == sort fs = Right ()
+                 | otherwise = Left (Fail bs rFl)
+      throwFail | r = Right ()
+                | otherwise = Left (Fail bs rFl)
+  throwFlags
+  throwFail
+  return Pass
 
-case find pdct ls of
-  Nothing -> Skip
-  Just fn -> case mapM operand os of
-    Just kos -> case result rslt of
-      Nothing -> 
+applyDirectives = undefined
