@@ -143,6 +143,7 @@ Test-Suite tasty-test
     , random-shuffle ==0.0.4
     , unix >= 2.5.1.0 && < 2.8
     , transformers >= 0.3.0.0 && < 0.4.0.0
+    , either >= 4.1.1 && < 4.2
 
   type: exitcode-stdio-1.0
   hs-source-dirs: tests lib

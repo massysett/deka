@@ -74,6 +74,7 @@ functions =
       (RoundSameType toIntegralValue)
   ]
 
+{-
 -- use DoNotRound for everything except toSci, toEng, or apply; for
 -- those three, use FromCtx.
 testLookups :: [(BS8.ByteString, Y.ApplyTest Quad)]
@@ -84,3 +85,4 @@ testLookups =
   , ("apply", U.unary DoNotRound plus)
   -- skip: canonical
   ]
+-}

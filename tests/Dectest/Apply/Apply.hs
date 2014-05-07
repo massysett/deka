@@ -10,6 +10,8 @@ import Dectest.Interp.Operand
 import Dectest.Interp.Octothorpe (WhichPrecision)
 import Data.List (sort)
 import Dectest.Apply.Types
+import Control.Monad.Trans.Either
+import Control.Monad.Trans.Class
 
 -- | Given the name of a test and an Alist of test functions, picks
 -- the test to apply.
@@ -43,43 +45,43 @@ interpOperands bss = case mapM operand bss of
 applyOperands
   :: ApplyTest a
   -> [WhichPrecision -> C.Ctx a]
-  -> Either Bypass (C.Ctx a)
+  -> Either Bypass (C.Ctx (BS8.ByteString, BS8.ByteString -> Maybe (C.Ctx Bool)))
 applyOperands f = maybe (Left OperandMismatch) return . f
 
--- | Given a ByteString for the target test result, return a
--- function that, when applied to the result of applying the test
--- function, indicates success or failure.
-
+-- | Given the function that determines how to interpret a result
+-- operand, and the result token, compute the result if possible.
 interpResult
-  :: R.Result a
-  => BS8.ByteString
-  -> Either Bypass (a -> C.Ctx Bool)
-interpResult = maybe (Left Null) return . R.result
+  :: (C.Ctx (a, BS8.ByteString -> Maybe (C.Ctx Bool)))
+  -> BS8.ByteString
+  -> EitherT Bypass C.Ctx Bool
+interpResult f bs = do
+  (_, getMay) <- lift f
+  let mayGetBool = getMay bs
+  getBool <- case mayGetBool of
+    Nothing -> left Null
+    Just may -> return may
+  lift getBool
 
 -- | Given the result of a computation and how to determine whether
 -- it succeeded or failed, make the determination.
 
 applyResult
-  :: R.ToByteString a
-  => Directives Identity
+  :: Directives Identity
   -- ^ Initial directives
-  -> (a -> C.Ctx Bool)
-  -- ^ How to determine whether test succeeded or failed
+  -> BS8.ByteString
+  -- ^ How to determine whether test succeeded or failed, and how to
+  -- show the result of the computation
   -> [C.Flag]
   -- ^ Desired ending flags
-  -> C.Ctx a
+  -> EitherT Bypass C.Ctx Bool
   -- ^ How to calculate final result
   -> Either Bypass ()
-applyResult d getCmp gs getRes =
-  let (r, fl, str) = C.runCtx C.initQuad $ do
-        applyDirectives d
-        res <- getRes
-        cmp <- getCmp res
-        flgs <- C.getStatus
-        let bs = R.toByteString res
-        return (cmp, flgs, bs)
-  in if sort fl /= sort gs || not r
-      then Left (Fail str fl) else return ()
+applyResult d shw gs getRes = C.runCtx C.initQuad . runEitherT $ do
+  lift $ applyDirectives d
+  res <- getRes
+  flgs <- lift C.getStatus
+  if sort flgs /= sort gs || not res
+      then left $ Fail shw flgs else return ()
 
 multif :: a -> [(Bool, a)] -> a
 multif a [] = a
@@ -126,7 +128,7 @@ applyTest lkp ds inp = either Just (const Nothing) $ do
   testFn <- pickTestFn (inName inp) lkp
   ops <- interpOperands (inOperands inp)
   fnOut <- applyOperands testFn ops
-  trpRslt <- interpResult (inResult inp)
-  applyResult ds trpRslt (inFlags inp) fnOut
+  let trpRslt = interpResult fnOut (inResult inp)
+  applyResult ds (fst fnOut) (inFlags inp) trpRslt
 
 
