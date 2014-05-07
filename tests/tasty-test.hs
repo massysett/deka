@@ -28,6 +28,7 @@ import qualified Dectest.Interp.Operand
 import qualified Dectest.Interp.Result
 import qualified Dectest.Interp.Directive
 import qualified Dectest.Apply.Types
+import qualified Dectest.Apply.Apply
 
 tests :: TestTree
 tests = testGroup "all tests"
