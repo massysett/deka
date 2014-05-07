@@ -1,8 +1,14 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Dectest.Lookup.Quad where
 
 import Deka.Fixed.Quad
 import Prelude (Maybe(..))
 import Dectest.Lookup.Types
+import qualified Dectest.Lookup.Util as U
+import qualified Deka.Context as C
+import Dectest.Interp.Octothorpe (WhichPrecision(..))
+import qualified Data.ByteString as BS8
+import qualified Dectest.Apply.Types as Y
 
 functions :: [Record Quad]
 functions =
@@ -66,4 +72,15 @@ functions =
   , Record "toIntegralExact" (Just "tointegralx") (Unary toIntegralExact)
   , Record "toIntegralValue" (Just "tointegral")
       (RoundSameType toIntegralValue)
+  ]
+
+-- use DoNotRound for everything except toSci, toEng, or apply; for
+-- those three, use FromCtx.
+testLookups :: [(BS8.ByteString, Y.ApplyTest Quad)]
+testLookups =
+  [ ("abs", U.unary DoNotRound abs)
+  , ("add", U.binary DoNotRound add)
+  , ("and", U.binary DoNotRound and)
+  , ("apply", U.unary DoNotRound plus)
+  -- skip: canonical
   ]
