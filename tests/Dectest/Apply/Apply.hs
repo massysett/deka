@@ -51,16 +51,17 @@ applyOperands f = maybe (Left OperandMismatch) return . f
 -- | Given the function that determines how to interpret a result
 -- operand, and the result token, compute the result if possible.
 interpResult
-  :: (C.Ctx (a, BS8.ByteString -> Maybe (C.Ctx Bool)))
+  :: (C.Ctx (BS8.ByteString, BS8.ByteString -> Maybe (C.Ctx Bool)))
   -> BS8.ByteString
-  -> EitherT Bypass C.Ctx Bool
+  -> EitherT Bypass C.Ctx (BS8.ByteString, Bool)
 interpResult f bs = do
-  (_, getMay) <- lift f
+  (shw, getMay) <- lift f
   let mayGetBool = getMay bs
   getBool <- case mayGetBool of
     Nothing -> left Null
     Just may -> return may
-  lift getBool
+  bl <- lift getBool
+  return (shw, bl)
 
 -- | Given the result of a computation and how to determine whether
 -- it succeeded or failed, make the determination.
@@ -68,20 +69,18 @@ interpResult f bs = do
 applyResult
   :: Directives Identity
   -- ^ Initial directives
-  -> BS8.ByteString
-  -- ^ How to determine whether test succeeded or failed, and how to
-  -- show the result of the computation
   -> [C.Flag]
   -- ^ Desired ending flags
-  -> EitherT Bypass C.Ctx Bool
-  -- ^ How to calculate final result
+  -> EitherT Bypass C.Ctx (BS8.ByteString, Bool)
+  -- ^ How to calculate final result, and how to show the result of
+  -- the computation in case it failed
   -> Either Bypass ()
-applyResult d shw gs getRes = C.runCtx C.initQuad . runEitherT $ do
+applyResult d gs getRes = C.runCtx C.initQuad . runEitherT $ do
   lift $ applyDirectives d
-  res <- getRes
+  (bs, res) <- getRes
   flgs <- lift C.getStatus
   if sort flgs /= sort gs || not res
-      then left $ Fail shw flgs else return ()
+      then left $ Fail bs flgs else return ()
 
 multif :: a -> [(Bool, a)] -> a
 multif a [] = a
@@ -127,8 +126,7 @@ applyTest
 applyTest lkp ds inp = either Just (const Nothing) $ do
   testFn <- pickTestFn (inName inp) lkp
   ops <- interpOperands (inOperands inp)
-  fnOut <- applyOperands testFn ops
-  let trpRslt = interpResult fnOut (inResult inp)
-  applyResult ds (fst fnOut) (inFlags inp) trpRslt
-
+  apOp <- applyOperands testFn ops
+  let trpRslt = interpResult apOp (inResult inp)
+  applyResult ds (inFlags inp) trpRslt
 
