@@ -1,10 +1,8 @@
 module Dectest.Lookup.Util where
 
-import Dectest.Interp.Octothorpe (WhichPrecision)
+import Dectest.Interp.Octothorpe (WhichPrecision(..))
 import qualified Dectest.Interp.Result as R
 import qualified Deka.Context as C
-import Control.Applicative
-import Control.Monad (join)
 import qualified Data.ByteString.Char8 as BS8
 
 testEq
@@ -58,4 +56,33 @@ ternary wp f ls = case ls of
     c <- z wp
     r <- f a b c
     testEq r
+  _ -> Nothing
+
+unaryStr
+  :: (a -> BS8.ByteString)
+  -> [WhichPrecision -> C.Ctx a]
+  -> Maybe (C.Ctx (BS8.ByteString, BS8.ByteString -> Maybe (C.Ctx Bool)))
+unaryStr f ls = case ls of
+  x:[] -> Just $ do
+    a <- x FromCtx
+    let r = f a
+        getBool bs = Just $ return (bs == r)
+    return (r, getBool)
+  _ -> Nothing
+
+testIntegralValue
+  :: (R.ToByteString a, R.Result a)
+  => (C.Round -> a -> C.Ctx a)
+  -> [WhichPrecision -> C.Ctx a]
+  -> Maybe (C.Ctx (BS8.ByteString, BS8.ByteString -> Maybe (C.Ctx Bool)))
+testIntegralValue f ls = case ls of
+  x:[] -> Just $ do
+    a <- x FromCtx
+    rnd <- C.getRound
+    r <- f rnd a
+    let shw = R.toByteString r
+        getBool bs = case R.result bs of
+          Nothing -> Nothing
+          Just fn -> Just $ fn r
+    return (shw, getBool)
   _ -> Nothing

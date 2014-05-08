@@ -2,10 +2,9 @@
 module Dectest.Lookup.Quad where
 
 import Deka.Fixed.Quad
-import Prelude (Maybe(..))
+import Prelude (Maybe(..), Functor(..), Monad(..))
 import Dectest.Lookup.Types
 import qualified Dectest.Lookup.Util as U
-import qualified Deka.Context as C
 import Dectest.Interp.Octothorpe (WhichPrecision(..))
 import qualified Data.ByteString as BS8
 import qualified Dectest.Apply.Types as Y
@@ -74,7 +73,6 @@ functions =
       (RoundSameType toIntegralValue)
   ]
 
-{-
 -- use DoNotRound for everything except toSci, toEng, or apply; for
 -- those three, use FromCtx.
 testLookups :: [(BS8.ByteString, Y.ApplyTest Quad)]
@@ -82,7 +80,51 @@ testLookups =
   [ ("abs", U.unary DoNotRound abs)
   , ("add", U.binary DoNotRound add)
   , ("and", U.binary DoNotRound and)
-  , ("apply", U.unary DoNotRound plus)
+  , ("apply", U.unary FromCtx plus)
   -- skip: canonical
+  , ("class", U.unary DoNotRound (fmap return decClass))
+  , ("compare", U.binary DoNotRound compare)
+  , ("comparesig", U.binary DoNotRound compareSignal)
+  , ("comparetotal", U.binary DoNotRound
+      (fmap (fmap return) compareTotal))
+  , ("comparetotalmag", U.binary DoNotRound
+      (fmap (fmap return) compareTotalMag))
+  -- skip: copy, copyabs, copynegate
+  , ("copysign", U.binary DoNotRound (fmap (fmap return) copySign))
+  , ("divide", U.binary DoNotRound divide)
+  , ("divideint", U.binary DoNotRound divideInteger)
+  -- skip: exp
+  , ("fma", U.ternary DoNotRound fma)
+  , ("invert", U.unary DoNotRound invert)
+  -- skipped: ln, log10
+  , ("logb", U.unary DoNotRound logB)
+  , ("max", U.binary DoNotRound max)
+  , ("min", U.binary DoNotRound min)
+  , ("maxmag", U.binary DoNotRound maxMag)
+  , ("minmag", U.binary DoNotRound minMag)
+  , ("minus", U.unary DoNotRound minus)
+  , ("multiply", U.binary DoNotRound multiply)
+  , ("nextminus", U.unary DoNotRound nextMinus)
+  , ("nextplus", U.unary DoNotRound nextPlus)
+  , ("nexttoward", U.binary DoNotRound nextToward)
+  , ("or", U.binary DoNotRound or)
+  , ("plus", U.unary DoNotRound plus)
+  -- skipped: power
+  , ("quantize", U.binary DoNotRound quantize)
+  , ("reduce", U.unary DoNotRound reduce)
+  , ("remainder", U.binary DoNotRound remainder)
+  , ("remaindernear", U.binary DoNotRound remainderNear)
+  -- skipped: rescale
+  , ("rotate", U.binary DoNotRound rotate)
+  , ("samequantum", U.binary DoNotRound (fmap (fmap return) sameQuantum))
+  , ("scaleb", U.binary DoNotRound scaleB)
+  , ("shift", U.binary DoNotRound shift)
+  -- skipped: squareroot
+  , ("subtract", U.binary DoNotRound subtract)
+  , ("toEng", U.unaryStr toEngByteString)
+  , ("tointegral", U.testIntegralValue toIntegralValue)
+  , ("toIntegralx", U.unary DoNotRound toIntegralExact)
+  , ("toSci", U.unaryStr toByteString)
+  -- skipped: trim
+  , ("xor", U.binary DoNotRound xor)
   ]
--}
