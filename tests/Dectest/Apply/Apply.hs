@@ -97,7 +97,7 @@ applyDirectives ds = do
   C.setExtended . extended $ ds
   C.setClamp . clamp $ ds
 
-data TestInputs a = TestInputs
+data TestInputs = TestInputs
   { inName :: BS8.ByteString
   , inOperands :: [BS8.ByteString]
   , inResult :: BS8.ByteString
@@ -119,7 +119,7 @@ applyTest
   => [(BS8.ByteString, ApplyTest a)]
   -- ^ A-list of property names and test functions
   -> Directives Identity
-  -> TestInputs a
+  -> TestInputs
   -> Maybe Bypass
   -- ^ Nothing if test succeeds; Just Bypass if the test did not
   -- succeed for some reason (does not necessarily indicate failure)

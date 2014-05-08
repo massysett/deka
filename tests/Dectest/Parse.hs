@@ -36,13 +36,27 @@ data Instruction
   | Test TestSpec
   deriving Show
 
-lineToInstruction :: [Token] -> Instruction
-lineToInstruction ts
-  | null ts = Blank
-  | length ts == 2 = Directive (Keyword . BS8.init . unToken . head $ ts)
-                               (Value (unToken (last ts)))
-  | otherwise = Test $ mkTestSpec ts
+data File = File
+  { fileName :: BS8.ByteString
+  , fileContents :: [Either File Instruction]
+  } deriving Show
 
+directive :: [Token] -> (Keyword, Value)
+directive ts = case ts of
+  x:y:[] -> ( Keyword . BS8.init . unToken $ x,
+              Value (unToken y) )
+  _ -> error "directive: bad token count"
+
+lineToContent :: [Token] -> IO (Either File Instruction)
+lineToContent ts
+  | null ts = return . Right $ Blank
+  | length ts == 2 && kw == "dectest" = fmap Left $ parseFile fn
+  | length ts == 2 = return . Right $ Directive akw avl
+  | otherwise = return . Right . Test . mkTestSpec $ ts
+  where
+    (akw@(Keyword kw), avl@(Value val)) = directive ts
+    fn = val `BS8.append` ".dectest"
+  
 mkTestSpec :: [Token] -> TestSpec
 mkTestSpec ts
   | length ts < 5 = error "mkTestSpec: list too short"
@@ -71,13 +85,15 @@ mkTestSpec ts
       [] -> error "mkTestSpec: list too short"
       y:_ -> y
 
-fileToInstructions :: BS8.ByteString -> [Instruction]
-fileToInstructions
-  = map lineToInstruction
+rawToContent :: Raw -> IO [Either File Instruction]
+rawToContent
+  = mapM lineToContent
   . map removeComments
   . map processLine
   . splitLines
-  . File
 
-parseFile :: FilePath -> IO [Instruction]
-parseFile = fmap fileToInstructions . BS8.readFile
+parseFile :: BS8.ByteString -> IO File
+parseFile fn = do
+  rw <- raw (BS8.unpack fn)
+  ctnt <- rawToContent rw
+  return $ File fn ctnt

@@ -1,28 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Dectest.Parse.Tokens
-  ( File(..)
+  ( Raw(unRaw)
   , Line(..)
   , Token(..)
   , splitLines
   , processLine
+  , raw
   ) where
 
 import qualified Data.ByteString.Char8 as BS8
 import Prelude hiding (Double)
 
 -- | Raw file, parsed in from disk.
-newtype File = File { unFile :: BS8.ByteString }
+newtype Raw = Raw { unRaw :: BS8.ByteString }
   deriving Show
 
--- | A line from a File.  Does not contain any newlines.
+raw :: FilePath -> IO Raw
+raw = fmap Raw . BS8.readFile
+
+-- | A line from a Raw.  Does not contain any newlines.
 newtype Line = Line { unLine :: BS8.ByteString }
   deriving Show
 
--- | Splits a File into a list of Line.  First, eliminates any
+-- | Splits a Raw into a list of Line.  First, eliminates any
 -- MS-DOS carriage returns (ASCII character 0d).  Then, uses the
 -- ByteString lines function.
-splitLines :: File -> [Line]
-splitLines = map Line . BS8.lines . BS8.filter (/= '\r') . unFile
+splitLines :: Raw -> [Line]
+splitLines = map Line . BS8.lines . BS8.filter (/= '\r') . unRaw
 
 --
 -- Parsing a Line into Tokens

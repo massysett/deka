@@ -30,6 +30,10 @@ import qualified Dectest.Interp.Directive
 import qualified Dectest.Apply.Types
 import qualified Dectest.Apply.Apply
 import qualified Dectest.Lookup.Util
+import qualified Dectest.Lookup.Single
+import qualified Dectest.Lookup.Dec
+import qualified Dectest.Lookup
+import qualified Dectest.Runner
 
 tests :: TestTree
 tests = testGroup "all tests"
