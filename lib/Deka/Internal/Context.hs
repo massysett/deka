@@ -222,28 +222,40 @@ instance Exception Flag
 
 instance Show Flag where
   show f
-    | f == conversionSyntax = "Conversion syntax"
-    | f == divisionByZero = "Division by zero"
-    | f == divisionImpossible = "Division impossible"
-    | f == insufficientStorage = "Insufficient storage"
-    | f == inexact = "Inexact"
-    | f == invalidContext = "Invalid context"
-    | f == invalidOperation = "Invalid operation"
-    | f == lostDigits = "Lost digits"
-    | f == overflow = "Overflow"
-    | f == clamped = "Clamped"
-    | f == rounded = "Rounded"
-    | f == subnormal = "Subnormal"
-    | f == underflow = "Underflow"
+    | f == conversionSyntax     = "Conversion syntax"
+    | f == divisionByZero       = "Division by zero"
+    | f == divisionImpossible   = "Division impossible"
+    | f == divisionUndefined    = "Division undefined"
+    | f == inexact              = "Inexact"
+    | f == insufficientStorage  = "Insufficient storage"
+    | f == invalidContext       = "Invalid context"
+    | f == invalidOperation     = "Invalid operation"
+    | f == lostDigits           = "Lost digits"
+    | f == overflow             = "Overflow"
+    | f == clamped              = "Clamped"
+    | f == rounded              = "Rounded"
+    | f == subnormal            = "Subnormal"
+    | f == underflow            = "Underflow"
     | otherwise = error "show flag: unrecognized flag"
 
 -- | A list of all possible 'Flag'.
 allFlags :: [Flag]
 allFlags =
-  [ conversionSyntax, divisionByZero, divisionImpossible,
-    divisionUndefined, insufficientStorage, inexact,
-    lostDigits, overflow, clamped, rounded, subnormal,
-    underflow ]
+  [ conversionSyntax
+  , divisionByZero
+  , divisionImpossible
+  , divisionUndefined
+  , inexact
+  , insufficientStorage
+  , invalidContext
+  , invalidOperation
+  , lostDigits
+  , overflow
+  , clamped
+  , rounded
+  , subnormal
+  , underflow
+  ]
 
 whichFlags :: Word32 -> [Flag]
 whichFlags i =
@@ -275,13 +287,13 @@ divisionImpossible = Flag c'DEC_Division_impossible
 divisionUndefined :: Flag
 divisionUndefined = Flag c'DEC_Division_undefined
 
-insufficientStorage :: Flag
-insufficientStorage = Flag c'DEC_Insufficient_storage
-
 -- | One or more non-zero coefficient digits were discarded during
 -- rounding.
 inexact :: Flag
 inexact = Flag c'DEC_Inexact
+
+insufficientStorage :: Flag
+insufficientStorage = Flag c'DEC_Insufficient_storage
 
 -- | The Context for computations was invalid; this error should
 -- never occur because @deka@ keeps you from setting an invalid
@@ -302,10 +314,10 @@ overflow :: Flag
 overflow = Flag c'DEC_Overflow
 
 clamped :: Flag
-clamped = Flag c'DEC_Overflow
+clamped = Flag c'DEC_Clamped
 
 rounded :: Flag
-rounded = Flag c'DEC_Clamped
+rounded = Flag c'DEC_Rounded
 
 subnormal :: Flag
 subnormal = Flag c'DEC_Subnormal
@@ -353,7 +365,7 @@ clearTraps :: [Flag] -> Ctx ()
 clearTraps fs = Ctx $ \ptr -> do
   let pTr = p'decContext'traps ptr
   ts <- peek pTr
-  poke pTr (ts .&. complement (combineFlags fs))
+  poke pTr (ts `xor` (combineFlags fs))
 
 -- ## Query
 

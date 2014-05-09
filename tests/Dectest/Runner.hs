@@ -43,16 +43,19 @@ data ItemDesc
 
 runTests
   :: (O.Operand a, R.Result a, R.ToByteString a)
-  => [(BS8.ByteString, Y.ApplyTest a)]
+  => Bool
+  -- ^ If True, remove clamped, lost_digits, rounded, subnormal from
+  -- list of expxected flags.
+  -> [(BS8.ByteString, Y.ApplyTest a)]
   -> P.File
   -> [Item]
-runTests lkp f
+runTests rmve lkp f
   = Item (P.fileName f) SwitchFiles
   : go Y.blankDirectives (P.fileContents f)
   where
     go _ [] = []
     go d (x:xs) = case x of
-      Left file -> runTests lkp file ++ go d xs
+      Left file -> runTests rmve lkp file ++ go d xs
       Right ixn -> case ixn of
         P.Blank -> go d xs
         P.Directive k v ->
@@ -61,7 +64,7 @@ runTests lkp f
         P.Test ts -> (Item (P.fileName f) (Result tr)) : go d xs
           where
             tr = TestResult ts dirs res
-            res = A.applyTest lkp dirs (specToInputs ts)
+            res = A.applyTest lkp dirs (specToInputs rmve ts)
             dirs = Y.setDirectives d
 
 data Counts = Counts
@@ -72,9 +75,10 @@ data Counts = Counts
 
 showCounts :: Counts -> IO ()
 showCounts (Counts p f s) = do
-  putStr $ "pass: " ++ show p
-  putStr $ "fail: " ++ show f
-  putStr $ "skip: " ++ show s
+  putStrLn ""
+  putStrLn $ "pass: " ++ show p
+  putStrLn $ "fail: " ++ show f
+  putStrLn $ "skip: " ++ show s
   putStrLn $ "total: " ++ show (p + f + s)
 
 exit :: Counts -> IO ()
@@ -96,10 +100,10 @@ numTests = ["testall.decTest", "testall0.decTest"]
 
 testList :: [Counts -> IO Counts]
 testList =
-  [ parseAndTest LS.testLookups singleTests
-  , parseAndTest LD.testLookups doubleTests
-  , parseAndTest LQ.testLookups quadTests
-  ] ++ zipWith parseAndTest (repeat LN.testLookups) numTests
+  [ parseAndTest True LS.testLookups singleTests
+  , parseAndTest True LD.testLookups doubleTests
+  , parseAndTest True LQ.testLookups quadTests
+  ] ++ zipWith (parseAndTest False) (repeat LN.testLookups) numTests
 
 runAllTests :: IO ()
 runAllTests = do
@@ -118,14 +122,17 @@ runTestList ls = go ls (Counts 0 0 0)
 
 parseAndTest
   :: (O.Operand a, R.Result a, R.ToByteString a)
-  => [(BS8.ByteString, Y.ApplyTest a)]
+  => Bool
+  -- ^ If True, remove clamped, lost_digits, rounded, and subnormal
+  -- from the list of expected flags.
+  -> [(BS8.ByteString, Y.ApplyTest a)]
   -> BS8.ByteString
   -- ^ File name
   -> Counts
   -> IO Counts
-parseAndTest lkp n c = do
+parseAndTest rmve lkp n c = do
   f <- P.parseFile n
-  printItems c (runTests lkp f)
+  printItems c (runTests rmve lkp f)
 
 printItems :: Counts -> [Item] -> IO Counts
 printItems cs is = go cs is
@@ -187,14 +194,27 @@ l <+> r
   | BS8.null l || BS8.null r = l <> r
   | otherwise = l <> " " <> r
 
-specToInputs :: P.TestSpec -> A.TestInputs
-specToInputs t = A.TestInputs
+-- | Converts a TestSpec to TestInputs.  Removes informational flags
+-- if requested - see documentation for the decContext module, which
+-- states that clamped, lost_digits, rounded, and subnormal are NOT
+-- reported for any of the decFloats modules.
+
+specToInputs
+  :: Bool
+  -- ^ If True, remove clamped, lost_digits, rounded, and subnormal
+  -- from the list of expected flags.
+  -> P.TestSpec
+  -> A.TestInputs
+specToInputs rmve t = A.TestInputs
   { A.inName = P.testOperation t
   , A.inOperands = P.testOperands t
   , A.inResult = P.testResult t
-  , A.inFlags = map toFlag . P.testConditions $ t
+  , A.inFlags = filt . map toFlag . P.testConditions $ t
   }
   where
+    filt | rmve = filter (not . (`elem` infoFlags))
+         | otherwise = id
+    infoFlags = [ C.clamped, C.lostDigits, C.rounded, C.subnormal ]
     toFlag str
       | s == "clamped" = C.clamped
       | s == "conversion_syntax" = C.conversionSyntax

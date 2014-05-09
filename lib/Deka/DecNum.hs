@@ -75,6 +75,10 @@ module Deka.DecNum
   , isSpecial
   , isZero
 
+  -- * Re-exports
+  , module Deka.Context
+  , module Deka.Class
+
   -- * Decoding and encoding
 
   -- | /Encoding/ takes Haskell types and converts them to a C
@@ -129,6 +133,7 @@ import Deka.Internal.DecNum.CtxFree
 
 import qualified Deka.Internal.DecNum.CtxFree as I
 import Deka.Context
+import Deka.Class
 import Deka.Internal.DecNum.Ctx
 import Deka.Internal.Unsafe
 import Deka.Decoded

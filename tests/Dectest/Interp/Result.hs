@@ -59,8 +59,8 @@ instance Result Bool where
 instance Result Ordering where
   result bs = case reads . BS8.unpack $ bs of
     (x,""):[]
-      | x < (-1 :: Int) -> Just $ \a -> return (a == LT)
-      | x > 1 -> Just $ \a -> return (a == GT)
+      | x < (0 :: Int) -> Just $ \a -> return (a == LT)
+      | x > 0 -> Just $ \a -> return (a == GT)
       | otherwise -> Just $ \a -> return (a == EQ)
     _ -> error "result: ordering: could not parse number"
 
