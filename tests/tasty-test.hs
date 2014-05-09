@@ -1,11 +1,5 @@
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Main where
 
-import Deka.Decoded.Generators
-import Deka.Internal.Quad.Decoding.Generators
-import Deka.Internal.Quad.Tests.Util
-import Deka.Internal.Context.Generators
-import Deka.Internal.Quad.CtxFree.Tests
 import qualified Deka.Internal.Quad.Immutability
 import qualified Deka.Internal.Double.Immutability
 import qualified Deka.Internal.Single.Immutability
@@ -14,26 +8,7 @@ import Test.Tasty
 import qualified Deka.Fixed.Quad.Tests
 import qualified Deka.Fixed.Double.Tests
 import qualified Deka.Fixed.Single.Tests
-import Dectest.Parse
-import Dectest.Parse.Tokens
-import Dectest.Lookup
-import Dectest.Lookup.Quad
-import Dectest.Lookup.Double
 import qualified Dectest.Binary
-import qualified Dectest.Parse.Operand
-import qualified Dectest.Interp.Octothorpe
-import qualified Dectest.Util
-import qualified Dectest
-import qualified Dectest.Interp.Operand
-import qualified Dectest.Interp.Result
-import qualified Dectest.Interp.Directive
-import qualified Dectest.Apply.Types
-import qualified Dectest.Apply.Apply
-import qualified Dectest.Lookup.Util
-import qualified Dectest.Lookup.Single
-import qualified Dectest.Lookup.Dec
-import qualified Dectest.Lookup
-import qualified Dectest.Runner
 
 tests :: TestTree
 tests = testGroup "all tests"
