@@ -13,6 +13,12 @@ import qualified Dectest.Interp.Operand as O
 import qualified Dectest.Interp.Result as R
 import Data.Monoid
 import Data.List (intersperse)
+import System.Exit
+import qualified Dectest.Lookup.Single as LS
+import qualified Dectest.Lookup.Double as LD
+import qualified Dectest.Lookup.Quad as LQ
+import qualified Dectest.Lookup.Dec as LN
+
 
 data Item = Item
   { itemFile :: BS8.ByteString
@@ -64,8 +70,65 @@ data Counts = Counts
   , nSkip :: !Int
   } deriving Show
 
-printItems :: [Item] -> IO Counts
-printItems is = go (Counts 0 0 0) is
+showCounts :: Counts -> IO ()
+showCounts (Counts p f s) = do
+  putStr $ "pass: " ++ show p
+  putStr $ "fail: " ++ show f
+  putStr $ "skip: " ++ show s
+  putStrLn $ "total: " ++ show (p + f + s)
+
+exit :: Counts -> IO ()
+exit c
+  | nFail c > 0 = exitFailure
+  | otherwise = exitSuccess
+
+singleTests :: BS8.ByteString
+singleTests = "decSingle.decTest"
+
+doubleTests :: BS8.ByteString
+doubleTests = "decDouble.decTest"
+
+quadTests :: BS8.ByteString
+quadTests = "decQuad.decTest"
+
+numTests :: [BS8.ByteString]
+numTests = ["testall.decTest", "testall0.decTest"]
+
+testList :: [Counts -> IO Counts]
+testList =
+  [ parseAndTest LS.testLookups singleTests
+  , parseAndTest LD.testLookups doubleTests
+  , parseAndTest LQ.testLookups quadTests
+  ] ++ zipWith parseAndTest (repeat LN.testLookups) numTests
+
+runAllTests :: IO ()
+runAllTests = do
+  cnts <- runTestList testList
+  showCounts cnts
+  exit cnts
+
+runTestList :: [Counts -> IO Counts] -> IO Counts
+runTestList ls = go ls (Counts 0 0 0)
+  where
+    go list !c = case list of
+      [] -> return c
+      x:xs -> do
+        c' <- x c
+        go xs c'
+
+parseAndTest
+  :: (O.Operand a, R.Result a, R.ToByteString a)
+  => [(BS8.ByteString, Y.ApplyTest a)]
+  -> BS8.ByteString
+  -- ^ File name
+  -> Counts
+  -> IO Counts
+parseAndTest lkp n c = do
+  f <- P.parseFile n
+  printItems c (runTests lkp f)
+
+printItems :: Counts -> [Item] -> IO Counts
+printItems cs is = go cs is
   where
     go !c [] = return c
     go !c (x:xs) =
