@@ -175,6 +175,48 @@ Test-Suite tasty-test
   include-dirs:
     decnumber/src
 
+Test-Suite decnumber-tests
+  Build-depends:
+      base >=4.5.0.0 && < 4.8
+    , tasty-quickcheck >=0.3.1 && < 0.9
+    , tasty >=0.7 && < 0.9
+    , QuickCheck >=2.7 && < 2.8
+    , bytestring >=0.9.2.1 && < 0.11
+    , random-shuffle ==0.0.4
+    , unix >= 2.5.1.0 && < 2.8
+    , transformers >= 0.3.0.0 && < 0.4.0.0
+    , either >= 4.1.1 && < 4.2
+
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests lib
+  ghc-options: -Wall -rtsopts -fprof-auto
+  main-is: decnumber-tests.hs
+  other-modules:
+      Deka.Internal.Decnumber.DecSingle
+    , Deka.Internal.Decnumber.DecQuad
+    , Deka.Internal.Decnumber.DecDouble
+    , Deka.Internal.Decnumber.Context
+    , Deka.Internal.Decnumber.DecNumber
+    , Deka.Internal.Decnumber.DecNumberLocal
+    , Deka.Internal.Decnumber.Decimal32
+    , Deka.Internal.Decnumber.Decimal64
+    , Deka.Internal.Decnumber.Decimal128
+
+  default-language:    Haskell2010
+
+  c-sources:
+    decnumber/src/decContext.c
+    decnumber/src/decNumberMacros.c
+    decnumber/src/decNumber.c
+    decnumber/src/decimal64.c
+    decnumber/src/decimal32.c
+    decnumber/src/decimal128.c
+    decnumber/src/decQuad.c
+    decnumber/src/decDouble.c
+    decnumber/src/decSingle.c
+  include-dirs:
+    decnumber/src
+
 
 Flag testexe
   Description: build test executables

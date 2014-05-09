@@ -55,7 +55,7 @@ lineToContent ts
   | otherwise = return . Right . Test . mkTestSpec $ ts
   where
     (akw@(Keyword kw), avl@(Value val)) = directive ts
-    fn = val `BS8.append` ".dectest"
+    fn = val `BS8.append` ".decTest"
   
 mkTestSpec :: [Token] -> TestSpec
 mkTestSpec ts
