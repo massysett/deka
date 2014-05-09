@@ -223,9 +223,7 @@ addDirective (P.Keyword kw) (P.Value val) d
   | k == "precision" =
       let prec = fromMaybe
             (error $ "could not set precision: " ++ v) $ do
-              n <- case reads v of
-                (x, ""):[] -> return x
-                _ -> Nothing
+              n <- readNumber v
               C.precision n
       in d { Y.precision = Just prec }
 
@@ -244,18 +242,14 @@ addDirective (P.Keyword kw) (P.Value val) d
   | k == "maxexponent" =
       let ex = fromMaybe
             (error $ "could not set max exponent: " ++ v) $ do
-              n <- case reads v of
-                (x, ""):[] -> return x
-                _ -> Nothing
+              n <- readNumber v
               C.emax n
       in d { Y.emax = Just ex }
 
   | k == "minexponent" =
       let ex = fromMaybe
             (error $ "could not set min exponent: " ++ v) $ do
-              n <- case reads v of
-                (x, ""):[] -> return x
-                _ -> Nothing
+              n <- readNumber v
               C.emin n
       in d { Y.emin = Just ex }
 
@@ -287,3 +281,8 @@ safeRead :: Read a => String -> Maybe a
 safeRead a = case reads a of
   (x, ""):[] -> Just x
   _ -> Nothing
+
+readNumber :: Read a => String -> Maybe a
+readNumber a = case a of
+  [] -> Nothing
+  x:xs -> if x == '+' then safeRead xs else safeRead (x:xs)

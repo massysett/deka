@@ -81,7 +81,7 @@ instance Result C.Class where
     where
       cls
         | s == "snan" = C.sNaN
-        | s == "qnan" = C.qNaN
+        | s == "nan" = C.qNaN
         | s == "-infinity" = C.negInf
         | s == "-normal" = C.negNormal
         | s == "-subnormal" = C.negSubnormal
