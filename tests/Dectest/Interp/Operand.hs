@@ -50,10 +50,11 @@ class Operand a where
   operand :: BS8.ByteString -> Maybe (WhichPrecision -> Ctx a)
 
 instance Operand DecNum where
-  operand bs =
-    fmap (\f wp -> f opOperandDec (fromIntegral . BS8.length $ bs)
-                N.fromByteString wp)
-    $ interpOp bs
+  operand bs = case interpOp bs of
+    Nothing -> Nothing
+    Just fParse -> Just $ \wp ->
+      fParse opOperandDec (fromIntegral . BS8.length $ bs)
+      N.fromByteString wp
 
 instance Operand S.Single where
   operand bs =
