@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings, BangPatterns #-}
 module Dectest.Runner where
 
 import qualified Deka.Context as C
@@ -10,6 +11,8 @@ import Data.Char (toLower)
 import Data.Maybe
 import qualified Dectest.Interp.Operand as O
 import qualified Dectest.Interp.Result as R
+import Data.Monoid
+import Data.List (intersperse)
 
 data Item = Item
   { itemFile :: BS8.ByteString
@@ -54,6 +57,72 @@ runTests lkp f
             tr = TestResult ts dirs res
             res = A.applyTest lkp dirs (specToInputs ts)
             dirs = Y.setDirectives d
+
+data Counts = Counts
+  { nPass :: !Int
+  , nFail :: !Int
+  , nSkip :: !Int
+  } deriving Show
+
+printItems :: [Item] -> IO Counts
+printItems is = go (Counts 0 0 0) is
+  where
+    go !c [] = return c
+    go !c (x:xs) =
+      BS8.putStrLn (showItem x) 
+      >> go (increment x c) xs
+
+increment :: Item -> Counts -> Counts
+increment i c = case itemDesc i of
+  SwitchFiles -> c
+  Directive _ _ -> c
+  Result r -> case trResult r of
+    Nothing -> c { nPass = succ (nPass c) }
+    Just y -> case y of
+      Y.Skip -> c { nSkip = succ (nSkip c) }
+      Y.Null -> c { nSkip = succ (nSkip c) }
+      Y.Fail _ _ -> c { nFail = succ (nFail c) }
+      Y.OperandMismatch -> c { nFail = succ (nFail c) }
+
+
+showItem :: Item -> BS8.ByteString
+showItem i = case itemDesc i of
+  SwitchFiles -> "load file: " <> itemFile i
+  Directive k v -> "directive: " <> P.unKeyword k
+    <> " value: " <> P.unValue v
+  Result r -> showResult r
+
+showResult :: TestResult -> BS8.ByteString
+showResult r = showTestResult (trResult r) <> " "
+  <> showSpec (trSpec r)
+
+showTestResult :: Maybe Y.Bypass -> BS8.ByteString
+showTestResult m = case m of
+  Nothing -> "pass"
+  Just y -> case y of
+    Y.Skip -> "skip"
+    Y.Null -> "null input; skip"
+    Y.Fail d fs -> "FAIL actual result:" <+> d
+      <+> showFlags fs
+    Y.OperandMismatch -> "OPERAND MISMATCH"
+
+showFlags :: [C.Flag] -> BS8.ByteString
+showFlags = BS8.pack . concat . intersperse ", " . map show
+
+showSpec :: P.TestSpec -> BS8.ByteString
+showSpec t =
+  P.testId t
+  <+> P.testOperation t
+  <+> BS8.concat (intersperse " " . P.testOperands $ t)
+  <+> "->"
+  <+> P.testResult t
+  <+> BS8.concat (intersperse " " . P.testConditions $ t)
+
+(<+>) :: BS8.ByteString -> BS8.ByteString -> BS8.ByteString
+l <+> r
+  | BS8.null l && BS8.null r = ""
+  | BS8.null l || BS8.null r = l <> r
+  | otherwise = l <> " " <> r
 
 specToInputs :: P.TestSpec -> A.TestInputs
 specToInputs t = A.TestInputs
