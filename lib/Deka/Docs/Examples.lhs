@@ -23,6 +23,7 @@ here.
 > -- <https://github.com/massysett/deka/blob/master/lib/Deka/Docs/Examples.lhs>
 > module Deka.Docs.Examples where
 
+> {-
 > import Deka
 > import Deka.Fixed.Quad
 > import Data.Maybe
@@ -271,3 +272,4 @@ https://github.com/massysett/deka
 No bug is too small!
 
 > };
+> -}

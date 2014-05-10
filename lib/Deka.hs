@@ -1,5 +1,9 @@
 {-# LANGUAGE Safe, DeriveDataTypeable #-}
 
+module Deka where
+
+{-
+
 -- | Simple decimal arithmetic.
 --
 -- 'Deka' provides a decimal arithmetic type.  You are limited to 34
@@ -33,9 +37,7 @@ module Deka
 import Control.Exception
 import Data.Maybe
 import Data.Typeable
-import Deka.Fixed.Quad
-import Deka.Internal.Quad.Decoding (Coefficient(..))
-import qualified Deka.Fixed.Quad as P
+import Deka.DecNum
 import qualified Data.ByteString.Char8 as BS8
 
 -- | Thrown by arithmetic functions in the Num class, as this is the
@@ -173,3 +175,4 @@ quadToDeka :: Quad -> Maybe Deka
 quadToDeka q
   | isFinite q = Just $ Deka q
   | otherwise = Nothing
+-}
