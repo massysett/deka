@@ -28,7 +28,7 @@ module Deka.Dec.Decoding
   , infinity
   , notANumber
   , nonSpecialCtxFree
-  , nonSpecial
+  , I.nonSpecial
 
   -- * Adjusted exponents
   , I.AdjExponent
@@ -36,8 +36,7 @@ module Deka.Dec.Decoding
   , I.adjExponent
   ) where
 
-import qualified Deka.Internal.Dec.CtxFree as I
-import Deka.Internal.Dec.Ctx
+import qualified Deka.Internal.Dec.Decoding as I
 import Deka.Decoded
 import Deka.Internal.Dec.Dec
 import Deka.Internal.Unsafe

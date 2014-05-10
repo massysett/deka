@@ -550,19 +550,3 @@ isSubnormal (Dec d) = Ctx $ \pCtx ->
   c'decNumberIsSubnormal pd pCtx >>= \int ->
   return (toBool int)
 
--- | Encodes non-special numbers (also known as finite numbers.)
--- Uses information from the context to determine whether subnormal
--- values are allowed.
-nonSpecial
-  :: Sign
-  -> Coefficient
-  -> Exponent
-  -> Ctx (Maybe Dec)
-  -- ^ Fails if the exponent is out of range
-nonSpecial sgn coe rawEx = Ctx $ \pCtx -> do
-  ext <- fmap toBool . peek . p'decContext'extended $ pCtx
-  let getPc | ext = fmap (Just . Precision) . peek
-                . p'decContext'digits $ pCtx
-            | otherwise = return Nothing
-  pc <- getPc
-  nonSpecialCtxFree pc sgn coe rawEx
