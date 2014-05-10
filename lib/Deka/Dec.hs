@@ -240,3 +240,93 @@ nonSpecialCtxFree
   -- ^ Fails if the exponent is out of range.
 nonSpecialCtxFree = unsafe4 I.nonSpecialCtxFree
 
+{-
+
+Functions implemented from decNumber list:
+These are listed in the order in which they appear in the
+decNumber documentation.
+Functions implemented are written.  Those skipped are in parentheses.
+
+Conversion functions
+Have been implemented:
+
+fromString - use fromByteString
+toString - use toByteString
+toEngString - use toEngByteString
+
+Aritmetic and Logical Functions
+All those present in decNumber have been implemented:
+
+abs
+add
+and
+compare
+compareSignal
+compareTotal
+compareTotalMag
+divide
+divideInteger
+exp
+fma
+invert
+ln
+logB
+log10
+max
+maxMag
+min
+minMag
+minus
+multiply
+nextMinus
+nextPlus
+nextToward
+normalize
+or
+plus
+power
+quantize
+remainder
+remainderNear
+rescale
+rotate
+sameQuantum
+scaleB
+shift
+squareRoot
+subtract
+toIntegralExact
+toIntegralValue
+xor
+
+Utility Functions
+
+class - use numClass
+(classToString) - use the Show instance of Class
+(copy)
+copyAbs
+(copyNegate)
+copySign
+fromInt32
+fromUInt32
+(getBCD) - use decode
+isCanonical
+isFinite
+isInfinite
+isNaN
+isNegative
+isNormal
+isQNaN
+isSNaN
+isSpecial
+isSubnormal
+isZero
+(radix)
+reduce
+(setBCD) - use encode
+toInt32
+toUInt32
+trim
+version
+zero
+-}

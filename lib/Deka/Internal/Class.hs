@@ -46,16 +46,18 @@ posNormal = Class c'DEC_CLASS_POS_NORMAL
 posInf :: Class
 posInf = Class c'DEC_CLASS_POS_INF
 
+-- | Values shown correspond to those given for
+-- _decNumberClassToString_ in the decNumber documentation.
 instance Show Class where
   show c
     | c == sNaN = "sNaN"
-    | c == qNaN = "qNaN"
-    | c == negInf = "negInf"
-    | c == negNormal = "negNormal"
-    | c == negSubnormal = "negSubnormal"
-    | c == negZero = "negZero"
-    | c == posZero = "posZero"
-    | c == posSubnormal = "posSubnormal"
-    | c == posNormal = "posNormal"
-    | c == posInf = "posInf"
+    | c == qNaN = "NaN"
+    | c == negInf = "-Infinity"
+    | c == negNormal = "-Normal"
+    | c == negSubnormal = "-Subnormal"
+    | c == negZero = "-Zero"
+    | c == posZero = "+Zero"
+    | c == posSubnormal = "+Subnormal"
+    | c == posNormal = "+Normal"
+    | c == posInf = "+Inf"
     | otherwise = error "show: class: unknown class"
