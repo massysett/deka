@@ -142,7 +142,7 @@ printItems cs is = go cs is
   where
     go !c [] = return c
     go !c (x:xs) =
-      BS8.putStrLn (showItem x) 
+      BS8.putStrLn (showItem x)
       >> go (increment x c) xs
 
 increment :: Item -> Counts -> Counts
