@@ -19,7 +19,9 @@ module Deka.Dec.Decoding
   , Sign(..)
   , NaN(..)
   , I.Payload(..)
-  , I.Decoded(..)
+  , I.Decoded
+  , I.dcdSign
+  , I.dcdPayload
 
   -- * Decoding
   , decode
