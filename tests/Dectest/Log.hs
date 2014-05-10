@@ -5,6 +5,7 @@ import Control.Monad
 import qualified Data.Sequence as Seq
 import Data.Monoid
 import Control.Applicative
+import Control.Monad.Trans.Class
 
 newtype Log m a = Log { runLog :: m (a, Seq.Seq BS8.ByteString) }
 
@@ -25,3 +26,6 @@ instance Monad m => Functor (Log m) where
 instance Monad m => Applicative (Log m) where
   pure = return
   (<*>) = ap
+
+instance MonadTrans Log where
+  lift k = Log (liftM (\a -> (a, Seq.empty)) k)

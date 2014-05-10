@@ -3,6 +3,9 @@ module Dectest.Parse where
 
 import Dectest.Parse.Tokens
 import qualified Data.ByteString.Char8 as BS8
+import Dectest.Log
+import Control.Monad.Trans.Class
+import Data.Monoid
 
 -- | Remove the comments from a line of tokens.  Any unquoted token that
 -- starts with two dashes is removed.  Also, any token that comes
@@ -50,7 +53,8 @@ directive ts = case ts of
 lineToContent :: [Token] -> IO (Either File Instruction)
 lineToContent ts
   | null ts = return . Right $ Blank
-  | length ts == 2 && kw == "dectest" = fmap Left $ parseFile fn
+  | length ts == 2 && kw == "dectest" = fmap Left . fmap fst
+        . runLog $ parseFile fn
   | length ts == 2 = return . Right $ Directive akw avl
   | otherwise = return . Right . Test . mkTestSpec $ ts
   where
@@ -92,8 +96,9 @@ rawToContent
   . map processLine
   . splitLines
 
-parseFile :: BS8.ByteString -> IO File
+parseFile :: BS8.ByteString -> Log IO File
 parseFile fn = do
-  rw <- raw (BS8.unpack fn)
-  ctnt <- rawToContent rw
+  rw <- lift $ raw (BS8.unpack fn)
+  ctnt <- lift $ rawToContent rw
+  tell $ "loading file: " <> fn
   return $ File fn ctnt

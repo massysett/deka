@@ -18,6 +18,9 @@ import qualified Dectest.Lookup.Single as LS
 import qualified Dectest.Lookup.Double as LD
 import qualified Dectest.Lookup.Quad as LQ
 import qualified Dectest.Lookup.Dec as LN
+import Dectest.Log
+import Control.Monad.Trans.Class
+import Control.Monad
 
 
 data Item = Item
@@ -98,7 +101,7 @@ quadTests = "decQuad.decTest"
 numTests :: [BS8.ByteString]
 numTests = ["testall.decTest", "testall0.decTest"]
 
-testList :: [Counts -> IO Counts]
+testList :: [Counts -> Log IO Counts]
 testList =
   [ parseAndTest True LS.testLookups singleTests
   , parseAndTest True LD.testLookups doubleTests
@@ -107,11 +110,11 @@ testList =
 
 runAllTests :: IO ()
 runAllTests = do
-  cnts <- runTestList testList
+  (cnts, _) <- runLog $ runTestList testList
   showCounts cnts
   exit cnts
 
-runTestList :: [Counts -> IO Counts] -> IO Counts
+runTestList :: Monad m => [Counts -> m Counts] -> m Counts
 runTestList ls = go ls (Counts 0 0 0)
   where
     go list !c = case list of
@@ -129,10 +132,10 @@ parseAndTest
   -> BS8.ByteString
   -- ^ File name
   -> Counts
-  -> IO Counts
+  -> Log IO Counts
 parseAndTest rmve lkp n c = do
   f <- P.parseFile n
-  printItems c (runTests rmve lkp f)
+  lift $ printItems c (runTests rmve lkp f)
 
 printItems :: Counts -> [Item] -> IO Counts
 printItems cs is = go cs is
