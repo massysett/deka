@@ -14,9 +14,13 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe
 import qualified Deka.DecNum as DN
 import Deka.Internal.DecNum.DecNum
+import qualified Deka.Internal.DecNum.DecNum as N
 import Deka.Internal.Single.Single
+import qualified Deka.Internal.Single.Single as S
 import Deka.Internal.Double.Double
+import qualified Deka.Internal.Double.Double as D
 import Deka.Internal.Quad.Quad
+import qualified Deka.Internal.Quad.Quad as Q
 import Deka.Internal.Decnumber.DecNumber (c'decNumberPlus)
 import Deka.Context
 import Deka.Internal.Context
@@ -33,6 +37,10 @@ import Foreign.Safe hiding (void)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString as BS
 import Prelude hiding (Double)
+import Dectest.Log (Log(..), tell)
+import qualified Dectest.Log as L
+import Control.Monad.Trans.Class
+import Data.Monoid
 
 data WhichPrecision
   = FromCtx
@@ -50,9 +58,9 @@ isNull = (== "#")
 -- | When parsing a result token, parseOcto returns a function that
 -- you use to compare the result of the test computation to the
 -- token.
-type CompareResult a = a -> Ctx Bool
+type CompareResult a = a -> Log Ctx Bool
 
-type ConvertOp a = WhichPrecision -> Ctx a
+type ConvertOp a = WhichPrecision -> Log Ctx a
 
 data OctoParsers = OctoParsers
   { opOperandDec :: ConvertOp DecNum
@@ -65,20 +73,24 @@ data OctoParsers = OctoParsers
   , opResult128 :: CompareResult Quad
   }
 
-parseOcto :: BS8.ByteString -> Parsed
-parseOcto s
-  | isNull s = Null
-  | not ('#' `BS8.elem` s) = NotOcto
-  | otherwise = Octo $ OctoParsers
-      { opOperandDec = opDec s
-      , opOperand32 = op32 s
-      , opOperand64 = op64 s
-      , opOperand128 = op128 s
-      , opResultDec = rsDec s
-      , opResult32 = rs32 s
-      , opResult64 = rs64 s
-      , opResult128 = rs128 s
-      }
+parseOcto :: BS8.ByteString -> Log Parsed
+parseOcto s = do
+  tell $ "parseOcto: processing " <> s
+  let r | isNull s = tell "parseOcto: null" >> return Null
+        | not ('#' `BS8.elem` s) =
+            tell "parseOcto: not an octothorpe" >> return NotOcto
+        | otherwise = tell "parseOcto: returning OctoParsers" >>
+           return $ Octo $ OctoParsers
+            { opOperandDec = opDec s
+            , opOperand32 = op32 s
+            , opOperand64 = op64 s
+            , opOperand128 = op128 s
+            , opResultDec = rsDec s
+            , opResult32 = rs32 s
+            , opResult64 = rs64 s
+            , opResult128 = rs128 s
+            }
+  r
 
 octoHexPrecision :: OctoHex -> Int32
 octoHexPrecision o = case o of
@@ -97,52 +109,64 @@ getOctoHex bs setF ptr = do
 
 
 opDec :: BS8.ByteString -> ConvertOp DecNum
-opDec bs apPrec = Ctx $ \pCtx -> do
-  oh <- getOctoHex bs True pCtx
-  dn <- octoHexToDecNum oh
+opDec bs apPrec = Log $ Ctx $ \pCtx -> do
+  oh <- lift $ getOctoHex bs True pCtx
+  dn <- lift $ octoHexToDecNum oh
   let pcsn = octoHexPrecision oh
       mayPrec = case apPrec of
         DoNotRound -> Just pcsn
         FromCtx -> Nothing
-  _ <- unCtx (applyDirectivesToDecNumber mayPrec dn) pCtx
-  return $ DecNum dn
+  _ <- lift $ unCtx (applyDirectivesToDecNumber mayPrec dn) pCtx
+  let r = DecNum dn
+  desc <- lift $ N.toByteStringIO r
+  tell $ "opDec: returning DecNum: " <> desc
+  return r
 
 
 op32 :: BS8.ByteString -> ConvertOp Single
-op32 bs _ = Ctx $ \pCtx -> do
-  oh <- getOctoHex bs True pCtx
-  return $ case oh of
+op32 bs _ = Log $ Ctx $ \pCtx -> do
+  oh <- lift $ getOctoHex bs True pCtx
+  let r = case oh of
     H32 p -> Single (upcast32 p)
     _ -> error "op32: unsupported conversion"
+  desc <- lift $ S.toByteStringIO r
+  tell $ "op32: returning Single: " <> desc
+  return r
 
 upcast32 :: ForeignPtr D32.C'decimal32 -> ForeignPtr C'decSingle
 upcast32 = castForeignPtr
 
 op64 :: BS8.ByteString -> ConvertOp Double
-op64 bs apPrec = Ctx $ \pCtx -> do
-  oh <- getOctoHex bs True pCtx
-  unCtx (applyDirectivesToOctoHex apPrec oh) pCtx
-  case oh of
-    H64 p -> return . Double . upcast64 $ p
+op64 bs apPrec = Log $ Ctx $ \pCtx -> do
+  oh <- lift $ getOctoHex bs True pCtx
+  lift $ unCtx (applyDirectivesToOctoHex apPrec oh) pCtx
+  let r = case oh of
+    H64 p -> Double . upcast64 $ p
     _ -> error "op64: unsupported conversion"
+  desc <- lift $ D.toByteStringIO r
+  tell $ "op64: returning Double: " <> desc
+  return r
 
 upcast64 :: ForeignPtr D64.C'decimal64 -> ForeignPtr C'decDouble
 upcast64 = castForeignPtr
 
 op128 :: BS8.ByteString -> ConvertOp Quad
-op128 bs apPrec = Ctx $ \pCtx -> do
-  oh <- getOctoHex bs True pCtx
-  unCtx (applyDirectivesToOctoHex apPrec oh) pCtx
-  case oh of
-    H128 p -> return . Quad . upcast128 $ p
+op128 bs apPrec = Log $ Ctx $ \pCtx -> do
+  oh <- lift $ getOctoHex bs True pCtx
+  lift $ unCtx (applyDirectivesToOctoHex apPrec oh) pCtx
+  let r = case oh of
+    H128 p -> Quad . upcast128 $ p
     _ -> error "op128: unsupported conversion"
+  desc <- lift $ Q.toByteStringIO r
+  tell $ "op128: returning Quad: " <> desc
+  return r
 
 upcast128 :: ForeignPtr D128.C'decimal128 -> ForeignPtr C'decQuad
 upcast128 = castForeignPtr
 
 rsDec :: BS8.ByteString -> CompareResult DecNum
-rsDec bs (DecNum fpTestResult) = Ctx $ \pCtx ->
-  getOctoHex bs False pCtx >>= \oh ->
+rsDec bs (DecNum fpTestResult) = Log $ Ctx $ \pCtx ->
+  lift (getOctoHex bs False pCtx) >>= \oh ->
   withForeignPtr fpTestResult $ \pTestResult ->
   case oh of
     H32 fpTarget32 -> withForeignPtr fpTarget32 $ \pTarget32 ->

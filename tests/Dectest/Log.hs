@@ -6,6 +6,7 @@ import qualified Data.Sequence as Seq
 import Data.Monoid
 import Control.Applicative
 import Control.Monad.Trans.Class
+import qualified Foreign.Safe as S
 
 newtype Log m a = Log { runLog :: m (a, Seq.Seq BS8.ByteString) }
 
@@ -29,3 +30,8 @@ instance Monad m => Applicative (Log m) where
 
 instance MonadTrans Log where
   lift k = Log (liftM (\a -> (a, Seq.empty)) k)
+
+withForeignPtr :: ForeignPtr a -> (Ptr a -> Log IO b) -> Log IO b
+withForeignPtr fp f = Log $
+  S.withForeignPtr fp $ \ptr ->
+  let Log l' = f ptr in

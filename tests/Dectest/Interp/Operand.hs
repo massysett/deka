@@ -12,6 +12,7 @@ import qualified Deka.Fixed.Quad as Q
 import qualified Deka.Internal.DecNum.Ctx as N
 import Deka.Internal.DecNum.DecNum
 import Data.Int
+import Dectest.Log
 
 type ParseString r
   = (OctoParsers -> WhichPrecision -> Ctx r)
