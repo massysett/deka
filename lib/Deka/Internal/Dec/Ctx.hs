@@ -121,7 +121,7 @@ abs = unary c'decNumberAbs
 add :: Dec -> Dec -> Ctx Dec
 add = binary c'decNumberAdd
 
--- | Digit-wise logical _and_.
+-- | Digit-wise logical @and@.
 and :: Dec -> Dec -> Ctx Dec
 and = binary c'decNumberAnd
 
@@ -133,8 +133,8 @@ and = binary c'decNumberAnd
 compare :: Dec -> Dec -> Ctx Dec
 compare = binary c'decNumberCompare
 
--- | Identical to 'compare' except that all NaNs (including quiet
--- NaNs) signal.
+-- | Identical to 'Deka.Dec.compare' except that all NaNs
+-- (including quiet NaNs) signal.
 compareSignal :: Dec -> Dec -> Ctx Dec
 compareSignal = binary c'decNumberCompareSignal
 
@@ -245,8 +245,8 @@ max :: Dec -> Dec -> Ctx Dec
 max = binary c'decNumberMax
 
 -- | Compares the magnitude of two numbers numerically and sets
--- number to the larger. It is identical to 'max' except that
--- the signs of the operands are ignored and taken to be 0
+-- number to the larger. It is identical to 'Deka.Dec.max' except
+-- that the signs of the operands are ignored and taken to be 0
 -- (non-negative).
 maxMag :: Dec -> Dec -> Ctx Dec
 maxMag = binary c'decNumberMaxMag
@@ -259,7 +259,7 @@ min :: Dec -> Dec -> Ctx Dec
 min = binary c'decNumberMin
 
 -- | Compares the magnitude of two numbers numerically and sets
--- number to the smaller. It is identical to 'min' except
+-- number to the smaller. It is identical to 'Deka.Dec.min' except
 -- that the signs of the operands are ignored and taken to be 0
 -- (non-negative).
 minMag :: Dec -> Dec -> Ctx Dec
@@ -286,56 +286,241 @@ or = binary c'decNumberOr
 plus :: Dec -> Ctx Dec
 plus = unary c'decNumberPlus
 
+-- | @power x y@ raises @x@ to the power of @y@, rounded if
+-- necessary using the settings in the 'Ctx'.
+--
+-- Results will be exact when @y@ has an integral value and the
+-- result does not need to be rounded, and also will be exact in
+-- certain special cases, such as when @x@ is a zero (see the
+-- General Decimal Arithmetic specification for details).
+--
+-- Inexact results will always be full precision, and will almost
+-- always be correctly rounded, but may be up to 1 ulp (unit in last
+-- place) in error in rare cases.
+--
+-- This is a mathematical function; the @10 ^ 6@ restrictions on
+-- precision and range apply as described above, except that the
+-- normal range of values and context is allowed if @y@ has an
+-- integral value in the range -1999999997 through +999999999.
+
 power :: Dec -> Dec -> Ctx Dec
 power = binary c'decNumberPower
+
+-- | @quantize x y@ modifies a number so that its exponent has a
+-- specific value, equal to that of @y@. 'rescale' may also be used
+-- for this purpose, but requires the exponent to be given as a
+-- decimal number.  When @y@ is a finite number, its exponent is
+-- used as the requested exponent (it provides a ‘pattern’ for the
+-- result). Its coefficient and sign are ignored.
+--
+-- The number is set to a value which is numerically equal (except for
+-- any rounding) to @x@, modified as necessary so that it has the
+-- requested exponent. To achieve this, the coefficient of the number
+-- is adjusted (by rounding or shifting) so that its exponent has the
+-- requested value. For example, if @x@ had the value 123.4567, and @y@
+-- had the value 0.12, the result would be 123.46 (that is, 12346 with
+-- an exponent of -2, matching the exponent of @y@).
+-- 
+-- Note that the exponent of @y@ may be positive, which will lead to
+-- the number being adjusted so that it is a multiple of the specified
+-- power of ten.
+-- 
+-- If adjusting the exponent would mean that more than context.digits
+-- would be needed in the coefficient, then 'invalidOperation' is
+-- raised. This guarantees that in the absence of error the exponent of
+-- number is always equal to that of @y@.
+-- 
+-- If either operand is a special value then the usual rules apply,
+-- except that if either operand is infinite and the other is finite
+-- then 'invalidOperation' is raised, or if both are infinite then the
+-- result is the first operand.
 
 quantize :: Dec -> Dec -> Ctx Dec
 quantize = binary c'decNumberQuantize
 
+-- | Has the same effect as 'plus' except that the final
+-- result is set to its simplest (shortest) form without changing
+-- its value. That is, a non-zero number which has any trailing
+-- zeros in the coefficient has those zeros removed by dividing the
+-- coefficient by the appropriate power of ten and adjusting the
+-- exponent accordingly, and a zero has its exponent set to 0.
+--
+-- 'Deka.Dec.trim' can be used to remove only
+-- fractional trailing zeros.
 reduce :: Dec -> Ctx Dec
 reduce = unary c'decNumberReduce
+
+-- | @remainder x y@ integer-divides @x@ by @y@.  That is, if the
+-- same @x@, @y@, and 'Ctx' were given to 'divideInteger' and
+-- 'remainder', resulting in @i@ and @r@ respectively, then the
+-- identity
+--
+-- > x == (i * y) + r
+--
+-- holds.
+--
+-- As for 'divideInteger', it must be possible to express the
+-- integer part of the result @i@ as an integer. That is, it must
+-- have no more digits than 'Precision' in the 'Ctx'. If it does have more
+-- then 'divisionimpossible' is raised.
 
 remainder :: Dec -> Dec -> Ctx Dec
 remainder = binary c'decNumberRemainder
 
+-- | @remainderNear x y@ returns the remainder when @x@ is divided
+-- by the @y@, using the rules defined in IEEE 754. This follows the
+-- same definition as 'remainder', except that the nearest integer
+-- (or the nearest even integer if the remainder is equidistant from
+-- two) is used for i instead of the result from 'divideInteger'.
+-- 
+-- For example, if @x@ had the value 10 and @y@ had the value 6 then
+-- the result would be -2 (instead of 4) because the nearest
+-- multiple of 6 is 12 (rather than 6).
+
 remainderNear :: Dec -> Dec -> Ctx Dec
 remainderNear = binary c'decNumberRemainderNear
+
+-- | @rescale x y@ rescales a number so that its exponent has a
+-- specific value, given by @y@. 'quantize' may also be
+-- used for this purpose, and is often easier to use.
+-- @y@ must be a whole number (before any rounding); that is, any
+-- digits in the fractional part of the number must be zero. It must
+-- have no more than nine digits, or 'Precision' digits, (whichever is
+-- smaller) in the integer part of the number.
+-- 
+-- The number is set to a value which is numerically equal (except for
+-- any rounding) to @x@, rescaled so that it has the requested
+-- exponent. To achieve this, the coefficient of the number is adjusted
+-- (by rounding or shifting) so that its exponent has the value of the
+-- rhs. For example, if @x@ had the value 123.4567, and
+-- 'rescale' was used to set its exponent to -2, the result
+-- would be 123.46 (that is, 12346 with an exponent of -2).
+-- 
+-- Note that @y@ may be positive, which will lead to the number
+-- being adjusted so that it is a multiple of the specified power of
+-- ten.
+-- 
+-- If adjusting the scale would mean that more than 'Precision'
+-- digits would be needed in the coefficient, then the
+-- 'invalidOperation' condition is raised. This guarantees that in
+-- the absence of error the exponent of number is always equal to
+-- the rhs.
 
 rescale :: Dec -> Dec -> Ctx Dec
 rescale = binary c'decNumberRescale
 
+-- | @rotate x y@ rotates the digits in the coefficient of a number
+-- as though its coefficient had the length given by context.digits
+-- and its most-significant digit were connected to its
+-- least-significant digit.
+-- 
+-- Returns @x@ with the digits of its coefficient rotated to the left
+-- (if @y@ is positive) or to the right (if @y@ is negative) without
+-- adjusting the exponent or the sign. If @x@ has fewer digits than
+-- 'Precision' in the 'Ctx' the coefficient is padded with zeros on the
+-- left before the rotate. Any insignificant leading zeros in the
+-- result are removed, as usual.
+-- 
+-- @y@ is the count of digits to rotate; it must be an integer (that
+-- is, it must have an exponent of 0) and must be in the range
+-- -'Precision' through +'Precision'.
+
 rotate :: Dec -> Dec -> Ctx Dec
 rotate = binary c'decNumberRotate
+
+-- | @scaleB x y@ adjusts (scales) the exponent of a number, using
+-- the rules of the /scaleB/ operation in IEEE 754. The number is
+-- set to the result of multiplying @x@ by ten raised to the power
+-- of @y@. @y@ must be an integer (that is, it must have an exponent
+-- of 0) and it must also be in the range @-1999999997@ through
+-- @+999999999@.
 
 scaleB :: Dec -> Dec -> Ctx Dec
 scaleB = binary c'decNumberScaleB
 
+-- | @shift x y@ shifts the digits in the coefficient of a number.
+-- Returns @x@ with the digits of its coefficient shifted to the left
+-- (if @y@ is positive) or to the right (if @y@ is negative) without
+-- adjusting the exponent or the sign. The coefficient is padded with
+-- zeros on the left or right, as necessary. Any leading zeros in the
+-- result are ignored, as usual.
+-- 
+-- @y@ is the count of digits to shift; it must be an integer (that is,
+-- it must have an exponent of 0) and must be in the range -'Precision'
+-- through +'Precision'.
+
 shift :: Dec -> Dec -> Ctx Dec
 shift = binary c'decNumberShift
+
+-- | The square root, rounded if necessary using 'Precision' and
+-- using the 'roundHalfEven' method.  The preferred exponent of the
+-- result is @floor(exponent/2)@.
 
 squareRoot :: Dec -> Ctx Dec
 squareRoot = unary c'decNumberSquareRoot
 
+-- | Subtraction.
+
 subtract :: Dec -> Dec -> Ctx Dec
 subtract = binary c'decNumberSubtract
+
+-- | Removes any fractional part using the rounding mode in the
+-- 'Ctx'.  Sets 'inexact' if the result is numerically different
+-- from the operand.  Other than that, no flags are set (unless the
+-- operand is a signaling NaN).  The result may have a positive
+-- exponent.
 
 toIntegralExact :: Dec -> Ctx Dec
 toIntegralExact = unary c'decNumberToIntegralExact
 
+-- | Like 'toIntegralExact' but no flags, not even 'inexact', are
+-- set (unless the operand is a signaling NaN).
+
 toIntegralValue :: Dec -> Ctx Dec
 toIntegralValue = unary c'decNumberToIntegralValue
+
+-- | Digit-wise logical exclusive or.
 
 xor :: Dec -> Dec -> Ctx Dec
 xor = binary c'decNumberXor
 
+-- | Increments operand to the closest value in the direction of
+-- -Infinity.  This is computed as though by subtracting an
+-- infinitesimal amount from the operand using 'roundFloor', except
+-- that no flags are set unless the operand is an sNaN.
+--
+-- A generalization of the IEEE 754 /nextDown/ operation.
+
 nextMinus :: Dec -> Ctx Dec
 nextMinus = unary c'decNumberNextMinus
+
+-- | Increments operand to the closest value in the direction of
+-- +Infinity.  This is computed as though by subtracting an
+-- infinitesimal amount from the operand using 'roundCeiling',
+-- except that no flags are set unless the operand is an sNaN.
+--
+-- A generalization of the IEEE 754 /nextDown/ operation.
 
 nextPlus :: Dec -> Ctx Dec
 nextPlus = unary c'decNumberNextPlus
 
+-- @nextToward x y@ returns @x@ set to the closest value in the
+-- direction of @y@.  This is computed as though by adding or
+-- subtracting an infinitesimal amount to @x@ using
+-- 'roundCeiling' or 'roundFloor', depending on whether @y@ is
+-- larger or smaller than @x@. If @y@ is numerically equal to @x@
+-- then the result is a copy of @x@ with the sign taken from @y@.
+-- Flags are set as usual for an addition or subtraction except that
+-- if the operands are equal or the result is normal (finite,
+-- non-zero, and not subnormal) no flags are set.
+-- 
+-- This function is a generalization of the proposed IEEE 754
+-- nextAfter operation.
+ 
 nextToward :: Dec -> Dec -> Ctx Dec
 nextToward = binary c'decNumberNextToward
+
+-- | Determines the 'Class' of a 'Dec'.
 
 numClass :: Dec -> Ctx Class
 numClass (Dec fp) = Ctx $ \pCtx ->
@@ -343,11 +528,21 @@ numClass (Dec fp) = Ctx $ \pCtx ->
   c'decNumberClass pd pCtx >>= \cl ->
   return (Class cl)
 
+-- | Tests whether a number is normal (that is, finite, non-zero,
+-- and not subnormal).  No error is possible; requires the 'Ctx'
+-- because the value of 'Emin' determines if a finite number is
+-- normal or subnormal.
+
 isNormal :: Dec -> Ctx Bool
 isNormal (Dec d) = Ctx $ \pCtx ->
   withForeignPtr d $ \pd ->
   c'decNumberIsNormal pd pCtx >>= \int ->
   return (toBool int)
+
+-- | Tests whether a number is subnormal (that is, finite, non-zero,
+-- and magnitude less than @10 ^ Emin@).  No error is possible;
+-- requires the 'Ctx' because the value of 'Emin' determines if a
+-- finite number is normal or subnormal.
 
 isSubnormal :: Dec -> Ctx Bool
 isSubnormal (Dec d) = Ctx $ \pCtx ->

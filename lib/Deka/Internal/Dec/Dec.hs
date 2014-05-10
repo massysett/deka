@@ -23,7 +23,11 @@ import Deka.Internal.Decnumber.DecNumber
 -- * /Infinity/, either positive or negative.
 newtype Dec = Dec { unDec :: ForeignPtr C'decNumber }
 
--- | Uses 'toByteString'.
+-- | Same as
+--
+-- @
+-- 'BS8.unpack' . 'Deka.Dec.toByteString'
+-- @
 instance Show Dec where
   show = BS8.unpack . toByteString
 
