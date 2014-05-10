@@ -12,6 +12,29 @@ import Deka.Internal.Class
 import Foreign.Safe
 import Deka.Decoded
 
+-- | Converts a character string to a 'Dec'.  Implements the
+-- _to-number_ conversion from the General Decimal Arithmetic
+-- specification.
+--
+-- The conversion is exact provided that the numeric string has no
+-- more significant digits than are specified in the 'Precision' in
+-- the 'Ctx' and the adjusted exponent is in the range specified by
+-- 'Emin' and 'Emax' in the 'Ctx'. If there are more than
+-- 'Precision' digits in the string, or the exponent is out of
+-- range, the value will be rounded as necessary using the 'Round'
+-- rounding mode. The 'Precision' therefore both determines the
+-- maximum precision for unrounded numbers and defines the minimum
+-- size of the 'Dec' structure required.
+--
+-- Possible errors are 'conversionSyntax' (the string does not have
+-- the syntax of a number, which depends on 'setExtended' in the
+-- 'Ctx'), 'overflow' (the adjusted exponent of the number is larger
+-- than 'Emax'), or 'underflow' (the adjusted exponent is less than
+-- 'Emin' and the conversion is not exact). If any of these
+-- conditions are set, the number structure will have a defined
+-- value as described in the arithmetic specification (this may be a
+-- subnormal or infinite value).
+
 fromByteString :: BS8.ByteString -> Ctx Dec
 fromByteString bs = Ctx $ \pCtx ->
   newDec pCtx >>= \dn ->
@@ -20,11 +43,13 @@ fromByteString bs = Ctx $ \pCtx ->
   c'decNumberFromString pDn cstr pCtx >>
   return dn
 
+-- | Convert a 'Dec' to an unsigned 32-bit integer.
 toUInt32 :: Dec -> Ctx Word32
 toUInt32 dn = Ctx $ \pCtx ->
   withForeignPtr (unDec dn) $ \pDn ->
   c'decNumberToUInt32 pDn pCtx
 
+-- | Convert a 'Dec' to a signed 32-bit integer.
 toInt32 :: Dec -> Ctx Int32
 toInt32 dn = Ctx $ \pCtx ->
   withForeignPtr (unDec dn) $ \pDn ->
@@ -87,75 +112,177 @@ ternary f x y z = Ctx $ \pCtx ->
   f pRes pX pY pZ pCtx >>
   return res
 
+-- | Returns the absolute value.  The same effect as 'plus' unless
+-- the operand is negative, in which case it is the same as 'minus'.
 abs :: Dec -> Ctx Dec
 abs = unary c'decNumberAbs
 
+-- | Addition.
 add :: Dec -> Dec -> Ctx Dec
 add = binary c'decNumberAdd
 
+-- | Digit-wise logical _and_.
 and :: Dec -> Dec -> Ctx Dec
 and = binary c'decNumberAnd
 
+-- | @compare x y@ compares to numbers numerically.  If @x@ is less
+-- than @y@, returns @-1@.  If they are equal (that is, when
+-- subtracted the result would be 0), returns @0@.  If @y@ is
+-- greater than @x@, returns @1@.  If the operands are not
+-- comparable (that is, one or both is a NaN) the result is NaN.
 compare :: Dec -> Dec -> Ctx Dec
 compare = binary c'decNumberCompare
 
+-- | Identical to 'compare' except that all NaNs (including quiet
+-- NaNs) signal.
 compareSignal :: Dec -> Dec -> Ctx Dec
 compareSignal = binary c'decNumberCompareSignal
 
+-- | @compareTotal x y@ compares to numbers using the IEEE 754 total
+-- ordering.  If @x@ is less
+-- than @y@, returns @-1@.  If they are equal (that is, when
+-- subtracted the result would be 0), returns @0@.  If @y@ is
+-- greater than @x@, returns @1@.  
+--
+-- Here is the total ordering:
+--
+-- @-NaN < -sNaN < -Infinity < -finites < -0 < +0 < +finites
+--  < +Infinity < +SNaN < +NaN@
+--
+-- Also, @1.000@ < @1.0@ (etc.) and NaNs are ordered by payload.
 compareTotal :: Dec -> Dec -> Ctx Dec
 compareTotal = binary c'decNumberCompareTotal
 
+-- | Same as 'compareTotal' except that the signs of the operands
+-- are ignored and taken to be 0 (non-negative).
 compareTotalMag :: Dec -> Dec -> Ctx Dec
 compareTotalMag = binary c'decNumberCompareTotalMag
 
+-- | Division.
 divide :: Dec -> Dec -> Ctx Dec
 divide = binary c'decNumberDivide
 
+-- | Returns the integer part of the result of division.  It must be
+-- possible to express the result as an integer.  That is, it must
+-- have no more digits than 'Precision' in the 'Ctx'.  If it does
+-- then 'divisionImpossible' is raised.
 divideInteger :: Dec -> Dec -> Ctx Dec
 divideInteger = binary c'decNumberDivideInteger
 
+-- | Exponentiation.  Result is rounded if necessary using the
+-- 'Precision' in the 'Ctx' and using the 'roundHalfEven' rounding
+-- method.
+--
+-- Finite results will always be full precision and inexact, except
+-- when rhs is a zero or -Infinity (giving 1 or 0 respectively).
+-- Inexact results will almost always be correctly rounded, but may
+-- be up to 1 ulp (unit in last place) in error in rare cases.
+--
+-- This is a mathematical function; the @10 ^ 6@ restrictions on
+-- precision and range apply as described above.
 exp :: Dec -> Ctx Dec
 exp = unary c'decNumberExp
 
+-- @fma x y z@ multiplies @x@ by @y@ and then adds @z@ to that
+-- intermediate result.  It is equivalent to a multiplication
+-- followed by an addition except that the intermediate result is
+-- not rounded and will not cause overflow or underflow. That is,
+-- only the final result is rounded and checked.
+--
+-- This is a mathematical function; the @10 ^ 6@ restrictions on
+-- precision and range apply as described above.
 fma :: Dec -> Dec -> Dec -> Ctx Dec
 fma = ternary c'decNumberFMA
 
+-- | Digit-wise inversion (a @0@ becomes a @1@ and vice versa).
 invert :: Dec -> Ctx Dec
 invert = unary c'decNumberInvert
 
+-- | Natural logarithm, rounded if necessary using the 'Precision'
+-- in the 'Ctx' and using the 'roundHalfEven' rounding algorithm.
+-- The operand must be positive or a zero.
+--
+-- Finite results will always be full precision and inexact, except
+-- when rhs is equal to 1, which gives an exact result of 0. Inexact
+-- results will almost always be correctly rounded, but may be up to
+-- 1 ulp (unit in last place) in error in rare cases.
+--
+-- This is a mathematical function; the @10 ^ 6@ restrictions on
+-- precision and range apply as described above.
 ln :: Dec -> Ctx Dec
 ln = unary c'decNumberLn
 
+-- | Returns the adjusted exponent of the operand, according to the
+-- rules for @logB@ of IEEE 754.  This returns the exponent of the
+-- operand as though its decimal point had been moved to follow the
+-- first digit while keeping the same value.  The result is not
+-- limited by 'Emin' or 'Emax'.
 logB :: Dec -> Ctx Dec
 logB = unary c'decNumberLogB
+
+-- | Base 10 logarithm, rounded if necessary using the 'Precision'
+-- in the 'Ctx' and using the 'roundHalfEven' rounding algorithm.
+-- The operand must be positive or a zero.
+--
+-- Finite results will always be full precision and inexact, except
+-- when rhs is equal to an integral power of ten, in which case the
+-- result is the exact integer.
+--
+-- Inexact results will almost always be correctly rounded, but may
+-- be up to 1 ulp (unit in last place) in error in rare cases.
+--
+-- This is a mathematical function; the @10 ^ 6@ restrictions on
+-- precision and range apply as described above.
 
 log10 :: Dec -> Ctx Dec
 log10 = unary c'decNumberLog10
 
+-- | Compares two numbers numerically and returns the larger.  If
+-- the numbers compare equal then number is chosen with regard to
+-- sign and exponent. Unusually, if one operand is a quiet NaN and
+-- the other a number, then the number is returned.
 max :: Dec -> Dec -> Ctx Dec
 max = binary c'decNumberMax
 
+-- | Compares the magnitude of two numbers numerically and sets
+-- number to the larger. It is identical to 'max' except that
+-- the signs of the operands are ignored and taken to be 0
+-- (non-negative).
 maxMag :: Dec -> Dec -> Ctx Dec
 maxMag = binary c'decNumberMaxMag
 
+-- | Compares two numbers numerically and sets number to the
+-- smaller. If the numbers compare equal then number is chosen with
+-- regard to sign and exponent. Unusually, if one operand is a quiet
+-- NaN and the other a number, then the number is returned.
 min :: Dec -> Dec -> Ctx Dec
 min = binary c'decNumberMin
 
+-- | Compares the magnitude of two numbers numerically and sets
+-- number to the smaller. It is identical to 'min' except
+-- that the signs of the operands are ignored and taken to be 0
+-- (non-negative).
 minMag :: Dec -> Dec -> Ctx Dec
 minMag = binary c'decNumberMinMag
 
+-- | Returns the result of subtracting the operand from zero.  hat
+-- is, it is negated, following the usual arithmetic rules; this may
+-- be used for implementing a prefix minus operation.
 minus :: Dec -> Ctx Dec
 minus = unary c'decNumberMinus
 
+-- | Multiplication.
 multiply :: Dec -> Dec -> Ctx Dec
 multiply = binary c'decNumberMultiply
 
-normalize :: Dec -> Ctx Dec
-normalize = unary c'decNumberNormalize
-
+-- | Digit-wise logical inclusive or.
 or :: Dec -> Dec -> Ctx Dec
 or = binary c'decNumberOr
 
+-- | Returns the result of adding the operand to zero.  This takes
+-- place according to the settings given in the 'Ctx', following the
+-- usual arithmetic rules. This may therefore be used for rounding
+-- or for implementing a prefix plus operation.
 plus :: Dec -> Ctx Dec
 plus = unary c'decNumberPlus
 
