@@ -38,7 +38,7 @@ library
       Deka
     , Deka.Class
     , Deka.Context
-    , Deka.DecNum
+    , Deka.Dec
     , Deka.Decoded
     , Deka.Docs
     , Deka.Docs.Examples
@@ -47,10 +47,10 @@ library
       Deka.Internal
     , Deka.Internal.Class
     , Deka.Internal.Context
-    , Deka.Internal.DecNum.CtxFree
-    , Deka.Internal.DecNum.Ctx
-    , Deka.Internal.DecNum.DecNum
-    , Deka.Internal.DecNum.Util
+    , Deka.Internal.Dec.CtxFree
+    , Deka.Internal.Dec.Ctx
+    , Deka.Internal.Dec.Dec
+    , Deka.Internal.Dec.Util
     , Deka.Internal.Decnumber.Context
     , Deka.Internal.Decnumber.DecNumber
     , Deka.Internal.Unsafe

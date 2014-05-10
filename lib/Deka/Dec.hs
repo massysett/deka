@@ -1,6 +1,6 @@
 {-# LANGUAGE EmptyDataDecls, Trustworthy #-}
-module Deka.DecNum
-  ( DecNum
+module Deka.Dec
+  ( Dec
 
   -- * Conversions
   , fromInt32
@@ -116,8 +116,8 @@ module Deka.DecNum
 import Prelude hiding (abs, and, or, max, min, compare, exp,
   subtract, negate, isNaN, isInfinite, exponent)
 import qualified Data.ByteString.Char8 as BS8
-import Deka.Internal.DecNum.DecNum
-import Deka.Internal.DecNum.CtxFree
+import Deka.Internal.Dec.Dec
+import Deka.Internal.Dec.CtxFree
   ( Coefficient
   , coefficient
   , unCoefficient
@@ -131,97 +131,97 @@ import Deka.Internal.DecNum.CtxFree
   , adjExponent
   )
 
-import qualified Deka.Internal.DecNum.CtxFree as I
+import qualified Deka.Internal.Dec.CtxFree as I
 import Deka.Context
 import Deka.Class
-import Deka.Internal.DecNum.Ctx
+import Deka.Internal.Dec.Ctx
 import Deka.Internal.Unsafe
 import Deka.Decoded
 import Data.Word
 import Data.Int
 
-fromInt32 :: Int32 -> DecNum
+fromInt32 :: Int32 -> Dec
 fromInt32 = unsafe1 I.fromInt32
 
-fromUInt32 :: Word32 -> DecNum
+fromUInt32 :: Word32 -> Dec
 fromUInt32 = unsafe1 I.fromUInt32
 
-toEngByteString :: DecNum -> BS8.ByteString
+toEngByteString :: Dec -> BS8.ByteString
 toEngByteString = unsafe1 I.toEngByteString
 
-sameQuantum :: DecNum -> DecNum -> DecNum
+sameQuantum :: Dec -> Dec -> Dec
 sameQuantum = unsafe2 I.sameQuantum
 
 -- skipped: ClassToString, Copy
 
 copyAbs
-  :: DecNum
+  :: Dec
   -- ^ Source of sign
-  -> DecNum
+  -> Dec
   -- ^ Copy sign to this destination
-  -> DecNum
+  -> Dec
   -- ^ Result
 copyAbs = unsafe2 I.copyAbs
 
-negate :: DecNum -> DecNum
+negate :: Dec -> Dec
 negate = unsafe1 I.negate
 
 copySign
-  :: DecNum
+  :: Dec
   -- ^ Source of content (except sign)
-  -> DecNum
+  -> Dec
   -- ^ Source of sign
-  -> DecNum
+  -> Dec
 copySign = unsafe2 I.copySign
 
-trim :: DecNum -> DecNum
+trim :: Dec -> Dec
 trim = unsafe1 I.trim
 
 version :: BS8.ByteString
 version = unsafe0 I.version
 
-zero :: DecNum
+zero :: Dec
 zero = unsafe0 I.zero
 
-isCanonical :: DecNum -> Bool
+isCanonical :: Dec -> Bool
 isCanonical = unsafe1 I.isCanonical
 
-isFinite :: DecNum -> Bool
+isFinite :: Dec -> Bool
 isFinite = unsafe1 I.isFinite
 
-isInfinite :: DecNum -> Bool
+isInfinite :: Dec -> Bool
 isInfinite = unsafe1 I.isInfinite
 
-isNaN :: DecNum -> Bool
+isNaN :: Dec -> Bool
 isNaN = unsafe1 I.isNaN
 
-isNegative :: DecNum -> Bool
+isNegative :: Dec -> Bool
 isNegative = unsafe1 I.isNegative
 
-isQNaN :: DecNum -> Bool
+isQNaN :: Dec -> Bool
 isQNaN = unsafe1 I.isQNaN
 
-isSNaN :: DecNum -> Bool
+isSNaN :: Dec -> Bool
 isSNaN = unsafe1 I.isSNaN
 
-isSpecial :: DecNum -> Bool
+isSpecial :: Dec -> Bool
 isSpecial = unsafe1 I.isSpecial
 
-isZero :: DecNum -> Bool
+isZero :: Dec -> Bool
 isZero = unsafe1 I.isZero
 
 -- skipped: radix
 
--- | Take a C 'DecNum' and convert it to Haskell types.
-decode :: DecNum -> Decoded
+-- | Take a C 'Dec' and convert it to Haskell types.
+decode :: Dec -> Decoded
 decode = unsafe1 I.decode
 
 -- | Encodes positive or negative infinities.
-infinity :: Sign -> DecNum
+infinity :: Sign -> Dec
 infinity = unsafe1 I.infinity
 
 -- | Encodes quiet or signaling NaNs.
-notANumber :: Sign -> NaN -> Coefficient -> DecNum
+notANumber :: Sign -> NaN -> Coefficient -> Dec
 notANumber = unsafe3 I.notANumber
 
 -- | Encodes non-special numbers (also known as finite numbers.)
@@ -236,7 +236,7 @@ nonSpecialCtxFree
   -> Sign
   -> Coefficient
   -> Exponent
-  -> Maybe DecNum
+  -> Maybe Dec
   -- ^ Fails if the exponent is out of range.
 nonSpecialCtxFree = unsafe4 I.nonSpecialCtxFree
 

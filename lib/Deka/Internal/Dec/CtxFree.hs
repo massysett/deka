@@ -1,9 +1,9 @@
 {-# LANGUAGE EmptyDataDecls, Safe #-}
 
-module Deka.Internal.DecNum.CtxFree where
+module Deka.Internal.Dec.CtxFree where
 
 import Foreign.Safe
-import Deka.Internal.DecNum.DecNum
+import Deka.Internal.Dec.Dec
 import Deka.Internal.Decnumber.DecNumber
 import Deka.Internal.Decnumber.Context
 import qualified Data.ByteString.Char8 as BS8
@@ -11,85 +11,85 @@ import Deka.Decoded
 import Deka.Context
 import Prelude
 import Foreign.C.Types
-import Deka.Internal.DecNum.Util
+import Deka.Internal.Dec.Util
 
 -- # Conversions
 
-fromInt32 :: Int32 -> IO DecNum
+fromInt32 :: Int32 -> IO Dec
 fromInt32 i = do
-  dn <- newDecNumSize 10
-  withForeignPtr (unDecNum dn) $ \ptr -> do
+  dn <- newDecSize 10
+  withForeignPtr (unDec dn) $ \ptr -> do
     _ <- c'decNumberFromInt32 ptr i
     return dn
 
-fromUInt32 :: Word32 -> IO DecNum
+fromUInt32 :: Word32 -> IO Dec
 fromUInt32 i = do
-  dn <- newDecNumSize 10
-  withForeignPtr (unDecNum dn) $ \ptr -> do
+  dn <- newDecSize 10
+  withForeignPtr (unDec dn) $ \ptr -> do
     _ <- c'decNumberFromUInt32 ptr i
     return dn
 
-toEngByteString :: DecNum -> IO BS8.ByteString
+toEngByteString :: Dec -> IO BS8.ByteString
 toEngByteString dn =
-  withForeignPtr (unDecNum dn) $ \pDn ->
+  withForeignPtr (unDec dn) $ \pDn ->
   peek (p'decNumber'digits pDn) >>= \digs ->
   let digsTot = fromIntegral digs + 14 in
   allocaBytes digsTot $ \pStr ->
   c'decNumberToEngString pDn pStr >>
   BS8.packCString pStr
 
-sameQuantum :: DecNum -> DecNum -> IO DecNum
-sameQuantum (DecNum x) (DecNum y) =
+sameQuantum :: Dec -> Dec -> IO Dec
+sameQuantum (Dec x) (Dec y) =
   withForeignPtr x $ \px ->
   withForeignPtr y $ \py ->
-  oneDigitDecNum >>= \o ->
-  withForeignPtr (unDecNum o) $ \po ->
+  oneDigitDec >>= \o ->
+  withForeignPtr (unDec o) $ \po ->
   c'decNumberSameQuantum po px py >>
   return o
 
 copyAbs
-  :: DecNum
+  :: Dec
   -- ^ Source of sign
-  -> DecNum
+  -> Dec
   -- ^ Copy sign to this destination
-  -> IO DecNum
+  -> IO Dec
   -- ^ Result
 copyAbs src dest =
-  copyDecNum dest >>= \r ->
-  withForeignPtr (unDecNum r) $ \pr ->
-  withForeignPtr (unDecNum src) $ \ps ->
+  copyDec dest >>= \r ->
+  withForeignPtr (unDec r) $ \pr ->
+  withForeignPtr (unDec src) $ \ps ->
   c'decNumberCopyAbs pr ps >>
   return r
 
 -- CopyNegate, CopySign
 
-negate :: DecNum -> IO DecNum
+negate :: Dec -> IO Dec
 negate src =
-  copyDecNum src >>= \r ->
-  withForeignPtr (unDecNum r) $ \pr ->
-  withForeignPtr (unDecNum src) $ \ps ->
+  copyDec src >>= \r ->
+  withForeignPtr (unDec r) $ \pr ->
+  withForeignPtr (unDec src) $ \ps ->
   c'decNumberCopyNegate pr ps >>
   return r
 
 copySign
-  :: DecNum
+  :: Dec
   -- ^ Source of content (except sign)
-  -> DecNum
+  -> Dec
   -- ^ Source of sign
-  -> IO DecNum
+  -> IO Dec
 copySign src sgn =
-  withForeignPtr (unDecNum src) $ \pc ->
+  withForeignPtr (unDec src) $ \pc ->
   peek (p'decNumber'digits pc) >>= \dgts ->
-  newDecNumSize dgts >>= \dn' ->
-  withForeignPtr (unDecNum dn') $ \dp' ->
-  withForeignPtr (unDecNum sgn) $ \pn ->
+  newDecSize dgts >>= \dn' ->
+  withForeignPtr (unDec dn') $ \dp' ->
+  withForeignPtr (unDec sgn) $ \pn ->
   c'decNumberCopySign dp' pc pn >>
   return dn'
 
-trim :: DecNum -> IO DecNum
+trim :: Dec -> IO Dec
 trim src =
-  copyDecNum src >>= \dest ->
-  withForeignPtr (unDecNum dest) $ \pd ->
+  copyDec src >>= \dest ->
+  withForeignPtr (unDec dest) $ \pd ->
   c'decNumberTrim pd >>
   return dest
 
@@ -98,47 +98,47 @@ version =
   c'decNumberVersion >>= \pv ->
   BS8.packCString pv
 
-zero :: IO DecNum
+zero :: IO Dec
 zero =
-  oneDigitDecNum >>= \od ->
-  withForeignPtr (unDecNum od) $ \pod ->
+  oneDigitDec >>= \od ->
+  withForeignPtr (unDec od) $ \pod ->
   c'decNumberZero pod >>
   return od
 
 testBool
   :: (Ptr C'decNumber -> IO CInt)
-  -> DecNum
+  -> Dec
   -> IO Bool
-testBool f (DecNum dn) =
+testBool f (Dec dn) =
   withForeignPtr dn $ \pn ->
   f pn >>= \bl ->
   return (toBool bl)
 
-isCanonical :: DecNum -> IO Bool
+isCanonical :: Dec -> IO Bool
 isCanonical = testBool c'decNumberIsCanonical
 
-isFinite :: DecNum -> IO Bool
+isFinite :: Dec -> IO Bool
 isFinite = testBool c'decNumberIsFinite
 
-isInfinite :: DecNum -> IO Bool
+isInfinite :: Dec -> IO Bool
 isInfinite = testBool c'decNumberIsInfinite
 
-isNaN :: DecNum -> IO Bool
+isNaN :: Dec -> IO Bool
 isNaN = testBool c'decNumberIsNaN
 
-isNegative :: DecNum -> IO Bool
+isNegative :: Dec -> IO Bool
 isNegative = testBool c'decNumberIsNegative
 
-isQNaN :: DecNum -> IO Bool
+isQNaN :: Dec -> IO Bool
 isQNaN = testBool c'decNumberIsQNaN
 
-isSNaN :: DecNum -> IO Bool
+isSNaN :: Dec -> IO Bool
 isSNaN = testBool c'decNumberIsSNaN
 
-isSpecial :: DecNum -> IO Bool
+isSpecial :: Dec -> IO Bool
 isSpecial = testBool c'decNumberIsSpecial
 
-isZero :: DecNum -> IO Bool
+isZero :: Dec -> IO Bool
 isZero = testBool c'decNumberIsZero
 
 --
@@ -174,13 +174,13 @@ checkExp mnd i coe
       Nothing -> -999999999
       Just prc -> -999999999 - (unPrecision prc - 1)
 
--- | A fully decoded 'DecNum'.
+-- | A fully decoded 'Dec'.
 data Decoded = Decoded
   { dcdSign :: Sign
   , dcdPayload :: Payload
   } deriving (Eq, Ord, Show)
 
--- | The bulk of the information from a fully decoded 'DecNum'
+-- | The bulk of the information from a fully decoded 'Dec'
 -- (except the 'Sign').
 data Payload
   = Infinity
@@ -214,10 +214,10 @@ oneCoefficient = Coefficient [D1]
 
 -- # Decoding
 
--- | Take a C 'DecNum' and convert it to Haskell types.
-decode :: DecNum -> IO Decoded
+-- | Take a C 'Dec' and convert it to Haskell types.
+decode :: Dec -> IO Decoded
 decode dn =
-  withForeignPtr (unDecNum dn) $ \fp ->
+  withForeignPtr (unDec dn) $ \fp ->
   peek (p'decNumber'bits fp) >>= \bits ->
   decodeCoeff dn >>= \coe ->
   decodeExponent dn >>= \ex ->
@@ -229,8 +229,8 @@ decode dn =
         | otherwise = NotSpecial ex coe in
   return (Decoded sgn getInf)
 
-decodeSign :: DecNum -> IO Sign
-decodeSign (DecNum fp) =
+decodeSign :: Dec -> IO Sign
+decodeSign (Dec fp) =
   withForeignPtr fp $ \ptr ->
   peek (p'decNumber'bits ptr) >>= \bts ->
   let isSet = toBool $ bts .&. c'DECNEG
@@ -238,8 +238,8 @@ decodeSign (DecNum fp) =
         | otherwise = NonNeg
   in return r
 
-decodeCoeff :: DecNum -> IO Coefficient
-decodeCoeff (DecNum fp) =
+decodeCoeff :: Dec -> IO Coefficient
+decodeCoeff (Dec fp) =
   withForeignPtr fp $ \ptr ->
   peek (p'decNumber'digits ptr) >>= \dgs ->
   allocaBytes (fromIntegral dgs) $ \arr ->
@@ -248,10 +248,10 @@ decodeCoeff (DecNum fp) =
   peekArray (fromIntegral dgs) arr >>= \dgts ->
   return . Coefficient . map intToDigit $ dgts
 
--- | The space for the DecNum must have already been allocated
+-- | The space for the Dec must have already been allocated
 -- properly.
-encodeCoeff :: Coefficient -> DecNum -> IO ()
-encodeCoeff (Coefficient ds) (DecNum fp) =
+encodeCoeff :: Coefficient -> Dec -> IO ()
+encodeCoeff (Coefficient ds) (Dec fp) =
   withForeignPtr fp $ \dptr ->
   let len = length ds in
   allocaArray len $ \arr ->
@@ -260,8 +260,8 @@ encodeCoeff (Coefficient ds) (DecNum fp) =
   return ()
 
 
-decodeExponent :: DecNum -> IO Exponent
-decodeExponent (DecNum fp) =
+decodeExponent :: Dec -> IO Exponent
+decodeExponent (Dec fp) =
   withForeignPtr fp $ \ptr ->
   peek (p'decNumber'exponent ptr) >>= \ex ->
   return (Exponent ex)
@@ -269,10 +269,10 @@ decodeExponent (DecNum fp) =
 -- # Encoding
 
 -- | Encodes positive or negative infinities.
-infinity :: Sign -> IO DecNum
+infinity :: Sign -> IO Dec
 infinity s =
-  oneDigitDecNum >>= \dn ->
-  withForeignPtr (unDecNum dn) $ \pd ->
+  oneDigitDec >>= \dn ->
+  withForeignPtr (unDec dn) $ \pd ->
   poke (p'decNumber'digits pd) 1 >>
   poke (p'decNumber'exponent pd) 0 >>
   poke (p'decNumber'lsu pd) 0 >>
@@ -283,11 +283,11 @@ infinity s =
   return dn
 
 -- | Encodes quiet or signaling NaNs.
-notANumber :: Sign -> NaN -> Coefficient -> IO DecNum
+notANumber :: Sign -> NaN -> Coefficient -> IO Dec
 notANumber s nt coe =
   let len = length . unCoefficient $ coe in
-  newDecNumSize (fromIntegral len) >>= \dn ->
-  withForeignPtr (unDecNum dn) $ \dPtr ->
+  newDecSize (fromIntegral len) >>= \dn ->
+  withForeignPtr (unDec dn) $ \dPtr ->
   poke (p'decNumber'digits dPtr) (fromIntegral len) >>
   poke (p'decNumber'exponent dPtr) 0 >>
   let bSgn | s == Neg = c'DECNEG
@@ -311,14 +311,14 @@ nonSpecialCtxFree
   -> Sign
   -> Coefficient
   -> Exponent
-  -> IO (Maybe DecNum)
+  -> IO (Maybe Dec)
   -- ^ Fails if the exponent is out of range.
 nonSpecialCtxFree mnd sgn coe ex
   | not $ checkExp mnd ex coe = return Nothing
   | otherwise = fmap Just $
     let len = length . unCoefficient $ coe in
-    newDecNumSize (fromIntegral len) >>= \dn ->
-    withForeignPtr (unDecNum dn) $ \dPtr ->
+    newDecSize (fromIntegral len) >>= \dn ->
+    withForeignPtr (unDec dn) $ \dPtr ->
     poke (p'decNumber'digits dPtr) (fromIntegral len) >>
     poke (p'decNumber'exponent dPtr) (unExponent ex) >>
     let bSgn | sgn == Neg = c'DECNEG

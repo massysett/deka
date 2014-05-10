@@ -1,22 +1,22 @@
 {-# LANGUAGE Safe #-}
 
-module Deka.Internal.DecNum.Util where
+module Deka.Internal.Dec.Util where
 
 import Deka.Internal.Decnumber.DecNumber
 import Deka.Internal.Decnumber.Context
 import Foreign.Safe
-import Deka.Internal.DecNum.DecNum
+import Deka.Internal.Dec.Dec
 
--- | Allocates a DecNum of sufficient size to hold the given number
+-- | Allocates a Dec of sufficient size to hold the given number
 -- of digits.
-newDecNumSize
+newDecSize
   :: Int32
-  -- ^ New DecNum will hold this many digits.
-  -> IO DecNum
-newDecNumSize i = do
+  -- ^ New Dec will hold this many digits.
+  -> IO Dec
+newDecSize i = do
   let sz = mallocAmount i
   fp <- mallocForeignPtrBytes sz
-  return $ DecNum fp
+  return $ Dec fp
 
 -- | How many bytes must be malloc'ed to hold this many
 -- digits?
@@ -33,22 +33,22 @@ mallocAmount s = base + extra
     extraUnits = max 0 $ totUnits - baseUnits
     extra = sizeOf (undefined :: C'decNumberUnit) * fromIntegral extraUnits
 
-oneDigitDecNum :: IO DecNum
-oneDigitDecNum = fmap DecNum $
+oneDigitDec :: IO Dec
+oneDigitDec = fmap Dec $
   mallocForeignPtrBytes c'decNumber'sizeOf
 
-newDecNum :: Ptr C'decContext -> IO DecNum
-newDecNum p = do
+newDec :: Ptr C'decContext -> IO Dec
+newDec p = do
   dgts <- peek (p'decContext'digits p)
   let sz = mallocAmount dgts
   fp <- mallocForeignPtrBytes sz
-  return $ DecNum fp
+  return $ Dec fp
 
-copyDecNum :: DecNum -> IO DecNum
-copyDecNum (DecNum p) = withForeignPtr p $ \dp ->
+copyDec :: Dec -> IO Dec
+copyDec (Dec p) = withForeignPtr p $ \dp ->
   peek (p'decNumber'digits dp) >>= \dgts ->
-  newDecNumSize dgts >>= \dn' ->
-  withForeignPtr (unDecNum dn') $ \dp' ->
+  newDecSize dgts >>= \dn' ->
+  withForeignPtr (unDec dn') $ \dp' ->
   c'decNumberCopy dp' dp >>
   return dn'
 

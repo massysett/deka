@@ -1,33 +1,33 @@
 {-# LANGUAGE Safe #-}
-module Deka.Internal.DecNum.Ctx where
+module Deka.Internal.Dec.Ctx where
 
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Internal.Context
-import Deka.Internal.DecNum.Util
-import Deka.Internal.DecNum.CtxFree
+import Deka.Internal.Dec.Util
+import Deka.Internal.Dec.CtxFree
 import Deka.Internal.Decnumber.DecNumber
 import Deka.Internal.Decnumber.Context
-import Deka.Internal.DecNum.DecNum
+import Deka.Internal.Dec.Dec
 import Deka.Internal.Class
 import Foreign.Safe
 import Deka.Decoded
 
-fromByteString :: BS8.ByteString -> Ctx DecNum
+fromByteString :: BS8.ByteString -> Ctx Dec
 fromByteString bs = Ctx $ \pCtx ->
-  newDecNum pCtx >>= \dn ->
-  withForeignPtr (unDecNum dn) $ \pDn ->
+  newDec pCtx >>= \dn ->
+  withForeignPtr (unDec dn) $ \pDn ->
   BS8.useAsCString bs $ \cstr ->
   c'decNumberFromString pDn cstr pCtx >>
   return dn
 
-toUInt32 :: DecNum -> Ctx Word32
+toUInt32 :: Dec -> Ctx Word32
 toUInt32 dn = Ctx $ \pCtx ->
-  withForeignPtr (unDecNum dn) $ \pDn ->
+  withForeignPtr (unDec dn) $ \pDn ->
   c'decNumberToUInt32 pDn pCtx
 
-toInt32 :: DecNum -> Ctx Int32
+toInt32 :: Dec -> Ctx Int32
 toInt32 dn = Ctx $ \pCtx ->
-  withForeignPtr (unDecNum dn) $ \pDn ->
+  withForeignPtr (unDec dn) $ \pDn ->
   c'decNumberToInt32 pDn pCtx
 
 type Unary
@@ -38,11 +38,11 @@ type Unary
   -> Ptr C'decContext
   -> IO (Ptr C'decNumber)
 
-unary :: Unary -> DecNum -> Ctx DecNum
+unary :: Unary -> Dec -> Ctx Dec
 unary f x = Ctx $ \pCtx ->
-  newDecNum pCtx >>= \res ->
-  withForeignPtr (unDecNum res) $ \pRes ->
-  withForeignPtr (unDecNum x) $ \pX ->
+  newDec pCtx >>= \res ->
+  withForeignPtr (unDec res) $ \pRes ->
+  withForeignPtr (unDec x) $ \pX ->
   f pRes pX pCtx >>
   return res
 
@@ -56,12 +56,12 @@ type Binary
    -> Ptr C'decContext
    -> IO (Ptr C'decNumber)
 
-binary :: Binary -> DecNum -> DecNum -> Ctx DecNum
+binary :: Binary -> Dec -> Dec -> Ctx Dec
 binary f x y = Ctx $ \pCtx ->
-  newDecNum pCtx >>= \res ->
-  withForeignPtr (unDecNum res) $ \pRes ->
-  withForeignPtr (unDecNum x) $ \pX ->
-  withForeignPtr (unDecNum y) $ \pY ->
+  newDec pCtx >>= \res ->
+  withForeignPtr (unDec res) $ \pRes ->
+  withForeignPtr (unDec x) $ \pX ->
+  withForeignPtr (unDec y) $ \pY ->
   f pRes pX pY pCtx >>
   return res
 
@@ -77,153 +77,153 @@ type Ternary
    -> Ptr C'decContext
    -> IO (Ptr C'decNumber)
 
-ternary :: Ternary -> DecNum -> DecNum -> DecNum -> Ctx DecNum
+ternary :: Ternary -> Dec -> Dec -> Dec -> Ctx Dec
 ternary f x y z = Ctx $ \pCtx ->
-  newDecNum pCtx >>= \res ->
-  withForeignPtr (unDecNum res) $ \pRes ->
-  withForeignPtr (unDecNum x) $ \pX ->
-  withForeignPtr (unDecNum y) $ \pY ->
-  withForeignPtr (unDecNum z) $ \pZ ->
+  newDec pCtx >>= \res ->
+  withForeignPtr (unDec res) $ \pRes ->
+  withForeignPtr (unDec x) $ \pX ->
+  withForeignPtr (unDec y) $ \pY ->
+  withForeignPtr (unDec z) $ \pZ ->
   f pRes pX pY pZ pCtx >>
   return res
 
-abs :: DecNum -> Ctx DecNum
+abs :: Dec -> Ctx Dec
 abs = unary c'decNumberAbs
 
-add :: DecNum -> DecNum -> Ctx DecNum
+add :: Dec -> Dec -> Ctx Dec
 add = binary c'decNumberAdd
 
-and :: DecNum -> DecNum -> Ctx DecNum
+and :: Dec -> Dec -> Ctx Dec
 and = binary c'decNumberAnd
 
-compare :: DecNum -> DecNum -> Ctx DecNum
+compare :: Dec -> Dec -> Ctx Dec
 compare = binary c'decNumberCompare
 
-compareSignal :: DecNum -> DecNum -> Ctx DecNum
+compareSignal :: Dec -> Dec -> Ctx Dec
 compareSignal = binary c'decNumberCompareSignal
 
-compareTotal :: DecNum -> DecNum -> Ctx DecNum
+compareTotal :: Dec -> Dec -> Ctx Dec
 compareTotal = binary c'decNumberCompareTotal
 
-compareTotalMag :: DecNum -> DecNum -> Ctx DecNum
+compareTotalMag :: Dec -> Dec -> Ctx Dec
 compareTotalMag = binary c'decNumberCompareTotalMag
 
-divide :: DecNum -> DecNum -> Ctx DecNum
+divide :: Dec -> Dec -> Ctx Dec
 divide = binary c'decNumberDivide
 
-divideInteger :: DecNum -> DecNum -> Ctx DecNum
+divideInteger :: Dec -> Dec -> Ctx Dec
 divideInteger = binary c'decNumberDivideInteger
 
-exp :: DecNum -> Ctx DecNum
+exp :: Dec -> Ctx Dec
 exp = unary c'decNumberExp
 
-fma :: DecNum -> DecNum -> DecNum -> Ctx DecNum
+fma :: Dec -> Dec -> Dec -> Ctx Dec
 fma = ternary c'decNumberFMA
 
-invert :: DecNum -> Ctx DecNum
+invert :: Dec -> Ctx Dec
 invert = unary c'decNumberInvert
 
-ln :: DecNum -> Ctx DecNum
+ln :: Dec -> Ctx Dec
 ln = unary c'decNumberLn
 
-logB :: DecNum -> Ctx DecNum
+logB :: Dec -> Ctx Dec
 logB = unary c'decNumberLogB
 
-log10 :: DecNum -> Ctx DecNum
+log10 :: Dec -> Ctx Dec
 log10 = unary c'decNumberLog10
 
-max :: DecNum -> DecNum -> Ctx DecNum
+max :: Dec -> Dec -> Ctx Dec
 max = binary c'decNumberMax
 
-maxMag :: DecNum -> DecNum -> Ctx DecNum
+maxMag :: Dec -> Dec -> Ctx Dec
 maxMag = binary c'decNumberMaxMag
 
-min :: DecNum -> DecNum -> Ctx DecNum
+min :: Dec -> Dec -> Ctx Dec
 min = binary c'decNumberMin
 
-minMag :: DecNum -> DecNum -> Ctx DecNum
+minMag :: Dec -> Dec -> Ctx Dec
 minMag = binary c'decNumberMinMag
 
-minus :: DecNum -> Ctx DecNum
+minus :: Dec -> Ctx Dec
 minus = unary c'decNumberMinus
 
-multiply :: DecNum -> DecNum -> Ctx DecNum
+multiply :: Dec -> Dec -> Ctx Dec
 multiply = binary c'decNumberMultiply
 
-normalize :: DecNum -> Ctx DecNum
+normalize :: Dec -> Ctx Dec
 normalize = unary c'decNumberNormalize
 
-or :: DecNum -> DecNum -> Ctx DecNum
+or :: Dec -> Dec -> Ctx Dec
 or = binary c'decNumberOr
 
-plus :: DecNum -> Ctx DecNum
+plus :: Dec -> Ctx Dec
 plus = unary c'decNumberPlus
 
-power :: DecNum -> DecNum -> Ctx DecNum
+power :: Dec -> Dec -> Ctx Dec
 power = binary c'decNumberPower
 
-quantize :: DecNum -> DecNum -> Ctx DecNum
+quantize :: Dec -> Dec -> Ctx Dec
 quantize = binary c'decNumberQuantize
 
-reduce :: DecNum -> Ctx DecNum
+reduce :: Dec -> Ctx Dec
 reduce = unary c'decNumberReduce
 
-remainder :: DecNum -> DecNum -> Ctx DecNum
+remainder :: Dec -> Dec -> Ctx Dec
 remainder = binary c'decNumberRemainder
 
-remainderNear :: DecNum -> DecNum -> Ctx DecNum
+remainderNear :: Dec -> Dec -> Ctx Dec
 remainderNear = binary c'decNumberRemainderNear
 
-rescale :: DecNum -> DecNum -> Ctx DecNum
+rescale :: Dec -> Dec -> Ctx Dec
 rescale = binary c'decNumberRescale
 
-rotate :: DecNum -> DecNum -> Ctx DecNum
+rotate :: Dec -> Dec -> Ctx Dec
 rotate = binary c'decNumberRotate
 
-scaleB :: DecNum -> DecNum -> Ctx DecNum
+scaleB :: Dec -> Dec -> Ctx Dec
 scaleB = binary c'decNumberScaleB
 
-shift :: DecNum -> DecNum -> Ctx DecNum
+shift :: Dec -> Dec -> Ctx Dec
 shift = binary c'decNumberShift
 
-squareRoot :: DecNum -> Ctx DecNum
+squareRoot :: Dec -> Ctx Dec
 squareRoot = unary c'decNumberSquareRoot
 
-subtract :: DecNum -> DecNum -> Ctx DecNum
+subtract :: Dec -> Dec -> Ctx Dec
 subtract = binary c'decNumberSubtract
 
-toIntegralExact :: DecNum -> Ctx DecNum
+toIntegralExact :: Dec -> Ctx Dec
 toIntegralExact = unary c'decNumberToIntegralExact
 
-toIntegralValue :: DecNum -> Ctx DecNum
+toIntegralValue :: Dec -> Ctx Dec
 toIntegralValue = unary c'decNumberToIntegralValue
 
-xor :: DecNum -> DecNum -> Ctx DecNum
+xor :: Dec -> Dec -> Ctx Dec
 xor = binary c'decNumberXor
 
-nextMinus :: DecNum -> Ctx DecNum
+nextMinus :: Dec -> Ctx Dec
 nextMinus = unary c'decNumberNextMinus
 
-nextPlus :: DecNum -> Ctx DecNum
+nextPlus :: Dec -> Ctx Dec
 nextPlus = unary c'decNumberNextPlus
 
-nextToward :: DecNum -> DecNum -> Ctx DecNum
+nextToward :: Dec -> Dec -> Ctx Dec
 nextToward = binary c'decNumberNextToward
 
-numClass :: DecNum -> Ctx Class
-numClass (DecNum fp) = Ctx $ \pCtx ->
+numClass :: Dec -> Ctx Class
+numClass (Dec fp) = Ctx $ \pCtx ->
   withForeignPtr fp $ \pd ->
   c'decNumberClass pd pCtx >>= \cl ->
   return (Class cl)
 
-isNormal :: DecNum -> Ctx Bool
-isNormal (DecNum d) = Ctx $ \pCtx ->
+isNormal :: Dec -> Ctx Bool
+isNormal (Dec d) = Ctx $ \pCtx ->
   withForeignPtr d $ \pd ->
   c'decNumberIsNormal pd pCtx >>= \int ->
   return (toBool int)
 
-isSubnormal :: DecNum -> Ctx Bool
-isSubnormal (DecNum d) = Ctx $ \pCtx ->
+isSubnormal :: Dec -> Ctx Bool
+isSubnormal (Dec d) = Ctx $ \pCtx ->
   withForeignPtr d $ \pd ->
   c'decNumberIsSubnormal pd pCtx >>= \int ->
   return (toBool int)
@@ -235,7 +235,7 @@ nonSpecial
   :: Sign
   -> Coefficient
   -> Exponent
-  -> Ctx (Maybe DecNum)
+  -> Ctx (Maybe Dec)
   -- ^ Fails if the exponent is out of range
 nonSpecial sgn coe rawEx = Ctx $ \pCtx -> do
   ext <- fmap toBool . peek . p'decContext'extended $ pCtx
