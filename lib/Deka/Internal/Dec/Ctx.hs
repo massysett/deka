@@ -183,7 +183,7 @@ divideInteger = binary c'decNumberDivideInteger
 exp :: Dec -> Ctx Dec
 exp = unary c'decNumberExp
 
--- @fma x y z@ multiplies @x@ by @y@ and then adds @z@ to that
+-- | @fma x y z@ multiplies @x@ by @y@ and then adds @z@ to that
 -- intermediate result.  It is equivalent to a multiplication
 -- followed by an addition except that the intermediate result is
 -- not rounded and will not cause overflow or underflow. That is,
@@ -504,7 +504,7 @@ nextMinus = unary c'decNumberNextMinus
 nextPlus :: Dec -> Ctx Dec
 nextPlus = unary c'decNumberNextPlus
 
--- @nextToward x y@ returns @x@ set to the closest value in the
+-- | @nextToward x y@ returns @x@ set to the closest value in the
 -- direction of @y@.  This is computed as though by adding or
 -- subtracting an infinitesimal amount to @x@ using
 -- 'roundCeiling' or 'roundFloor', depending on whether @y@ is

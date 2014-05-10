@@ -108,64 +108,17 @@ module Deka.Dec
   -- * Constants
   , zero
 
-  -- * Decoding and encoding
-
-  -- | /Encoding/ takes Haskell types and converts them to a C
-  -- decNumber type so you can perform arithmetic on them.
-  -- /Decoding/ takes a C decNumber type and converts it to Haskell
-  -- types.
-
-  -- ** Number components
-  , Coefficient
-  , coefficient
-  , unCoefficient
-  , zeroCoefficient
-  , oneCoefficient
-  , Exponent(..)
-  , Sign(..)
-  , NaN(..)
-  , Payload(..)
-  , Decoded(..)
-
-  -- ** Decoding
-  , decode
-
-  -- ** Encoding
-  , infinity
-  , notANumber
-  , nonSpecialCtxFree
-  , nonSpecial
-
-  -- ** Adjusted exponents
-  , AdjExponent
-  , unAdjExponent
-  , adjExponent
   ) where
 
 import Prelude hiding (abs, and, or, max, min, compare, exp,
   subtract, negate, isNaN, isInfinite, exponent)
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Internal.Dec.Dec
-import Deka.Internal.Dec.CtxFree
-  ( Coefficient
-  , coefficient
-  , unCoefficient
-  , zeroCoefficient
-  , oneCoefficient
-  , Exponent(..)
-  , Payload(..)
-  , Decoded(..)
-  , AdjExponent
-  , unAdjExponent
-  , adjExponent
-  )
-
 import qualified Deka.Internal.Dec.CtxFree as I
 import Deka.Context
 import Deka.Class
 import Deka.Internal.Dec.Ctx
 import Deka.Internal.Unsafe
-import Deka.Decoded
 import Data.Word
 import Data.Int
 
@@ -278,34 +231,6 @@ isZero :: Dec -> Bool
 isZero = unsafe1 I.isZero
 
 -- skipped: radix
-
--- | Take a C 'Dec' and convert it to Haskell types.
-decode :: Dec -> Decoded
-decode = unsafe1 I.decode
-
--- | Encodes positive or negative infinities.
-infinity :: Sign -> Dec
-infinity = unsafe1 I.infinity
-
--- | Encodes quiet or signaling NaNs.
-notANumber :: Sign -> NaN -> Coefficient -> Dec
-notANumber = unsafe3 I.notANumber
-
--- | Encodes non-special numbers (also known as finite numbers.)
--- Does not need the context; however, you will have to supply
--- information about whether subnormal values are allowed.
-nonSpecialCtxFree
-  :: Maybe Precision
-  -- ^ If Just, allow subnormal values.  In that case, the maximum
-  -- number of digits is needed in order to compute the lower limit
-  -- for the exponent.  If Nothing, do not allow subnormal values.
-
-  -> Sign
-  -> Coefficient
-  -> Exponent
-  -> Maybe Dec
-  -- ^ Fails if the exponent is out of range.
-nonSpecialCtxFree = unsafe4 I.nonSpecialCtxFree
 
 {-
 
