@@ -186,6 +186,7 @@ Test-Suite decnumber-tests
     , unix >= 2.5.1.0 && < 2.8
     , transformers >= 0.3.0.0 && < 0.4.0.0
     , either >= 4.1.1 && < 4.2
+    , containers >= 0.5.5.1 && < 0.6
 
   type: exitcode-stdio-1.0
   hs-source-dirs: tests lib
@@ -241,6 +242,7 @@ Executable listLookups
     , QuickCheck >=2.7 && < 2.8
     , tasty-quickcheck >=0.3.1 && < 0.9
     , tasty >=0.7 && < 0.9
+    , containers >= 0.5.5.1 && < 0.6
 
   hs-source-dirs: lib tests
   main-is: listLookups.hs

@@ -4,6 +4,7 @@ import Dectest.Interp.Octothorpe (WhichPrecision(..))
 import qualified Dectest.Interp.Result as R
 import qualified Deka.Context as C
 import qualified Data.ByteString.Char8 as BS8
+import qualified Dectest.Log as L
 
 testEq
   :: (R.ToByteString r, R.Result r)
