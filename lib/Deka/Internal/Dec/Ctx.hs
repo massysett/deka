@@ -4,13 +4,11 @@ module Deka.Internal.Dec.Ctx where
 import qualified Data.ByteString.Char8 as BS8
 import Deka.Internal.Context
 import Deka.Internal.Dec.Util
-import Deka.Internal.Dec.CtxFree
 import Deka.Internal.Decnumber.DecNumber
 import Deka.Internal.Decnumber.Context
 import Deka.Internal.Dec.Dec
 import Deka.Internal.Class
 import Foreign.Safe
-import Deka.Decoded
 
 -- | Converts a character string to a 'Dec'.  Implements the
 -- _to-number_ conversion from the General Decimal Arithmetic

@@ -64,6 +64,11 @@ library
   ghc-options: -Wall
   default-language:    Haskell2010
 
+  -- -fPIC required for cabal repl to work.  See GHC bug #9074.
+  cc-options: -fPIC
+
+  -- order of c-sources matters: See GHC bug #9074.  If you reorder
+  -- them, you risk making ghci and cabal repl fail.
   c-sources:
     decnumber/src/decContext.c
     decnumber/src/decNumberMacros.c

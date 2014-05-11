@@ -59,5 +59,5 @@ instance Show Class where
     | c == posZero = "+Zero"
     | c == posSubnormal = "+Subnormal"
     | c == posNormal = "+Normal"
-    | c == posInf = "+Inf"
+    | c == posInf = "+Infinity"
     | otherwise = error "show: class: unknown class"

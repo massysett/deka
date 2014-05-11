@@ -2,15 +2,16 @@ module Types where
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Parse as P
-import Queue
 import Data.Sequence
 
 -- | All tests must conform to this interface.
 
 type Test
 
-  = Queue (P.Keyword, P.Value)
-  -- ^ All directives in force when the test is run.
+  = Seq (P.Keyword, P.Value)
+  -- ^ All directives in force when the test is run.  Oldest
+  -- directives are on the left side of the Seq; newest ones, on
+  -- the right side.
 
   -> [BS8.ByteString]
   -- ^ Operands

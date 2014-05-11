@@ -5,11 +5,17 @@
 -- main immutability.hs, all modules get compiled.
 module AllModules where
 
+import Conditions
 import Parse
 import Parse.Tokenizer
 import Parse.Tokens
 import Types
 import Runner
-import Queue
+import Directives
 import TestLog
 import Util
+import Operand
+import Result
+import Arity
+import TestHelpers
+import Specials
