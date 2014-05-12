@@ -55,10 +55,25 @@ instructions bs = for (produceFile bs) (eiToInstructions . Left)
 instructions' :: Monad m => P.File -> Producer P.Instruction m ()
 instructions' f = for (yield f) (eiToInstructions . Left)
 
-localFile :: MonadIO m => P.File -> m Counts
-localFile = undefined
-  
+localFile :: MonadIO m => P.File -> Effect m Counts
+localFile f = do
+  let st = runEffect $ for (each (P.fileContents f)) procEither
+      start = (S.empty, mempty)
+  (_, cnts) <- liftIO $ St.execStateT st start
+  return cnts
 
+procEither
+  :: MonadIO m
+  => Either P.File P.Instruction
+  -> Effect (State' m) ()
+procEither ei = case ei of
+  Left file -> do
+    localCnts <- liftIO . runEffect . localFile $ file
+    let mdfy (sq, cnts) = (sq, cnts <> localCnts)
+    lift $ St.modify mdfy
+    return ()
+  Right ins -> return ins >~ consumeInstructions
+  
 procInstruction
   :: Monad m
   => Pipe P.Instruction P.TestSpec (State' m) ()
@@ -151,11 +166,15 @@ consumeInstructions
 
 
 runAndExit :: [BS8.ByteString] -> IO ()
+runAndExit = undefined
+{-
 runAndExit bs = do
+  cs <- runEffect $ each 
   (_, cts) <- St.execStateT
     (runEffect (produceResults bs)) (S.empty, Counts 0 0 0)
   putStr . showCounts $ cts
   exit cts
+-}
 
 
 data Counts = Counts
@@ -163,6 +182,11 @@ data Counts = Counts
   , nFail :: !Int
   , nSkip :: !Int
   } deriving Show
+
+instance Monoid Counts where
+  mempty = Counts 0 0 0
+  (Counts x1 y1 z1) `mappend` (Counts x2 y2 z2) =
+    Counts (x1 + x2) (y1 + y2) (z1 + z2)
 
 showCounts :: Counts -> String
 showCounts (Counts p f s) = unlines
