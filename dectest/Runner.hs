@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, BangPatterns #-}
 module Runner where
 
 import qualified Parse as P
@@ -14,6 +14,9 @@ import Pipes.Prelude (fold)
 import qualified Control.Monad.Trans.State as St
 import NumTests (testLookups)
 import Types
+
+type State = St.StateT (S.Seq (P.Keyword, P.Value))
+type State' = St.StateT (S.Seq (P.Keyword, P.Value), Counts)
 
 produceFile
   :: MonadIO m
@@ -40,8 +43,6 @@ instructions
   => BS8.ByteString
   -> Producer P.Instruction m ()
 instructions bs = for (produceFile bs) (eiToInstructions . Left)
-
-type State = St.StateT (S.Seq (P.Keyword, P.Value))
 
 procInstruction
   :: Monad m
@@ -126,9 +127,7 @@ runAllTests
   -> State m Counts
 runAllTests = totals . produceResults
 
-runAndExit
-  :: [BS8.ByteString]
-  -> IO ()
+runAndExit :: [BS8.ByteString] -> IO ()
 runAndExit bs = do
   let st = runAllTests bs
   cts <- St.evalStateT st S.empty
