@@ -5,10 +5,7 @@ module Deka.Internal.Dec.CtxFree where
 import Foreign.Safe
 import Deka.Internal.Dec.Dec
 import Deka.Internal.Decnumber.DecNumber
-import Deka.Internal.Decnumber.Context
 import qualified Data.ByteString.Char8 as BS8
-import Deka.Decoded
-import Deka.Context
 import Prelude
 import Foreign.C.Types
 import Deka.Internal.Dec.Util

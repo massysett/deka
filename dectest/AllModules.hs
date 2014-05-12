@@ -19,3 +19,4 @@ import Result
 import Arity
 import TestHelpers
 import Specials
+import NumTests
