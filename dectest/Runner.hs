@@ -14,6 +14,7 @@ import Pipes.Prelude (fold)
 import qualified Control.Monad.Trans.State as St
 import NumTests (testLookups)
 import Types
+import Control.Arrow (first)
 
 type State = St.StateT (S.Seq (P.Keyword, P.Value))
 type State' = St.StateT (S.Seq (P.Keyword, P.Value), Counts)
@@ -21,8 +22,15 @@ type State' = St.StateT (S.Seq (P.Keyword, P.Value), Counts)
 produceFile
   :: MonadIO m
   => BS8.ByteString
+  -- ^ Filename
   -> Producer P.File m ()
 produceFile fn = liftIO (P.parseFile fn) >>= yield
+
+produceFiles
+  :: MonadIO m
+  => [BS8.ByteString]
+  -> Producer P.File m ()
+produceFiles bss = for (each bss) produceFile
 
 contents
   :: Monad m
@@ -44,15 +52,22 @@ instructions
   -> Producer P.Instruction m ()
 instructions bs = for (produceFile bs) (eiToInstructions . Left)
 
+instructions' :: Monad m => P.File -> Producer P.Instruction m ()
+instructions' f = for (yield f) (eiToInstructions . Left)
+
+localFile :: MonadIO m => P.File -> m Counts
+localFile = undefined
+  
+
 procInstruction
   :: Monad m
-  => Pipe P.Instruction P.TestSpec (State m) ()
+  => Pipe P.Instruction P.TestSpec (State' m) ()
 procInstruction = do
   ins <- await
   case ins of
     P.Blank -> procInstruction
     P.Directive k v -> do
-      lift (St.modify (|> (k,v)))
+      lift (St.modify (first (|> (k,v))))
       procInstruction
     P.Test ts -> yield ts
 
@@ -62,13 +77,13 @@ data TestOutput = TestOutput
   , outLog :: S.Seq BS8.ByteString
   }
 
-procSpec :: Monad m => Pipe P.TestSpec TestOutput (State m) ()
+procSpec :: Monad m => Pipe P.TestSpec TestOutput (State' m) ()
 procSpec = do
   spc <- await
   case lookup (P.testOperation spc) testLookups of
     Nothing -> yield (noOperation spc)
     Just f -> do
-      dirs <- lift St.get
+      dirs <- fmap fst . lift $ St.get
       yield (runTest dirs spc f)
 
 noOperation :: P.TestSpec -> TestOutput
@@ -100,6 +115,13 @@ printTest = do
   liftIO . BS8.putStr . showResult $ o
   yield (outResult o)
 
+tallySink :: Monad m => Consumer (Maybe Bool) (State' m) ()
+tallySink = do
+  mb <- await
+  (s, cnt) <- lift St.get
+  let !cnt' = tally cnt mb
+  lift $ St.put (s, cnt')
+
 tally :: Counts -> Maybe Bool -> Counts
 tally (Counts p f s) mb = case mb of
   Nothing -> Counts p f (s + 1)
@@ -113,24 +135,25 @@ produceResults
   :: MonadIO m
   => [BS8.ByteString]
   -- ^ Files
-  -> Producer (Maybe Bool) (State m) ()
+  -> Effect (State' m) ()
 produceResults fs
   = for (each fs) instructions
-  >-> procInstruction
+  >-> consumeInstructions
+
+consumeInstructions
+  :: MonadIO m
+  => Consumer P.Instruction (State' m) ()
+consumeInstructions
+  = procInstruction
   >-> procSpec
   >-> printTest
+  >-> tallySink
 
-runAllTests
-  :: MonadIO m
-  => [BS8.ByteString]
-  -- ^ Files
-  -> State m Counts
-runAllTests = totals . produceResults
 
 runAndExit :: [BS8.ByteString] -> IO ()
 runAndExit bs = do
-  let st = runAllTests bs
-  cts <- St.evalStateT st S.empty
+  (_, cts) <- St.execStateT
+    (runEffect (produceResults bs)) (S.empty, Counts 0 0 0)
   putStr . showCounts $ cts
   exit cts
 
