@@ -44,6 +44,7 @@ output = do
   case lookup (P.testOperation . ordSpec $ o) testLookups of
     Nothing -> yield (noOperation . ordSpec $ o)
     Just t -> yield (runTest o t)
+  output
 
 
 printTest
@@ -53,6 +54,7 @@ printTest = do
   o <- await
   liftIO . BS8.putStr . showResult $ o
   yield (outResult o)
+  printTest
 
 pipeline :: MonadIO m => Pipe BS8.ByteString (Maybe Bool) m ()
 pipeline =

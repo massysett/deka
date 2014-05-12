@@ -80,11 +80,12 @@ addDirective (P.Keyword kw) (P.Value val)
 allRounds :: IsString a => [(a, C.Round)]
 allRounds =
   [ ("ceiling", C.roundCeiling)
+  , ("up", C.roundUp)
+  , ("half_up", C.roundHalfUp)
+  , ("half_even", C.roundHalfEven)
+  , ("half_down", C.roundHalfDown)
   , ("down", C.roundDown)
   , ("floor", C.roundFloor)
-  , ("half_down", C.roundHalfDown)
-  , ("half_even", C.roundHalfEven)
-  , ("up", C.roundUp)
   , ("05up", C.round05Up)
   ]
 
