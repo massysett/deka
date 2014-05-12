@@ -55,7 +55,7 @@ instructions bs = for (produceFile bs) (eiToInstructions . Left)
 instructions' :: Monad m => P.File -> Producer P.Instruction m ()
 instructions' f = for (yield f) (eiToInstructions . Left)
 
-localFile :: MonadIO m => P.File -> Effect m Counts
+localFile :: MonadIO m => P.File -> m Counts
 localFile f = do
   let st = runEffect $ for (each (P.fileContents f)) procEither
       start = (S.empty, mempty)
@@ -68,11 +68,13 @@ procEither
   -> Effect (State' m) ()
 procEither ei = case ei of
   Left file -> do
-    localCnts <- liftIO . runEffect . localFile $ file
+    let getEfct = runEffect (localFile file)
+    localCnts <- liftIO getEfct
     let mdfy (sq, cnts) = (sq, cnts <> localCnts)
     lift $ St.modify mdfy
     return ()
   Right ins -> return ins >~ consumeInstructions
+
   
 procInstruction
   :: Monad m
