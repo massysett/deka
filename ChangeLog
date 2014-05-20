@@ -1,3 +1,12 @@
+version 0.6.0.0:
+
+* switch to mpdecimal for the underlying C library.  This allows
+higher limits on exponents and precision.  All arithmetic is now
+(practically speaking) arbitrary precision.  This also allows more
+operations, such as logarithms and all exponents.  As a possible
+disadvantage, this might be slower than decNumber (but I have not
+benchmarked this.)
+
 version 0.4.0.4:
 
 * test with GHC 7.8.2

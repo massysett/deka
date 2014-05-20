@@ -8,8 +8,8 @@ inputs = TestInputs
   { tiDescription = Nothing
   , tiCabal = "cabal"
   , tiLowest = ghc "7.4.1"
-  , tiDefault = map ghc [ "7.4.1", "7.6.3", "7.8.2" ]
-  , tiTest = [("dist/build/tasty-test/tasty-test", [])]
+  , tiDefault = map ghc [ "7.4.1", "7.6.1", "7.8.2" ]
+  , tiTest = [("dist/build/native/native", [])]
   }
 
 main = runTests inputs

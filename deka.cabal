@@ -1,15 +1,23 @@
 name:                deka
-version:             0.4.0.4
+version:             0.6.0.0
 synopsis:            Decimal floating point arithmetic
 
 description:
-  deka provides decimal floating point arithmetic.  It
-  is based on the decNumber C library, which is available
-  at
+
+  deka provides decimal floating point arithmetic.  It is based on
+  mpdecimal, the C library used to provide support for the Decimal
+  module in Python 3.
   .
-  <http://speleotrove.com/decimal/decnumber.html>
+  You will need to install mpdecimal to use deka; otherwise your
+  executables will not link.  It is available at
   .
-  decNumber, in turn, implements the General Decimal Arithmetic
+  <http://www.bytereef.org/mpdecimal/>
+  .
+  mpdecimal has also been packaged for some Linux distributions,
+  such as Debian (libmpdec-dev - available in Jessie and later) and
+  Arch (mpdecimal).
+  .
+  mpdecimal, in turn, implements the General Decimal Arithmetic
   Specification, which is available at
   .
   <http://speleotrove.com/decimal/>
@@ -25,16 +33,9 @@ author:              Omari Norman
 maintainer:          omari@smileystation.com
 copyright:           2014 Omari Norman
 category:            Math
-build-type:          Configure
+build-type:          Simple
 extra-source-files:  README.md ChangeLog
   current-versions.txt minimum-versions.txt
-  configure
-  decnumber/src/decNumberLocal.h.in
-  decnumber/src/decCommon.c
-  decnumber/src/decBasic.c
-  decnumber/src/decContext.h
-  decnumber/src/decQuad.h
-  decnumber/src/decDPD.h
 cabal-version:       >=1.10
 tested-with: GHC==7.4.1 GHC==7.6.3, GHC ==7.8.2
 
@@ -42,64 +43,84 @@ library
   hs-source-dirs: lib
   
   exposed-modules:     
-      Data.Deka
-    , Data.Deka.Quad
-    , Data.Deka.Docs
-    , Data.Deka.Docs.Examples
+      Deka
+    , Deka.Context
+    , Deka.Dec
+    , Deka.Docs
+    , Deka.Docs.Examples
+    , Deka.Native
+    , Deka.Native.Abstract
+    , Deka.Native.FromString
 
   other-modules:
-      Data.Deka.Decnumber
-    , Data.Deka.Internal
-  
+      Deka.Internal.Context
+    , Deka.Internal.Dec.CtxFree
+    , Deka.Internal.Dec.Ctx
+    , Deka.Internal.Unsafe
+    , Deka.Internal.Mpdec
+    , Deka.Internal.Util.Ctx
+
   build-depends:
       base >=4.5.0.0 && < 4.8
     , bytestring >=0.9.2.1 && < 0.11
+    , parsec >= 3.1.2 && < 3.2
+    , transformers >= 0.3.0.0 && < 0.4
 
   ghc-options: -Wall
   default-language:    Haskell2010
 
-  c-sources:
-    decnumber/src/decQuad.c
-    decnumber/src/decContext.c
-  include-dirs:
-    decnumber/src
-       
+  extra-libraries: mpdec
 
--- The test suite does not have deka listed in the build-depends.
--- This lengthens the compilation times but it allows the test suite
--- to have access to Data.Deka.Internal, which is critical for
--- testing.
-
-Test-Suite tasty-test
+Test-Suite dectest
   Build-depends:
-      base >=4.5.0.0 && < 4.8
-    , tasty-quickcheck >=0.3.1 && < 0.9
-    , tasty >=0.7 && < 0.9
-    , QuickCheck >=2.6 && < 2.8
+      deka ==0.6.0.0
+    , base >= 4.5.0.0 && < 4.8
     , bytestring >=0.9.2.1 && < 0.11
-
-  other-modules:
-      Data.Deka
-    , Data.Deka.Internal
-    , Data.Deka.Decnumber
-    , Data.Deka.Quad
-    , Data.Deka.Docs
-    , Data.Deka.Docs.Examples
-
-    , DataDir
-    , DataDir.DekaDir
-    , DataDir.DekaTest
-    , DataDir.DekaDir.QuadTest
+    , transformers >= 0.3.0.0 && < 0.4.0.0
+    , containers >= 0.4.2.1 && < 0.6
+    , pipes >= 4.1.1 && < 4.2
 
   type: exitcode-stdio-1.0
-  hs-source-dirs: test lib
-  ghc-options: -Wall -rtsopts -fprof-auto
-  main-is: tasty-test.hs
-  default-language:    Haskell2010
+  hs-source-dirs: dectest
+  ghc-options: -Wall
+  main-is: dectest.hs
+  other-modules:
+      AllModules
+    , Arity
+    , Conditions
+    , Directives
+    , NumTests
+    , Operand
+    , Parse
+    , Parse.Tokenizer
+    , Parse.Tokens
+    , Result
+    , Runner
+    , Specials
+    , TestHelpers
+    , TestLog
+    , Types
+    , Util
+  default-language: Haskell2010
+  extra-libraries: mpdec
 
-  c-sources:
-    decnumber/src/decQuad.c
-    decnumber/src/decContext.c
-  include-dirs:
-    decnumber/src
+Test-Suite native
+  Build-depends:
+      deka ==0.6.0.0
+    , base >= 4.5.0.0 && < 4.8
+    , bytestring >=0.9.2.1 && < 0.11
+    , QuickCheck >= 2.7.3 && < 2.8
+    , tasty >= 0.8.0.4 && < 0.9
+    , tasty-quickcheck >= 0.8.0.3 && < 0.9
+
+  type: exitcode-stdio-1.0
+  hs-source-dirs: native
+  ghc-options: -Wall
+  main-is: native.hs
+  other-modules:
+      AllModules
+    , Generators
+    , Properties
+  default-language: Haskell2010
+  extra-libraries: mpdec
 

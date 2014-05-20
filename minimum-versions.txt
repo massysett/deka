@@ -1,11 +1,11 @@
 This package was tested to work with these dependency
 versions and compiler version.
 These are the minimum versions given in the .cabal file.
-Tested as of: 2014-04-17 19:37:00.007331 UTC
+Tested as of: 2014-05-20 16:07:05.864819 UTC
 Path to compiler: ghc-7.4.1
 Compiler description: 7.4.1
 
-/var/lib/ghc/package.conf.d:
+/opt/ghc/7.4.1/lib/ghc-7.4.1/package.conf.d:
     Cabal-1.14.0
     array-0.4.0.0
     base-4.5.0.0
@@ -33,35 +33,27 @@ Compiler description: 7.4.1
     time-1.4
     unix-2.5.1.0
 
-/home/massysett/deka/sunlight-20121/db:
-    MonadRandom-0.1.13
-    QuickCheck-2.6
+/home/massysett/deka/sunlight-730/db:
+    QuickCheck-2.7.3
     ansi-terminal-0.6.1.1
     ansi-wl-pprint-0.6.7.1
-    base-unicode-symbols-0.2.2.4
-    comonad-4.0.1
-    contravariant-0.4.4
-    deka-0.4.0.4
-    distributive-0.4.3.1
-    either-4.1.1
-    hashable-1.2.1.0
-    monad-control-0.3.2.3
+    async-2.0.1.5
+    deka-0.6.0.0
+    mmorph-1.0.3
     mtl-2.1.3.1
-    nats-0.1.2
-    optparse-applicative-0.8.0.1
-    parsec-3.1.5
+    optparse-applicative-0.8.1
+    parsec-3.1.2
+    pipes-4.1.1
+    primitive-0.5.3.0
     random-1.0.1.1
     regex-base-0.93.2
     regex-tdfa-1.2.0
-    semigroupoids-4.0.1
-    semigroups-0.13.0.1
     stm-2.4.3
-    tagged-0.7.1
-    tasty-0.7
-    tasty-quickcheck-0.3.1
-    text-1.1.0.1
+    tagged-0.7.2
+    tasty-0.8.0.4
+    tasty-quickcheck-0.8.0.3
+    text-0.11.3.1
+    tf-random-0.5
     transformers-0.3.0.0
-    transformers-base-0.4.1
-    transformers-compat-0.1.1.1
-    unordered-containers-0.2.4.0
+    unbounded-delays-0.1.0.7
 
