@@ -118,7 +118,14 @@ isZeroCoeff = testBool c'mpd_iszerocoeff
 isOddCoeff :: Dec -> Bool
 isOddCoeff = testBool c'mpd_isoddcoeff
 
-data Sign = Sign0 | Sign1
+-- | The sign of a number.
+data Sign
+  = Sign0
+  -- ^ A sign of zero; used for positive numbers and for zero.
+
+  | Sign1
+  -- ^ A sign of one; used for negative numbers and the negative
+  -- zero.
   deriving (Eq, Ord, Show)
 
 sign :: Dec -> Sign
