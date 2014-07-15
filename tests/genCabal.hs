@@ -18,6 +18,12 @@ properties = CC.properties
     ]
   }
 
+testDeps :: [C.Package]
+testDeps = CC.buildDeps ++
+  [ C.exactly "deka" CC.versionInts
+  , C.closedOpen "QuickCheck" [2,7,3] [2,8]
+  ]
+
 library
   :: [String]
   -- ^ Exposed modules
@@ -25,10 +31,7 @@ library
 library ex = C.Library
   [ C.LibExposedModules ex
   , C.hsSourceDirs ["lib"]
-  , C.buildDepends $ CC.buildDeps ++
-    [ C.exactly "deka" CC.versionInts
-    , C.closedOpen "QuickCheck" [2,7,3] [2,8]
-    ]
+  , C.buildDepends testDeps
   , C.ghcOptions CC.ghcOptions
   , C.defaultLanguage C.Haskell2010
   ]
@@ -40,7 +43,7 @@ native
   -- ^ Library modules
   -> C.TestSuite
 native ms ls = C.TestSuite "deka-native" $
-  [ C.buildDepends $ CC.buildDeps ++ [quickpull]
+  [ C.buildDepends $ testDeps ++ [quickpull]
   , C.TestType C.ExitcodeStdio
   , C.TestMainIs "deka-native.hs"
   , C.hsSourceDirs ["native", "lib"]
