@@ -49,6 +49,7 @@ native ms ls = C.TestSuite "deka-native" $
   , C.hsSourceDirs ["native", "lib"]
   , C.otherModules $ ms ++ ls
   , C.defaultLanguage C.Haskell2010
+  , C.ghcOptions CC.ghcOptions
   ]
 
 cabal

@@ -3,7 +3,7 @@
 -- http://www.github.com/massysett/cartel
 --
 -- Script name used to generate: genCabal.hs
--- Generated on: 2014-07-15 17:05:25.881465 EDT
+-- Generated on: 2014-07-15 17:13:12.94262 EDT
 -- Cartel library version: 0.10.0.2
 name: deka-tests
 version: 0.6.0.4
@@ -98,3 +98,5 @@ Test-Suite deka-native
     , Decrees
     , Properties
   default-language: Haskell2010
+  ghc-options:
+      -Wall
