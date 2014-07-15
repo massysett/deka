@@ -9,7 +9,9 @@ properties :: C.Properties
 properties = CC.properties
   { C.prName = "deka"
   , C.prSynopsis = "Decimal floating point arithmetic"
-  , C.prDescription = CC.description
+  , C.prDescription = CC.description ++
+    [ "Tests are packaged separately in the deka-tests package."
+    ]
   }
 
 library

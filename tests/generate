@@ -1,0 +1,4 @@
+#!/bin/sh
+
+quickpull native > native/Decrees.hs
+runghc genCabal.hs > deka-tests.cabal

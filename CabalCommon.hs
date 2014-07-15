@@ -3,7 +3,7 @@ module CabalCommon where
 import qualified Cartel as C
 
 versionInts :: [Int]
-versionInts = [0,6,0,2]
+versionInts = [0,6,0,4]
 
 description :: [String]
 description =
