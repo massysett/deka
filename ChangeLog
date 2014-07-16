@@ -1,3 +1,9 @@
+version 0.6.0.2:
+
+* changed build system to use cartel.
+
+* moved tests to separate package, deka-tests
+
 version 0.6.0.0:
 
 * switch to mpdecimal for the underlying C library.  This allows
