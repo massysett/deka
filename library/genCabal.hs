@@ -25,8 +25,8 @@ library ex hd = C.Library
   , C.otherModules hd
   , C.hsSourceDirs ["exposed", "internal"]
   , C.buildDepends $ CC.buildDeps ++
-    [ C.closedOpen "parsec" [3,1,2] [3,2]
-    , C.closedOpen "transformers" [0,3,0,0] [0,5]
+    [ CC.parsec
+    , CC.transformers
     ]
   , C.ghcOptions CC.ghcOptions
   , C.defaultLanguage C.Haskell2010

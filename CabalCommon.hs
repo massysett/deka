@@ -61,6 +61,12 @@ buildDeps =
   , C.closedOpen "bytestring" [0,9,2,1] [0,11]
   ]
 
+parsec :: C.Package
+parsec = C.closedOpen "parsec" [3,1,2] [3,2]
+
+transformers :: C.Package
+transformers = C.closedOpen "transformers" [0,3,0,0] [0,5]
+
 ghcOptions :: [String]
 ghcOptions = ["-Wall"]
 

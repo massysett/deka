@@ -36,6 +36,24 @@ library ex = C.Library
   , C.defaultLanguage C.Haskell2010
   ]
 
+dectest
+  :: [String]
+  -- ^ Dectest modules
+  -> C.Executable
+dectest ms = C.Executable "deka-dectest"
+  [ C.buildDepends $ testDeps ++
+    [ CC.transformers
+    , CC.parsec
+    , C.closedOpen "containers" [0,4,2,1] [0,6]
+    , C.closedOpen "pipes" [4,1,1] [4,2]
+    ]
+  , C.hsSourceDirs ["dectest"]
+  , C.otherModules ms
+  , C.ExeMainIs "deka-dectest.hs"
+  , C.defaultLanguage C.Haskell2010
+  , C.ghcOptions CC.ghcOptions
+  ]
+
 native
   :: [String]
   -- ^ Native test modules
@@ -57,16 +75,20 @@ cabal
   -- ^ Exposed library modules
   -> [String]
   -- ^ Native modules
+  -> [String]
+  -- ^ Dectest modules
   -> C.Cabal
-cabal ex nt = C.empty
+cabal ex nt dt = C.empty
   { C.cProperties = properties
   , C.cRepositories = [CC.repo]
   , C.cLibrary = Just $ library ex
   , C.cTestSuites = [native ex nt]
+  , C.cExecutables = [dectest dt]
   }
 
 main :: IO ()
 main = do
   ex <- C.modules "lib"
   nt <- C.modules "native"
-  C.render "genCabal.hs" $ cabal ex nt
+  dt <- C.modules "dectest"
+  C.render "genCabal.hs" $ cabal ex nt dt
