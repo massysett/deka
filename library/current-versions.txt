@@ -1,7 +1,7 @@
 This package was tested to work with these dependency
 versions and compiler version.
 These are the default versions fetched by cabal install.
-Tested as of: 2014-07-16 02:35:11.803069 UTC
+Tested as of: 2014-07-16 11:45:23.903792 UTC
 Path to compiler: ghc-7.8.3
 Compiler description: 7.8.3
 
@@ -36,8 +36,8 @@ Compiler description: 7.8.3
     unix-2.7.0.1
     xhtml-3000.2.1
 
-/home/massysett/deka/library/sunlight-15057/db:
-    deka-0.6.0.4
+/home/massysett/deka/library/sunlight-20573/db:
+    deka-0.6.0.2
     mtl-2.1.3.1
     parsec-3.1.5
     text-1.1.1.3
