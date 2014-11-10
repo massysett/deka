@@ -14,11 +14,8 @@ import Pipes.Prelude (fold)
 import NumTests (testLookups)
 import Types
 
-produceFile :: MonadIO m => Pipe BS8.ByteString P.File m ()
-produceFile = do
-  bs <- await
-  f <- liftIO $ P.parseFile bs
-  yield f
+produceFile :: MonadIO m => BS8.ByteString -> Producer P.File m ()
+produceFile bs = liftIO (P.parseFile bs) >>= yield
 
 order :: Monad m => Pipe P.File Order m ()
 order = do
@@ -56,9 +53,9 @@ printTest = do
   yield (outResult o)
   printTest
 
-pipeline :: MonadIO m => Pipe BS8.ByteString (Maybe Bool) m ()
-pipeline =
-  produceFile
+pipeline :: MonadIO m => BS8.ByteString -> Producer (Maybe Bool) m ()
+pipeline f =
+  produceFile f
   >-> order
   >-> output
   >-> printTest
@@ -69,7 +66,7 @@ totals = fold tally mempty id
 runAndExit :: [String] -> IO ()
 runAndExit ss = do
   let bs = map BS8.pack ss
-      pip = each bs >-> pipeline
+      pip = for (each bs) pipeline
   tot <- totals pip
   putStr . showCounts $ tot
   exit tot
