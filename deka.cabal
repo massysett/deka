@@ -73,7 +73,7 @@ library
 
 Test-Suite dectest
   Build-depends:
-      deka ==0.6.0.0
+      deka
     , base >= 4.5.0.0 && < 4.8
     , bytestring >=0.9.2.1 && < 0.11
     , transformers >= 0.3.0.0 && < 0.4.0.0
@@ -106,7 +106,7 @@ Test-Suite dectest
 
 Test-Suite native
   Build-depends:
-      deka ==0.6.0.0
+      deka
     , base >= 4.5.0.0 && < 4.8
     , bytestring >=0.9.2.1 && < 0.11
     , QuickCheck >= 2.7.3 && < 2.8

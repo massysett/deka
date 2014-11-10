@@ -3,7 +3,7 @@ Examples for the Deka library
 
 For very simple arithmetic, just import `Deka`.  It contains a
 `Deka` type, which is an instance of Num.  For more control over your
-arithmetic, import `Deka.Fixed.Quad`.  Be aware that `Quad` exports some
+arithmetic, import `Deka.Dec`.  Be aware that `Dec` exports some
 functions that clash with Prelude names, so you might want to do a
 qualified `import`; however we will just import them unqualified
 here.
@@ -157,13 +157,13 @@ functions and `do` notation to combine your computations.
 `Deka.Context`, which is re-exported by `Deka.Dec`, has functions
 you can use to change the context's rounding, see what errors have
 been set, and clear errors.  Once an error flag is set, you have to
-clear it; the functions in `Quad` won't clear it for you.  However,
+clear it; the functions in `Context` won't clear it for you.  However,
 computations can proceed normally even if an error flag was set in a
 previous computation.
 
 After building up a computation in the `Ctx` monad, you need a way
 to get the results and use them elsewhere in your program.  For this
-you use the `runQuad` function:
+you use the `runCtx` function:
 
     runCtx :: Ctx a -> a
 
@@ -174,7 +174,7 @@ Example - using `do` notation
 -----------------------------
 
 Following is an example of how you would add one tenth using the
-Quad type:
+`Dec` type:
 
 > let { oneTenth = runCtx . fromByteString . BS8.pack $ "0.1" };
 > BS8.putStrLn . toByteString . runCtx $ do
@@ -203,7 +203,7 @@ computed to 34 digits of precision.
 
 Perhaps you want to round the result to a particular number of
 decimal places.  You do this with the `quantize` function.  It takes
-two `Quad`: one that you want to round, and another that has the
+two `Dec`: one that you want to round, and another that has the
 number of decimal places you want to round to.
 
 > putStrLn "This is 10 / 6, rounded to two places:";
@@ -248,7 +248,7 @@ To see which flags are set, use `getStatus`:
 > putStr "flags set: ";
 > print fl;
 
-The above example also shows that computations may return a Quad
+The above example also shows that computations may return a Dec
 that is not finite--that is, it might be inifite, or it might be a
 Not-a-Number, or NaN.  In contrast, computations using the Deka type
 never return non-finite values.
